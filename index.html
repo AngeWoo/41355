@@ -1,0 +1,239 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>真如苑資料網站｜非官方資訊彙整</title>
+  <meta name="description" content="真如苑非官方資料彙整網站，收錄親苑時報、Shinnyo Podcast、行事曆、瑞聲法語等資源。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css?v=17" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <div class="bg-aura"></div>
+  <div class="bg-grain"></div>
+
+  <!-- 導覽列 -->
+  <nav class="nav" id="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="#top">
+        <img class="mark" src="assets/img/slogo.png" alt="" aria-hidden="true" />
+        <span><b>真如苑資料網站</b><small>SHINNYO ARCHIVE</small></span>
+      </a>
+      <button class="hamburger" id="hamburger" aria-label="選單">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="nav-links" id="navLinks">
+        <a href="#home" class="active">首頁</a>
+        <a href="#podcast">Podcast</a>
+        <a href="#calendar">行事曆</a>
+        <a href="#newsletter">親苑時報</a>
+        <a href="#dharma">瑞聲法語</a>
+        <a href="#tools">互動程式</a>
+        <a href="admin.html" class="nav-cta">後台維護</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero" id="top">
+    <svg class="ensou" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="40" fill="none" stroke="url(#g)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="232 28"/>
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#e7cd8f"/><stop offset="1" stop-color="#a9863f" stop-opacity="0"/>
+      </linearGradient></defs>
+    </svg>
+    <div class="container hero-content">
+      <span class="eyebrow">非官方資訊彙整 · SHINNYO-EN</span>
+      <h1>於常住真心之中<br/>安住每個當下</h1>
+      <p class="lead">彙整親苑時報、Shinnyo Podcast、台灣行事曆與瑞聲法語，<br/>為苑信徒提供清晰、即時、莊嚴的數位資料園地。</p>
+      <form class="hero-search" id="siteSearch" role="search">
+        <label class="sr-only" for="siteSearchInput">搜尋網站內容</label>
+        <input id="siteSearchInput" type="search" autocomplete="off" placeholder="搜尋親苑時報、Podcast、行事曆、法語..." />
+        <button type="submit" aria-label="搜尋">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        </button>
+      </form>
+      <div class="stats" id="heroStats">
+        <div class="stat"><b id="statPodcast">—</b><span>PODCAST 集數</span></div>
+        <div class="stat"><b id="statNews">—</b><span>最新消息</span></div>
+        <div class="stat"><b id="statDharma">—</b><span>瑞聲法語</span></div>
+        <div class="stat"><b id="statCal">—</b><span>近期活動</span></div>
+      </div>
+    </div>
+    <div class="hero-features" aria-label="四大資料園地">
+      <a href="#podcast" class="hero-feature hero-feature-1 reveal">
+        <span class="mini-kicker">PODCAST</span>
+        <b>Shinnyo Podcast</b>
+        <span>收聽真如因緣與生命故事</span>
+      </a>
+      <a href="#calendar" class="hero-feature hero-feature-2 reveal">
+        <span class="mini-kicker">CALENDAR</span>
+        <b>台灣行事曆</b>
+        <span>查看近期活動與安排</span>
+      </a>
+      <a href="#newsletter" class="hero-feature hero-feature-3 reveal">
+        <span class="mini-kicker">NEWSLETTER</span>
+        <b>親苑時報</b>
+        <span>翻閱最新與歷期時報</span>
+      </a>
+      <a href="#dharma" class="hero-feature hero-feature-4 reveal">
+        <span class="mini-kicker">DHARMA</span>
+        <b>瑞聲法語</b>
+        <span>研讀法語與法母十七訓</span>
+      </a>
+    </div>
+  </header>
+
+  <div class="search-popover" id="searchPopover" aria-live="polite" hidden>
+    <div class="search-panel">
+      <div class="search-panel-head">
+        <b>搜尋結果</b>
+        <button type="button" id="searchClose" aria-label="關閉搜尋結果">×</button>
+      </div>
+      <div class="search-results" id="searchResults"></div>
+    </div>
+  </div>
+
+  <main>
+    <!-- 首頁四大區 -->
+    <section class="block" id="home">
+      <div class="container">
+        <div class="section-head center reveal">
+          <span class="kicker">EXPLORE</span>
+          <h2>四大資料園地</h2>
+          <p>一站彙整核心資源，隨時掌握真如苑的法音與動態。</p>
+        </div>
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));" id="featureGrid">
+          <a href="#podcast" class="card feature reveal">
+            <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+            <h3>Shinnyo Podcast</h3>
+            <p>「等一個人的真如café」系列訪談，聆聽信徒的修行故事。</p>
+            <span class="more">前往收聽 →</span>
+          </a>
+          <a href="#calendar" class="card feature reveal">
+            <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></div>
+            <h3>台灣行事曆</h3>
+            <p>法會、共修與志工服務日程，活動安排一目了然。</p>
+            <span class="more">查看行事曆 →</span>
+          </a>
+          <a href="#newsletter" class="card feature reveal">
+            <div class="ic"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></div>
+            <h3>親苑時報</h3>
+            <p>各期時報全集，記錄苑內動態與信仰生活點滴。</p>
+            <span class="more">翻閱時報 →</span>
+          </a>
+          <a href="#dharma" class="card feature reveal">
+            <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3c4 4 4 8 0 12-4-4-4-8 0-12z"/><path d="M5 21c3-4 11-4 14 0"/></svg></div>
+            <h3>瑞聲法語</h3>
+            <p>瑞聲法語全集與法母十七訓，於字句間體會法味。</p>
+            <span class="more">研讀法語 →</span>
+          </a>
+        </div>
+
+        <!-- 最新消息 -->
+        <div class="section-head reveal compact-head">
+          <span class="kicker">LATEST</span>
+          <h2>最新消息</h2>
+        </div>
+        <div class="grid cols-2" id="newsGrid">
+          <div class="skeleton">載入中…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 行事曆 -->
+    <section class="block" id="calendar">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="kicker">CALENDAR</span>
+          <h2>台灣行事曆</h2>
+          <p>近期法會、共修與服務活動安排。</p>
+        </div>
+        <div class="grid cols-2" id="calendarGrid"><div class="skeleton">載入中…</div></div>
+      </div>
+    </section>
+
+    <!-- 親苑時報 -->
+    <section class="block" id="newsletter">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="kicker">NEWSLETTER</span>
+          <h2>親苑時報全集</h2>
+          <p>歷期時報彙整，點選即可閱讀或下載。</p>
+        </div>
+        <div class="grid cols-4" id="newsletterGrid"><div class="skeleton">載入中…</div></div>
+      </div>
+    </section>
+
+    <!-- 瑞聲法語 -->
+    <section class="block" id="dharma">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="kicker">DHARMA</span>
+          <h2>瑞聲法語</h2>
+          <p>於日常中體會法味，安住真如本心。</p>
+        </div>
+        <div class="grid cols-3" id="dharmaGrid"><div class="skeleton">載入中…</div></div>
+
+      </div>
+    </section>
+    <!-- 互動程式 -->
+    <section class="block" id="tools">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="kicker">INTERACTIVE</span>
+          <h2>互動程式</h2>
+          <p>精選互動工具，快速查閱真如苑史、法語與月曆內容。</p>
+        </div>
+        <div class="grid cols-3" id="toolsGrid"><div class="skeleton">載入中…</div></div>
+      </div>
+    </section>
+    <!-- Podcast -->
+    <section class="block" id="podcast">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="kicker">PODCAST</span>
+          <h2>等一個人的真如café</h2>
+          <p>邀請不同世代的苑信徒，分享接觸真如苑的因緣與生命轉化。</p>
+        </div>
+        <div class="grid cols-3" id="podcastGrid"><div class="skeleton">載入中…</div></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="site">
+    <div class="container">
+      <div class="foot-grid">
+        <div class="foot-brand">
+          <img class="mark" src="assets/img/slogo.png" alt="" aria-hidden="true" />
+          <span>真如苑資料網站<br/><small style="color:var(--text-dim)">非官方資訊彙整</small></span>
+        </div>
+        <div class="foot-links">
+          <a href="#podcast">Podcast</a>
+          <a href="#calendar">行事曆</a>
+          <a href="#newsletter">親苑時報</a>
+          <a href="#dharma">瑞聲法語</a>
+          <a href="#tools">互動程式</a>
+          <a href="#" id="officialLink" target="_blank" rel="noopener">官方網站</a>
+          <a href="admin.html">後台維護</a>
+        </div>
+      </div>
+      <div class="foot-bottom">
+        <span>© <span id="year"></span> 真如苑資料網站（非官方）</span>
+        <span>Designed with 莊嚴禪意 · Powered by Google Apps Script</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/config.js?v=5"></script>
+  <script src="assets/js/seed-data.js?v=6"></script>
+  <script src="assets/js/api.js?v=6"></script>
+  <script src="assets/js/app.js?v=9"></script>
+</body>
+</html>
+
