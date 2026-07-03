@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css?v=17" />
+  <link rel="stylesheet" href="assets/css/style.css?v=49" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -133,6 +133,32 @@
           </a>
         </div>
 
+        <div class="annual-focus card reveal">
+          <div class="section-head compact-head">
+            <span class="kicker">2026 FOCUS</span>
+            <h2>2026年精進目標</h2>
+            <p>立教九十年，祈念南無真如，推進聖地莊嚴。</p>
+          </div>
+          <div class="annual-grid">
+            <div class="annual-panel">
+              <span class="mini-kicker">目標</span>
+              <h3>立教九十年</h3>
+              <p>祈念南無真如<br/>推進聖地莊嚴</p>
+            </div>
+            <div class="annual-panel">
+              <span class="mini-kicker">實踐德目</span>
+              <ol>
+                <li>慈愛的利他行</li>
+                <li>連結歸依處 - 「聖地」之信仰心</li>
+              </ol>
+            </div>
+            <div class="annual-panel">
+              <span class="mini-kicker">苑歌</span>
+              <p>與靈尊同步共修築起聖苑<br/>悠遠流長之救度永世廣傳</p>
+            </div>
+          </div>
+        </div>
+
         <!-- 最新消息 -->
         <div class="section-head reveal compact-head">
           <span class="kicker">LATEST</span>
@@ -150,7 +176,6 @@
         <div class="section-head reveal">
           <span class="kicker">CALENDAR</span>
           <h2>台灣行事曆</h2>
-          <p>近期法會、共修與服務活動安排。</p>
         </div>
         <div class="grid cols-2" id="calendarGrid"><div class="skeleton">載入中…</div></div>
       </div>
@@ -162,7 +187,6 @@
         <div class="section-head reveal">
           <span class="kicker">NEWSLETTER</span>
           <h2>親苑時報全集</h2>
-          <p>歷期時報彙整，點選即可閱讀或下載。</p>
         </div>
         <div class="grid cols-4" id="newsletterGrid"><div class="skeleton">載入中…</div></div>
       </div>
@@ -174,7 +198,6 @@
         <div class="section-head reveal">
           <span class="kicker">DHARMA</span>
           <h2>瑞聲法語</h2>
-          <p>於日常中體會法味，安住真如本心。</p>
         </div>
         <div class="grid cols-3" id="dharmaGrid"><div class="skeleton">載入中…</div></div>
 
@@ -186,7 +209,6 @@
         <div class="section-head reveal">
           <span class="kicker">INTERACTIVE</span>
           <h2>互動程式</h2>
-          <p>精選互動工具，快速查閱真如苑史、法語與月曆內容。</p>
         </div>
         <div class="grid cols-3" id="toolsGrid"><div class="skeleton">載入中…</div></div>
       </div>
@@ -197,13 +219,55 @@
         <div class="section-head reveal">
           <span class="kicker">PODCAST</span>
           <h2>等一個人的真如café</h2>
-          <p>邀請不同世代的苑信徒，分享接觸真如苑的因緣與生命轉化。</p>
         </div>
         <div class="grid cols-3" id="podcastGrid"><div class="skeleton">載入中…</div></div>
       </div>
     </section>
 
   </main>
+
+  <div class="page-jump" aria-label="頁面快速導覽">
+    <button type="button" class="page-jump-btn" id="jumpTop" aria-label="回到最上方">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14l6-6 6 6"/><path d="M12 8v12"/><path d="M5 4h14"/></svg>
+    </button>
+    <button type="button" class="page-jump-btn" id="jumpBottom" aria-label="前往最下方">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10l6 6 6-6"/><path d="M12 4v12"/><path d="M5 20h14"/></svg>
+    </button>
+  </div>
+
+  <button type="button" class="live-video-tab" id="liveVideoOpen" aria-label="開啟即時影片">
+    <span class="live-play" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </span>
+    <span class="live-copy">2026/7/8 10:00<br/>弁才尊天法樂法會</span>
+  </button>
+
+  <div class="live-video-modal" id="liveVideoModal" hidden>
+    <div class="live-video-backdrop" data-live-close></div>
+    <section class="live-video-panel" role="dialog" aria-modal="true" aria-label="即時影片播放">
+      <button type="button" class="live-video-close" id="liveVideoClose" aria-label="關閉影片">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div class="live-video-frame live-video-launch">
+        <div class="live-launch-inner">
+          <span class="live-launch-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </span>
+          <h3>2026/7/8 10:00 弁才尊天法樂法會</h3>
+          <a class="live-source-link primary" href="https://vimeo.com/event/4854885" target="_blank" rel="noopener">開啟官方影片 →</a>
+        </div>
+      </div>
+      <div class="live-video-actions">
+        <a class="live-source-link" href="https://www.shinnyo-en.org.tw/at2026/index2026.html" target="_blank" rel="noopener">前往官方活動頁 →</a>
+        <a class="live-line-share" href="https://social-plugins.line.me/lineit/share?url=https%3A%2F%2Fvimeo.com%2Fevent%2F4854885" target="_blank" rel="noopener" aria-label="轉傳 LINE">
+          <svg viewBox="0 0 48 48" aria-hidden="true">
+            <path d="M24 7C13.5 7 5 13.8 5 22.2c0 7.5 6.7 13.7 15.6 14.9.6.1 1.4.5 1.6 1.1.2.5.1 1.3.1 1.8l-.3 2c-.1.6-.5 2.2 1.9 1.2 2.4-1 12.8-7.5 17.5-12.9 3.2-3.5 4.6-7.1 4.6-10.1C43 13.8 34.5 7 24 7z"/>
+            <path d="M15.2 25.8h4.2v2.4h-6.9V16.9h2.7v8.9zm8.3 2.4h-2.7V16.9h2.7v11.3zm10.5 0h-2.4l-4.4-6.4v6.4h-2.6V16.9h2.4l4.4 6.5v-6.5H34v11.3zm8.4-8.9h-4.7v2h4.2v2.3h-4.2v2.2h4.7v2.4H35V16.9h7.4v2.4z"/>
+          </svg>
+        </a>
+      </div>
+    </section>
+  </div>
 
   <!-- 頁尾 -->
   <footer class="site">
@@ -231,9 +295,9 @@
   </footer>
 
   <script src="assets/js/config.js?v=5"></script>
-  <script src="assets/js/seed-data.js?v=6"></script>
-  <script src="assets/js/api.js?v=6"></script>
-  <script src="assets/js/app.js?v=9"></script>
+  <script src="assets/js/seed-data.js?v=9"></script>
+  <script src="assets/js/api.js?v=7"></script>
+  <script src="assets/js/app.js?v=23"></script>
 </body>
 </html>
 
