@@ -856,7 +856,7 @@ footer.site {
   position: fixed;
   right: 0;
   top: 46%;
-  z-index: 92;
+  z-index: 190;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
@@ -872,6 +872,8 @@ footer.site {
     linear-gradient(155deg, rgba(58,80,126,.92), rgba(17,29,50,.96));
   box-shadow: 0 20px 54px -30px rgba(0,0,0,.82), 0 0 30px -14px rgba(255,255,255,.62), inset 0 1px 0 rgba(255,255,255,.18);
   cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
   transform: translateX(calc(100% - 46px));
   transition: transform .28s, border-color .2s, box-shadow .2s;
 }
