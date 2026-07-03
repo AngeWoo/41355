@@ -20,6 +20,8 @@
 // ====================== 設定 ======================
 var ADMIN_PASSWORD_DEFAULT = 'shinnyo2026'; // 第一次 setup() 後請從後台或這裡修改
 var TOKEN_TTL_SECONDS = 60 * 60 * 6;        // token 有效 6 小時
+var DATA_CACHE_SECONDS = 60 * 5;            // 前台公開資料快取 5 分鐘
+var OFFICIAL_LIVE_PAGE = 'https://www.shinnyo-en.org.tw/at2026/index2026.html';
 var PROP = PropertiesService.getScriptProperties();
 
 // 每個內容類型對應的分頁與預設欄位（標頭）。
@@ -43,7 +45,7 @@ var SCHEMA = {
   },
   dharma: {
     sheet: '瑞聲法語',
-    headers: ['id', 'title', 'category', 'date', 'content', 'link', 'order', 'createdAt', 'updatedAt']
+    headers: ['id', 'title', 'category', 'date', 'content', 'link', 'cover', 'order', 'createdAt', 'updatedAt']
   },
   tools: {
     sheet: '互動程式',
@@ -88,7 +90,27 @@ function ensureSheet(ss, def) {
     sh.getRange(1, 1, 1, def.headers.length).setValues([def.headers]);
     sh.setFrozenRows(1);
   }
+  syncHeaders(sh, def.headers);
   return sh;
+}
+
+function syncHeaders(sh, expectedHeaders) {
+  var lastCol = sh.getLastColumn();
+  var headers = lastCol > 0
+    ? sh.getRange(1, 1, 1, lastCol).getValues()[0].map(String)
+    : [];
+  var changed = false;
+  expectedHeaders.forEach(function (h) {
+    if (headers.indexOf(h) === -1) {
+      headers.push(h);
+      changed = true;
+    }
+  });
+  if (changed) {
+    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sh.setFrozenRows(1);
+    sh.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  }
 }
 
 // ====================== HTTP 入口 ======================
@@ -97,15 +119,18 @@ function doGet(e) {
     var params = (e && e.parameter) || {};
     var action = params.action || 'list';
     if (action === 'list') {
-      return json({ ok: true, data: listRecords(params.type) });
+      return json({ ok: true, data: cachedListRecords(params.type) });
     }
     if (action === 'all') {
       var out = {};
-      Object.keys(SCHEMA).forEach(function (t) { out[t] = listRecords(t); });
+      Object.keys(SCHEMA).forEach(function (t) { out[t] = cachedListRecords(t); });
       return json({ ok: true, data: out });
     }
     if (action === 'ping') {
       return json({ ok: true, msg: 'pong' });
+    }
+    if (action === 'officialLive') {
+      return json({ ok: true, data: officialLiveInfo() });
     }
     return json({ ok: false, error: '未知的 action: ' + action });
   } catch (err) {
@@ -126,7 +151,7 @@ function doPost(e) {
     }
 
     // 以下動作需驗證 token
-    var mutating = ['create', 'update', 'delete', 'reorder', 'changePassword'];
+    var mutating = ['create', 'update', 'delete', 'reorder', 'changePassword', 'uploadImage'];
     if (mutating.indexOf(action) !== -1) {
       if (!verifyToken(body.token)) {
         return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
@@ -134,10 +159,11 @@ function doPost(e) {
     }
 
     switch (action) {
-      case 'create':         return json({ ok: true, data: createRecord(body.type, body.record) });
-      case 'update':         return json({ ok: true, data: updateRecord(body.type, body.record) });
-      case 'delete':         return json({ ok: true, data: deleteRecord(body.type, body.id) });
-      case 'reorder':        return json({ ok: true, data: reorder(body.type, body.ids) });
+      case 'create':         return jsonWithFreshCache({ ok: true, data: createRecord(body.type, body.record) });
+      case 'update':         return jsonWithFreshCache({ ok: true, data: updateRecord(body.type, body.record) });
+      case 'delete':         return jsonWithFreshCache({ ok: true, data: deleteRecord(body.type, body.id) });
+      case 'reorder':        return jsonWithFreshCache({ ok: true, data: reorder(body.type, body.ids) });
+      case 'uploadImage':    return json({ ok: true, data: uploadImage(body.file) });
       case 'changePassword': return handleChangePassword(body);
       default:               return json({ ok: false, error: '未知的 action: ' + action });
     }
@@ -152,7 +178,133 @@ function json(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+function jsonWithFreshCache(obj) {
+  clearDataCache();
+  return json(obj);
+}
+
+function dataCacheKey(type) {
+  return 'list_' + String(type || '');
+}
+
+function cachedListRecords(type) {
+  if (!SCHEMA[type]) throw new Error('未知的資料類型: ' + type);
+  var cache = CacheService.getScriptCache();
+  var key = dataCacheKey(type);
+  var cached = cache.get(key);
+  if (cached) {
+    try { return JSON.parse(cached); } catch (e) { }
+  }
+  var rows = listRecords(type);
+  var payload = JSON.stringify(rows);
+  if (payload.length < 95000) {
+    cache.put(key, payload, DATA_CACHE_SECONDS);
+  }
+  return rows;
+}
+
+function clearDataCache() {
+  var keys = Object.keys(SCHEMA).map(dataCacheKey);
+  CacheService.getScriptCache().removeAll(keys);
+}
+
+function officialLiveInfo() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('official_live');
+  if (cached) {
+    try { return JSON.parse(cached); } catch (e) { }
+  }
+
+  var pageText = UrlFetchApp.fetch(OFFICIAL_LIVE_PAGE, {
+    muteHttpExceptions: true,
+    followRedirects: true
+  }).getContentText('UTF-8');
+  var sourceUrl = pickOfficialHomeDataUrl(pageText);
+  var text = UrlFetchApp.fetch(sourceUrl, {
+    muteHttpExceptions: true,
+    followRedirects: true
+  }).getContentText('UTF-8');
+
+  var title = pickOfficialLiveTitle(text);
+  var embedUrl = pickOfficialLiveEmbedUrl(text);
+  var url = embedUrlToPublicUrl(embedUrl);
+  var data = {
+    title: title,
+    embedUrl: embedUrl,
+    url: url,
+    officialPage: OFFICIAL_LIVE_PAGE,
+    source: sourceUrl,
+    updatedAt: new Date().toISOString()
+  };
+  cache.put('official_live', JSON.stringify(data), 60 * 10);
+  return data;
+}
+
+function pickOfficialHomeDataUrl(pageText) {
+  var m = pageText.match(/<script[^>]+src=["']([^"']*data\/home\.json[^"']*)["']/i);
+  var path = m ? m[1] : 'data/home.json';
+  return resolveOfficialUrl(path);
+}
+
+function resolveOfficialUrl(path) {
+  if (/^https?:\/\//i.test(path)) return path;
+  var base = OFFICIAL_LIVE_PAGE.replace(/\/[^\/]*$/, '/');
+  if (path.charAt(0) === '/') return 'https://www.shinnyo-en.org.tw' + path;
+  return base + path;
+}
+
+function pickOfficialLiveTitle(text) {
+  var matches = text.match(/\$\("\.online-msg-box(?:\.info)?"\)\.text\('([^']+)'\)/g) || [];
+  var last = matches.length ? matches[matches.length - 1] : '';
+  var m = last.match(/\.text\('([^']+)'\)/);
+  return m ? m[1] : '';
+}
+
+function pickOfficialLiveEmbedUrl(text) {
+  var matches = text.match(/<iframe[^>]+src="[^"]*vimeo\.com\/event\/[^"]+\/embed[^"]*"/gi) || [];
+  var last = matches.length ? matches[matches.length - 1] : '';
+  var m = last.match(/src="([^"]+)"/i);
+  return m ? m[1] : '';
+}
+
+function embedUrlToPublicUrl(embedUrl) {
+  var m = String(embedUrl || '').match(/vimeo\.com\/event\/(\d+)/);
+  return m ? 'https://vimeo.com/event/' + m[1] : embedUrl;
+}
+
 // ====================== 認證 ======================
+function uploadImage(file) {
+  file = file || {};
+  var name = String(file.name || 'cover.png').replace(/[\\\/:*?"<>|]/g, '_');
+  var mimeType = String(file.mimeType || 'image/png');
+  var data = String(file.data || '');
+  if (!/^image\//.test(mimeType)) throw new Error('只能上傳圖片檔');
+  if (!data) throw new Error('沒有收到圖片資料');
+  var bytes = Utilities.base64Decode(data);
+  if (bytes.length > 4 * 1024 * 1024) throw new Error('圖片請小於 4MB');
+  var folder = getUploadFolder();
+  var stamp = Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyyMMdd-HHmmss');
+  var blob = Utilities.newBlob(bytes, mimeType, stamp + '-' + name);
+  var driveFile = folder.createFile(blob);
+  driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  var id = driveFile.getId();
+  return {
+    id: id,
+    url: 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w900',
+    viewUrl: driveFile.getUrl()
+  };
+}
+
+function getUploadFolder() {
+  var id = PROP.getProperty('UPLOAD_FOLDER_ID');
+  if (id) {
+    try { return DriveApp.getFolderById(id); } catch (e) { }
+  }
+  var folder = DriveApp.createFolder('shinnyo-archive-cover-uploads');
+  PROP.setProperty('UPLOAD_FOLDER_ID', folder.getId());
+  return folder;
+}
+
 function sha256(str) {
   var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, str, Utilities.Charset.UTF_8);
   return bytes.map(function (b) {
@@ -165,6 +317,11 @@ function setAdminPassword(pwd) {
   var salt = Utilities.getUuid();
   PROP.setProperty('ADMIN_SALT', salt);
   PROP.setProperty('ADMIN_PWD_HASH', sha256(salt + ':' + pwd));
+}
+
+function resetAdminPassword() {
+  setAdminPassword(ADMIN_PASSWORD_DEFAULT);
+  return '後台密碼已重設為：' + ADMIN_PASSWORD_DEFAULT;
 }
 
 function checkPassword(pwd) {
@@ -209,7 +366,9 @@ function sheetFor(type) {
 function readHeaders(sh) {
   var lastCol = sh.getLastColumn();
   if (lastCol === 0) return [];
-  return sh.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
+  return sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) {
+    return String(h || '').trim();
+  });
 }
 
 function listRecords(type) {
@@ -336,6 +495,15 @@ function seedSampleData() {
         "link": "https://srt.tw/k9pLsY",
         "pinned": "",
         "order": 4
+      },
+      {
+        "id": "an-5",
+        "title": "互動程式專區已上線",
+        "date": "2026-06-27",
+        "body": "新增真如苑史上的今天、真如拔苦代受靈訓、法母17訓、苑歌月曆與真如苑史等互動工具。",
+        "link": "#tools",
+        "pinned": "",
+        "order": 5
       }
     ],
     "podcast": [
@@ -1632,7 +1800,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第48號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://srt.tw/k9pLsY",
         "order": 1
       },
@@ -1641,7 +1809,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第47號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/2TzKS",
         "order": 2
       },
@@ -1650,7 +1818,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第46號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/3kVzi",
         "order": 3
       },
@@ -1659,7 +1827,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第45號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/ayHsU",
         "order": 4
       },
@@ -1668,7 +1836,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第44號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/NttLb",
         "order": 5
       },
@@ -1677,7 +1845,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第43號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/ovUQg",
         "order": 6
       },
@@ -1686,7 +1854,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第42號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/EqT9h",
         "order": 7
       },
@@ -1695,7 +1863,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第41號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/GOWVi",
         "order": 8
       },
@@ -1704,7 +1872,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第40號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/kZPii",
         "order": 9
       },
@@ -1713,7 +1881,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第39號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/jbehJ",
         "order": 10
       },
@@ -1722,7 +1890,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第38號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/IJlOZ",
         "order": 11
       },
@@ -1731,7 +1899,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第37號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/K6SPj",
         "order": 12
       },
@@ -1740,7 +1908,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第36號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/ebXfl",
         "order": 13
       },
@@ -1749,7 +1917,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第35號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/Ijt3Y",
         "order": 14
       },
@@ -1758,7 +1926,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第34號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/gzgUn",
         "order": 15
       },
@@ -1767,7 +1935,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第33號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/SOkGS",
         "order": 16
       },
@@ -1776,7 +1944,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第32號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/W6vz9",
         "order": 17
       },
@@ -1785,7 +1953,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第31號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/4AleF",
         "order": 18
       },
@@ -1794,7 +1962,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第30號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/ezrdm",
         "order": 19
       },
@@ -1803,7 +1971,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第29號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/FD7rb",
         "order": 20
       },
@@ -1812,7 +1980,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第28號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/uzGgb",
         "order": 21
       },
@@ -1821,7 +1989,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第27號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/IACmF",
         "order": 22
       },
@@ -1830,7 +1998,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第26號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/cqz1L",
         "order": 23
       },
@@ -1839,7 +2007,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第25號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/p4LWQ",
         "order": 24
       },
@@ -1848,7 +2016,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第24號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/ZjyUN",
         "order": 25
       },
@@ -1857,7 +2025,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第23號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/cOUn2",
         "order": 26
       },
@@ -1866,7 +2034,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第22號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/IK6vG",
         "order": 27
       },
@@ -1875,7 +2043,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第21號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/D35sa",
         "order": 28
       },
@@ -1884,7 +2052,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第20號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/h8BJI",
         "order": 29
       },
@@ -1893,7 +2061,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第19號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/75s2S",
         "order": 30
       },
@@ -1902,7 +2070,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第18號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/UdFU0",
         "order": 31
       },
@@ -1911,7 +2079,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第17號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/4P1F7",
         "order": 32
       },
@@ -1920,7 +2088,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第16號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/34oh3",
         "order": 33
       },
@@ -1929,7 +2097,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第15號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/kIkln",
         "order": 34
       },
@@ -1938,7 +2106,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第14號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/dk1jP",
         "order": 35
       },
@@ -1947,7 +2115,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第13號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/kN9Oc",
         "order": 36
       },
@@ -1956,7 +2124,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第12號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/bhDhX",
         "order": 37
       },
@@ -1965,7 +2133,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第11號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/gWBn8",
         "order": 38
       },
@@ -1974,7 +2142,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第10號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/UhwXK",
         "order": 39
       },
@@ -1983,7 +2151,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第9號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/DHj0x",
         "order": 40
       },
@@ -1992,7 +2160,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第8號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/bSC2H",
         "order": 41
       },
@@ -2001,7 +2169,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第7號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/Y4v8M",
         "order": 42
       },
@@ -2010,7 +2178,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第6號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/065mE",
         "order": 43
       },
@@ -2019,7 +2187,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第5號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/ULpTP",
         "order": 44
       },
@@ -2028,7 +2196,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第4號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/KLWJ2",
         "order": 45
       },
@@ -2037,7 +2205,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第3號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/P1aT1",
         "order": 46
       },
@@ -2046,7 +2214,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第2號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/RY9Tk",
         "order": 47
       },
@@ -2055,7 +2223,7 @@ function seedSampleData() {
         "title": "瑞聲法語 第1號",
         "category": "瑞聲法語",
         "date": "",
-        "content": "（點選下方連結閱讀本則瑞聲法語全文）",
+        "content": "",
         "link": "https://supr.link/zGyQJ",
         "order": 48
       }
@@ -2127,7 +2295,7 @@ function forceReseed() {
   });
   PROP.deleteProperty('SEEDED');
   seedSampleData();
-  return '已重新載入真實資料（Podcast 16 / 親苑時報 114 / 行事曆 8 / 瑞聲法語 48 / 最新消息 4）。';
+  return '已重新載入真實資料（Podcast 16 / 親苑時報 114 / 行事曆 8 / 瑞聲法語 48 / 最新消息 5）。';
 }
 
 /**
