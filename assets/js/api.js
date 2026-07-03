@@ -13,6 +13,7 @@
 
   var MODE = GAS ? 'gas' : (PUB ? 'published' : 'demo');
 
+  var TYPES = ['news', 'podcast', 'calendar', 'newsletter', 'dharma', 'tools'];
   var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], newsletter: [], dharma: [], tools: [] };
 
   // ---------- 共用：排序（與 GAS 後端一致）----------
@@ -22,6 +23,12 @@
       if (ao !== bo) return ao - bo;
       return String(b.date || '').localeCompare(String(a.date || ''));
     });
+  }
+
+  function seedAll() {
+    var out = {};
+    TYPES.forEach(function (t) { out[t] = sortRecords(DEMO_DATA[t]); });
+    return out;
   }
 
   // ---------- 已發布試算表：CSV 解析 ----------
@@ -79,15 +86,20 @@
     if (MODE === 'gas') {
       return fetch(GAS + '?action=all').then(function (r) { return r.json(); });
     }
-    var types = ['news', 'podcast', 'calendar', 'newsletter', 'dharma', 'tools'];
     if (MODE === 'published') {
-      return Promise.all(types.map(fetchPublished)).then(function (arr) {
-        var out = {}; types.forEach(function (t, i) { out[t] = arr[i]; });
+      return Promise.all(TYPES.map(fetchPublished)).then(function (arr) {
+        var out = {}; TYPES.forEach(function (t, i) { out[t] = arr[i]; });
         return { ok: true, data: out, mode: 'published' };
       }).catch(function (e) { return { ok: false, error: String(e) }; });
     }
-    var demo = {}; types.forEach(function (t) { demo[t] = sortRecords(DEMO_DATA[t]); });
-    return Promise.resolve({ ok: true, data: demo, mode: 'demo' });
+    return Promise.resolve({ ok: true, data: seedAll(), mode: 'demo' });
+  }
+
+  function officialLive() {
+    if (MODE === 'gas') {
+      return fetch(GAS + '?action=officialLive').then(function (r) { return r.json(); });
+    }
+    return Promise.resolve({ ok: false, error: 'officialLive requires GAS mode' });
   }
 
   // ---------- 寫入（僅 gas 模式）----------
@@ -117,10 +129,13 @@
     },
     list: listType,
     all: listAll,
+    seedAll: seedAll,
+    officialLive: officialLive,
     login: function (password) { return post({ action: 'login', password: password }); },
     create: function (type, record, token) { return post({ action: 'create', type: type, record: record, token: token }); },
     update: function (type, record, token) { return post({ action: 'update', type: type, record: record, token: token }); },
     remove: function (type, id, token) { return post({ action: 'delete', type: type, id: id, token: token }); },
+    uploadImage: function (file, token) { return post({ action: 'uploadImage', file: file, token: token }); },
     changePassword: function (oldP, newP, token) { return post({ action: 'changePassword', oldPassword: oldP, newPassword: newP, token: token }); }
   };
 })();

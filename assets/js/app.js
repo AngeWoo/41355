@@ -1,5 +1,12 @@
 /* 前台渲染邏輯：簡潔日期 + 每區一列卡片 + 分頁 + 依寬度自動排列 */
 (function () {
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  if (window.matchMedia && window.matchMedia('(max-width: 860px)').matches) {
+    window.addEventListener('pageshow', function () {
+      setTimeout(function () { window.scrollTo(0, 0); }, 0);
+    });
+  }
+
   var CFG = window.SITE_CONFIG || {};
   var $ = function (s, r) { return (r || document).querySelector(s); };
 
@@ -14,6 +21,73 @@
   }
   function truthy(v) { var s = String(v).toLowerCase(); return s === 'true' || s === '1' || s === 'yes' || s === '是' || v === true; }
   function linkAttr(url) { return url ? ' href="' + esc(url) + '" target="_blank" rel="noopener"' : ' href="javascript:void(0)"'; }
+  function fallbackLink(type, it) {
+    if (it && it.link) return it.link;
+    var rows = (window.SEED_DATA && window.SEED_DATA[type]) || [];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (it && r.link && (
+        (it.id && r.id === it.id) ||
+        (it.date && r.date === it.date && it.title && r.title === it.title)
+      )) return r.link;
+    }
+    return '';
+  }
+  function driveThumb(url) {
+    var s = String(url || '');
+    var m = s.match(/drive\.google\.com\/file\/d\/([^/]+)/) || s.match(/[?&]id=([^&]+)/);
+    return m ? 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(m[1]) + '&sz=w700' : '';
+  }
+  function newsletterCover(it) {
+    var issueStr = fmtDate(it.issue || it.date);
+    var seedCover = '';
+    var rows = (window.SEED_DATA && window.SEED_DATA.newsletter) || [];
+    for (var i = 0; i < rows.length; i++) {
+      if (it && rows[i].cover && (
+        (it.id && rows[i].id === it.id) ||
+        (it.issue && rows[i].issue === it.issue)
+      )) {
+        seedCover = rows[i].cover;
+        break;
+      }
+    }
+    var src = it.cover || seedCover || driveThumb(it.link);
+    var fallback = '<div class="ph"><b>' + esc(issueStr.slice(0, 7)) + '</b><span>親苑時報</span></div>';
+    if (!src) return fallback;
+    return "<img src=\"" + esc(src) + "\" alt=\"" + esc(it.title) + "\" loading=\"lazy\" referrerpolicy=\"no-referrer\" onerror=\"this.closest('.cover').classList.add('no-thumb');this.remove();\" />" + fallback;
+  }
+  function newsletterCover(it) {
+    var issueStr = fmtDate(it.issue || it.date);
+    var seed = seedCover('newsletter', it);
+    var src = it.cover || seed || driveThumb(it.link);
+    var parts = issueStr.slice(0, 7).split('-');
+    var fallback = '<div class="ph news-ph">' +
+      '<span class="news-ph-strip"></span>' +
+      '<span class="news-ph-title">親苑<br/>時報</span>' +
+      '<span class="news-ph-mark">SHINNYO</span>' +
+      '<b>' + esc(parts[0] || '') + '</b>' +
+      '<em>' + esc(parts[1] || '') + '</em>' +
+      '</div>';
+    if (!src) return fallback;
+    return "<img src=\"" + esc(src) + "\" alt=\"" + esc(it.title) + "\" loading=\"lazy\" referrerpolicy=\"no-referrer\" onerror=\"this.closest('.cover').classList.add('no-thumb');this.remove();\" />" + fallback;
+  }
+  function seedCover(type, it) {
+    var rows = (window.SEED_DATA && window.SEED_DATA[type]) || [];
+    for (var i = 0; i < rows.length; i++) {
+      if (it && rows[i].cover && (
+        (it.id && rows[i].id === it.id) ||
+        (it.issue && rows[i].issue === it.issue) ||
+        (it.title && rows[i].title === it.title)
+      )) return rows[i].cover;
+    }
+    return '';
+  }
+  function coverMarkup(type, it, label) {
+    var src = it.cover || seedCover(type, it) || driveThumb(it.link);
+    var fallback = '<div class="ph"><b>' + esc(label || '') + '</b><span>' + esc(it.title || '') + '</span></div>';
+    if (!src) return fallback;
+    return "<img src=\"" + esc(src) + "\" alt=\"" + esc(it.title) + "\" loading=\"lazy\" referrerpolicy=\"no-referrer\" onerror=\"this.closest('.cover').classList.add('no-thumb');this.remove();\" />" + fallback;
+  }
   function pad(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
 
   // 簡潔日期：一律只顯示日期（YYYY-MM-DD）。ISO 時間以台北時區換算，避免位移。
@@ -45,7 +119,7 @@
   }
   function podcastItem(it) {
     var meta = (it.guest ? '來賓：' + esc(it.guest) + (it.date ? ' · ' : '') : '') + esc(fmtDate(it.date));
-    return '<a class="card pod reveal"' + linkAttr(it.link) + '>' +
+    return '<a class="card pod cafe-card reveal"' + linkAttr(it.link) + '>' +
       '<span class="ep">' + esc(it.ep || 'EP') + '</span>' +
       '<h4>' + esc(it.title) + '</h4>' +
       '<div class="meta">' + meta + '</div>' +
@@ -61,6 +135,16 @@
       (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
       (it.link ? '<span class="more-link">查看／下載 →</span>' : '') + close;
   }
+  function calItem(it) {
+    var url = fallbackLink('calendar', it);
+    var open = url ? '<a class="card reveal stack" style="text-decoration:none"' + linkAttr(url) + '>' : '<div class="card reveal stack">';
+    var close = url ? '</a>' : '</div>';
+    var meta = '<div class="item-date">' + esc(fmtDate(it.date)) + (it.tag ? ' <span class="tag">' + esc(it.tag) + '</span>' : '') + '</div>';
+    return open + meta + '<h4>' + esc(it.title) + '</h4>' +
+      (it.location ? '<div class="where"><span>' + esc(it.location) + '</span></div>' : '') +
+      (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
+      (url ? '<span class="more-link">瀏覽行事曆 →</span>' : '') + close;
+  }
   function newsletterItem(it) {
     var issueStr = fmtDate(it.issue || it.date); // 試算表可能把期別轉成日期，統一格式化
     var cover = it.cover
@@ -71,14 +155,25 @@
       '<h4>' + esc(it.title) + '</h4>' +
       '<div class="issue">' + esc(issueStr) + '</div></a>';
   }
+  function newsletterItem(it) {
+    var issueStr = fmtDate(it.issue || it.date);
+    return '<a class="card paper reveal"' + linkAttr(it.link) + '>' +
+      '<div class="cover">' + newsletterCover(it) + '</div>' +
+      '<h4>' + esc(it.title) + '</h4>' +
+      '<div class="issue">' + esc(issueStr) + '</div></a>';
+  }
   function dharmaItem(it) {
     var dstr = esc(fmtDate(it.date));
-    var full = it.link ? (dstr ? ' · ' : '') + '<a' + linkAttr(it.link) + ' style="color:var(--gold-300)">全文</a>' : '';
+    var content = String(it.content || '').trim();
+    if (content === '（點選下方連結閱讀本則瑞聲法語全文）') content = '';
+    var full = it.link ? '<a' + linkAttr(it.link) + ' class="more-link dharma-read">全文閱讀 →</a>' : '';
     return '<div class="card dharma-item reveal">' +
+      '<div class="dharma-cover cover">' + coverMarkup('dharma', it, it.category || '瑞聲法語') + '</div>' +
       '<span class="cat">' + esc(it.category || '瑞聲法語') + '</span>' +
       '<h4>' + esc(it.title) + '</h4>' +
-      (it.content ? '<p>' + esc(it.content) + '</p>' : '') +
-      '<div class="date">' + dstr + full + '</div></div>';
+      (content ? '<p>' + esc(content) + '</p>' : '') +
+      full +
+      (dstr ? '<div class="date">' + dstr + '</div>' : '') + '</div>';
   }
   function toolItem(it) {
     return '<a class="card tool-card reveal"' + linkAttr(it.link) + '>' +
@@ -97,9 +192,11 @@
     { type: 'calendar', gridId: 'calendarGrid', minW: 320, item: calItem, empty: '近期尚無活動。' },
     { type: 'newsletter', gridId: 'newsletterGrid', minW: 210, item: newsletterItem, empty: '目前尚無時報。' },
     { type: 'dharma', gridId: 'dharmaGrid', minW: 300, item: dharmaItem, empty: '目前尚無法語。' },
-    { type: 'tools', gridId: 'toolsGrid', minW: 260, item: toolItem, empty: '目前尚無互動程式。' }
+    { type: 'tools', gridId: 'toolsGrid', minW: 260, maxCols: 5, item: toolItem, empty: '目前尚無互動程式。' }
   ];
   var store = {};
+  var searchReady = false;
+  var statTimers = {};
 
   function textOf(it, fields) {
     return fields.map(function (f) { return it && it[f] ? String(it[f]) : ''; }).join(' ');
@@ -176,6 +273,12 @@
     });
   }
 
+  function setupSearchOnce() {
+    if (searchReady) return;
+    searchReady = true;
+    setupSearch();
+  }
+
   function colsFor(grid, minW) {
     var w = grid.clientWidth || (grid.parentElement && grid.parentElement.clientWidth) || 1000;
     return Math.max(1, Math.floor((w + GAP) / (minW + GAP)));
@@ -201,6 +304,7 @@
       return;
     }
     var cols = colsFor(grid, s.cfg.minW);
+    if (s.cfg.maxCols) cols = Math.min(cols, s.cfg.maxCols);
     var pages = Math.max(1, Math.ceil(items.length / cols));
     if (s.page > pages - 1) s.page = pages - 1;
     if (s.page < 0) s.page = 0;
@@ -256,31 +360,68 @@
   });
 
   // ---- 載入資料 ----
+  function normalizeData(d) {
+    d = d || {};
+    if (!d.tools || !d.tools.length) d.tools = (window.SEED_DATA && window.SEED_DATA.tools) || [];
+    return d;
+  }
+
+  function renderData(d, animateStats) {
+    d = normalizeData(d);
+    allData = d;
+    SECTIONS.forEach(function (cfg) {
+      var items = d[cfg.type] || [];
+      if (store[cfg.type]) {
+        store[cfg.type].items = items;
+        store[cfg.type].page = 0;
+        draw(cfg.type);
+      } else {
+        setupSection(cfg, items);
+      }
+    });
+    setupSearchOnce();
+    updateStats(d, animateStats);
+    observeReveal();
+  }
+
   function boot() {
+    var renderedSeed = false;
+    if (API.seedAll) {
+      renderData(API.seedAll(), true);
+      renderedSeed = true;
+    }
+
     API.all().then(function (res) {
       if (!res.ok) { console.error(res.error); return; }
-      var d = res.data || {};
-      if (!d.tools || !d.tools.length) d.tools = (window.SEED_DATA && window.SEED_DATA.tools) || [];
-      allData = d;
-      SECTIONS.forEach(function (cfg) { setupSection(cfg, d[cfg.type]); });
-      setupSearch();
-      setStat('statPodcast', (d.podcast || []).length);
-      setStat('statNews', (d.news || []).length);
-      setStat('statDharma', (d.dharma || []).length);
-      setStat('statCal', (d.calendar || []).length);
-      observeReveal();
+      renderData(res.data, !renderedSeed);
       if (res.mode === 'published') showModeBanner('🪷 即時讀取自 <b>Google 試算表</b>');
-      else if (res.mode === 'demo') showModeBanner('🪷 <b>展示模式</b>：尚未連接資料來源，目前顯示內建資料');
+      else if (res.mode === 'demo' && !renderedSeed) showModeBanner('🪷 <b>展示模式</b>：尚未連接資料來源，目前顯示內建資料');
     }).catch(function (e) { console.error(e); });
   }
 
   function setStat(id, n) {
     var el = document.getElementById(id); if (!el) return;
+    if (statTimers[id]) clearInterval(statTimers[id]);
     var target = Number(n) || 0, cur = 0, step = Math.max(1, Math.ceil(target / 24));
-    var t = setInterval(function () {
-      cur += step; if (cur >= target) { cur = target; clearInterval(t); }
+    statTimers[id] = setInterval(function () {
+      cur += step; if (cur >= target) { cur = target; clearInterval(statTimers[id]); statTimers[id] = null; }
       el.textContent = cur + (target > 0 ? '+' : '');
     }, 28);
+  }
+
+  function setStatNow(id, n) {
+    var el = document.getElementById(id); if (!el) return;
+    if (statTimers[id]) { clearInterval(statTimers[id]); statTimers[id] = null; }
+    var target = Number(n) || 0;
+    el.textContent = target + (target > 0 ? '+' : '');
+  }
+
+  function updateStats(d, animate) {
+    var fn = animate ? setStat : setStatNow;
+    fn('statPodcast', (d.podcast || []).length);
+    fn('statNews', (d.news || []).length);
+    fn('statDharma', (d.dharma || []).length);
+    fn('statCal', (d.calendar || []).length);
   }
 
   function showModeBanner(html) {
@@ -305,6 +446,75 @@
   ham.addEventListener('click', function () { navLinks.classList.toggle('open'); });
   navLinks.addEventListener('click', function (e) { if (e.target.tagName === 'A') navLinks.classList.remove('open'); });
 
+  var jumpTop = document.getElementById('jumpTop');
+  var jumpBottom = document.getElementById('jumpBottom');
+  if (jumpTop) {
+    jumpTop.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+  if (jumpBottom) {
+    jumpBottom.addEventListener('click', function () {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    });
+  }
+
+  var liveOpen = document.getElementById('liveVideoOpen');
+  var liveModal = document.getElementById('liveVideoModal');
+  var liveClose = document.getElementById('liveVideoClose');
+  function openLiveVideo() {
+    if (!liveModal) return;
+    liveModal.hidden = false;
+    document.documentElement.classList.add('modal-open');
+    if (liveClose) liveClose.focus();
+  }
+  function closeLiveVideo() {
+    if (!liveModal) return;
+    liveModal.hidden = true;
+    document.documentElement.classList.remove('modal-open');
+    if (liveOpen) liveOpen.focus();
+  }
+  if (liveOpen) liveOpen.addEventListener('click', openLiveVideo);
+  if (liveClose) liveClose.addEventListener('click', closeLiveVideo);
+  if (liveModal) {
+    liveModal.addEventListener('click', function (e) {
+      if (e.target && e.target.hasAttribute('data-live-close')) closeLiveVideo();
+    });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && liveModal && !liveModal.hidden) closeLiveVideo();
+  });
+
+  function setLiveText(text) {
+    var title = document.getElementById('liveVideoTitle');
+    var tabText = document.getElementById('liveVideoTabText');
+    if (!text) return;
+    if (title) title.textContent = text;
+    if (tabText) {
+      var normalized = String(text).replace(/\s+/g, ' ').trim();
+      var parts = normalized.match(/^(\d{4}\/\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2})\s+(.+)$/);
+      tabText.innerHTML = parts ? esc(parts[1]) + '<br/>' + esc(parts[2]) : esc(normalized);
+    }
+  }
+
+  function setLiveUrl(url, officialPage) {
+    var videoLink = document.getElementById('liveVideoLink');
+    var lineShare = document.getElementById('liveLineShare');
+    var officialLink = document.getElementById('liveOfficialPageLink');
+    if (url && videoLink) videoLink.href = url;
+    if (url && lineShare) lineShare.href = 'https://social-plugins.line.me/lineit/share?url=' + encodeURIComponent(url);
+    if (officialPage && officialLink) officialLink.href = officialPage;
+  }
+
+  function refreshOfficialLive() {
+    if (!API.officialLive) return;
+    API.officialLive().then(function (res) {
+      if (!res || !res.ok || !res.data) return;
+      setLiveText(res.data.title);
+      setLiveUrl(res.data.url, res.data.officialPage);
+    }).catch(function (e) { console.warn('official live sync failed', e); });
+  }
+
   function observeReveal() {
     var els = document.querySelectorAll('.reveal:not(.in)');
     if (!('IntersectionObserver' in window)) { els.forEach(function (e) { e.classList.add('in'); }); return; }
@@ -316,4 +526,5 @@
 
   observeReveal();
   boot();
+  refreshOfficialLive();
 })();

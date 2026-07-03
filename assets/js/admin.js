@@ -29,7 +29,7 @@
         { k: 'date', label: '日期', type: 'date' },
         { k: 'desc', label: '內容簡介', type: 'textarea' },
         { k: 'link', label: '收聽連結', type: 'url' },
-        { k: 'cover', label: '封面圖網址（選填）', type: 'url' },
+        { k: 'cover', label: '封面縮圖網址（選填）', type: 'url' },
         { k: 'order', label: '排序', type: 'number' }
       ],
       title: function (r) { return (r.ep ? r.ep + '｜' : '') + r.title; },
@@ -58,7 +58,7 @@
         { k: 'title', label: '標題', type: 'text', req: true },
         { k: 'date', label: '發行日期', type: 'date' },
         { k: 'link', label: 'PDF／閱讀連結', type: 'url' },
-        { k: 'cover', label: '封面圖網址（選填）', type: 'url' },
+        { k: 'cover', label: '封面縮圖網址（選填）', type: 'url' },
         { k: 'order', label: '排序', type: 'number' }
       ],
       title: function (r) { return r.title; },
@@ -73,6 +73,7 @@
         { k: 'date', label: '日期', type: 'date' },
         { k: 'content', label: '法語內容', type: 'textarea', req: true },
         { k: 'link', label: '全文連結（選填）', type: 'url' },
+        { k: 'cover', label: '封面縮圖網址（選填）', type: 'url' },
         { k: 'order', label: '排序', type: 'number' }
       ],
       title: function (r) { return r.title; },
@@ -228,8 +229,19 @@
     var v = esc(f.type === 'date' ? dateValue(val) : (val == null ? '' : val));
     if (f.type === 'textarea') return '<textarea id="f_' + f.k + '"' + (f.req ? ' required' : '') + '>' + v + '</textarea>';
     if (f.type === 'bool') return '<select id="f_' + f.k + '"><option value="">否</option><option value="TRUE"' + (truthy(val) ? ' selected' : '') + '>是</option></select>';
-    var t = f.type === 'number' ? 'number' : (f.type === 'date' ? 'date' : (f.type === 'url' ? 'url' : 'text'));
-    return '<input type="' + t + '" id="f_' + f.k + '" value="' + v + '"' + (f.type === 'date' ? ' class="date-picker"' : '') + (f.req ? ' required' : '') + ' />';
+    var t = f.type === 'number' ? 'number' : (f.type === 'date' ? 'date' : 'text');
+    var input = '<input type="' + t + '" id="f_' + f.k + '" value="' + v + '"' +
+      (f.type === 'date' ? ' class="date-picker"' : '') +
+      (f.type === 'url' ? ' inputmode="url" autocomplete="url"' : '') +
+      (f.req ? ' required' : '') + ' />';
+    if (f.k === 'cover') {
+      input += '<div class="upload-row">' +
+        '<input class="upload-file" type="file" id="upload_' + f.k + '" accept="image/*" />' +
+        '<button type="button" class="btn btn-ghost btn-sm upload-btn" data-upload="' + f.k + '">上傳縮圖</button>' +
+        '<span class="upload-status" id="uploadStatus_' + f.k + '"></span>' +
+        '</div>';
+    }
+    return input;
   }
   function openEditor(type, record) {
     current = type; editing = record;
@@ -246,13 +258,51 @@
   function closeEditor() { $('#modalMask').classList.remove('open'); editing = null; }
   $('#cancelBtn').addEventListener('click', closeEditor);
   $('#modalMask').addEventListener('click', function (e) { if (e.target === $('#modalMask')) closeEditor(); });
+  $('#formFields').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-upload]');
+    if (!btn) return;
+    var key = btn.getAttribute('data-upload');
+    var fileInput = $('#upload_' + key);
+    var urlInput = $('#f_' + key);
+    var status = $('#uploadStatus_' + key);
+    var file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file) { status.textContent = '請先選擇圖片'; return; }
+    if (!/^image\//.test(file.type)) { status.textContent = '只能上傳圖片'; return; }
+    if (file.size > 4 * 1024 * 1024) { status.textContent = '圖片請小於 4MB'; return; }
+    if (API.isReadOnly()) { status.textContent = '目前模式無法上傳'; return; }
+    btn.disabled = true;
+    status.textContent = '上傳中…';
+    var reader = new FileReader();
+    reader.onload = function () {
+      var dataUrl = String(reader.result || '');
+      var base64 = dataUrl.split(',')[1] || '';
+      API.uploadImage({ name: file.name, mimeType: file.type, data: base64 }, token).then(function (res) {
+        btn.disabled = false;
+        if (res.ok && res.data && res.data.url) {
+          urlInput.value = res.data.url;
+          status.textContent = '已上傳';
+        } else {
+          status.textContent = res.error || '上傳失敗';
+        }
+      }).catch(function () {
+        btn.disabled = false;
+        status.textContent = '上傳失敗';
+      });
+    };
+    reader.onerror = function () {
+      btn.disabled = false;
+      status.textContent = '讀取圖片失敗';
+    };
+    reader.readAsDataURL(file);
+  });
 
   $('#recordForm').addEventListener('submit', function (e) {
     e.preventDefault();
     var c = byType(current), rec = {};
     if (editing) rec.id = editing.id;
     c.fields.forEach(function (f) {
-      var el = $('#f_' + f.k); if (el) rec[f.k] = el.value;
+      var el = $('#f_' + f.k);
+      if (el) rec[f.k] = f.type === 'url' ? el.value.trim() : el.value;
     });
     if (API.isReadOnly()) { toast(API.mode === 'published' ? '唯讀模式：請在 Google 試算表編輯' : '展示模式無法儲存', true); return; }
     var btn = $('#saveBtn'); btn.disabled = true; btn.textContent = '儲存中…';
