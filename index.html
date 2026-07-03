@@ -235,7 +235,7 @@
     </button>
   </div>
 
-  <button type="button" class="live-video-tab" id="liveVideoOpen" aria-label="開啟即時影片">
+  <button type="button" class="live-video-tab" id="liveVideoOpen" aria-label="開啟即時影片" onclick="window.openLiveVideoFallback && window.openLiveVideoFallback()">
     <span class="live-play" aria-hidden="true">
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
     </span>
@@ -243,9 +243,9 @@
   </button>
 
   <div class="live-video-modal" id="liveVideoModal" hidden>
-    <div class="live-video-backdrop" data-live-close></div>
+    <div class="live-video-backdrop" data-live-close onclick="window.closeLiveVideoFallback && window.closeLiveVideoFallback()"></div>
     <section class="live-video-panel" role="dialog" aria-modal="true" aria-label="即時影片播放">
-      <button type="button" class="live-video-close" id="liveVideoClose" aria-label="關閉影片">
+      <button type="button" class="live-video-close" id="liveVideoClose" aria-label="關閉影片" onclick="window.closeLiveVideoFallback && window.closeLiveVideoFallback()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
       <div class="live-video-frame live-video-launch">
@@ -297,6 +297,20 @@
   <script src="assets/js/config.js?v=5"></script>
   <script src="assets/js/seed-data.js?v=9"></script>
   <script src="assets/js/api.js?v=8"></script>
+  <script>
+    window.openLiveVideoFallback = function () {
+      var modal = document.getElementById('liveVideoModal');
+      if (!modal) return;
+      modal.hidden = false;
+      document.documentElement.classList.add('modal-open');
+    };
+    window.closeLiveVideoFallback = function () {
+      var modal = document.getElementById('liveVideoModal');
+      if (!modal) return;
+      modal.hidden = true;
+      document.documentElement.classList.remove('modal-open');
+    };
+  </script>
   <script src="assets/js/app.js?v=24"></script>
 </body>
 </html>
