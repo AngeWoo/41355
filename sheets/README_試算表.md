@@ -35,7 +35,7 @@
 | Podcast | id, ep, title, guest, date, desc, link, cover, order, createdAt, updatedAt |
 | 行事曆 | id, date, title, location, desc, tag, order, createdAt, updatedAt |
 | 親苑時報 | id, issue, title, date, link, cover, order, createdAt, updatedAt |
-| 瑞聲法語 | id, title, category, date, content, link, order, createdAt, updatedAt |
+| 瑞聲法語 | id, title, category, date, content, link, cover, order, createdAt, updatedAt |
 | 互動程式 | id, title, desc, link, icon, order, createdAt, updatedAt |
 
 - `id`：每筆唯一識別碼。透過後台新增時會自動產生（UUID）；手動建表時請自填不重複的值。
