@@ -39,6 +39,10 @@ var SCHEMA = {
     sheet: '行事曆',
     headers: ['id', 'date', 'title', 'location', 'desc', 'tag', 'link', 'order', 'createdAt', 'updatedAt']
   },
+  headquarters: {
+    sheet: '總部會聯絡事項',
+    headers: ['id', 'date', 'title', 'category', 'body', 'link', 'order', 'createdAt', 'updatedAt']
+  },
   newsletter: {
     sheet: '親苑時報',
     headers: ['id', 'issue', 'title', 'date', 'link', 'cover', 'order', 'createdAt', 'updatedAt']
@@ -739,6 +743,7 @@ function seedSampleData() {
         "order": 8
       }
     ],
+    "headquarters": [],
     "newsletter": [
       {
         "id": "news-202606",
