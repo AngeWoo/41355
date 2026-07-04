@@ -148,6 +148,28 @@ html.admin-modal-open body {
   position: relative;
   z-index: 1;
 }
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 50%;
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.modal-close:hover,
+.modal-close:focus-visible {
+  border-color: rgba(212,175,104,.48);
+  color: var(--gold-300);
+  outline: none;
+}
 @keyframes pop { from { opacity: 0; transform: translateY(16px) scale(.98); } }
 .modal h3 { font-family: var(--serif); font-size: 1.3rem; margin-bottom: 20px; }
 .modal-actions { display: flex; gap: 12px; margin-top: 22px; }
