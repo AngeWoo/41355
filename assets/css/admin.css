@@ -1,4 +1,4 @@
-/* 後台維護介面 — 沿用主站莊嚴禪意主題 */
+﻿/* 後台維護介面 — 沿用主站莊嚴禪意主題 */
 .admin-body { padding-top: 0; }
 
 /* 登入 */
@@ -31,24 +31,6 @@
   opacity: .95;
 }
 .field .hint { font-size: .74rem; color: var(--text-dim); margin-top: 5px; }
-.upload-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  margin-top: 10px;
-}
-.field .upload-file {
-  min-width: 0;
-  padding: 9px 10px;
-  font-size: .82rem;
-}
-.upload-status {
-  grid-column: 1 / -1;
-  min-height: 18px;
-  color: var(--text-dim);
-  font-size: .78rem;
-}
 .btn.full { width: 100%; justify-content: center; }
 
 .alert { border-radius: 11px; padding: 11px 14px; font-size: .86rem; margin-bottom: 16px; display: none; }
@@ -112,14 +94,21 @@
 .empty { text-align: center; color: var(--text-dim); padding: 50px; border: 1px dashed var(--line-soft); border-radius: 14px; }
 
 /* 編輯彈窗 */
+html.admin-modal-open,
+html.admin-modal-open body {
+  overflow: hidden;
+}
 .modal-mask {
-  position: fixed; inset: 0; z-index: 200; background: rgba(4,7,14,.72); backdrop-filter: blur(6px);
+  position: fixed; inset: 0; z-index: 10000; background: rgba(4,7,14,.72); backdrop-filter: blur(6px);
   display: none; place-items: center; padding: 24px; overflow-y: auto;
+  isolation: isolate;
 }
 .modal-mask.open { display: grid; }
 .modal {
   width: 100%; max-width: 560px; padding: 30px; max-height: 90vh; overflow-y: auto;
   animation: pop .25s cubic-bezier(.2,.8,.2,1);
+  position: relative;
+  z-index: 1;
 }
 @keyframes pop { from { opacity: 0; transform: translateY(16px) scale(.98); } }
 .modal h3 { font-family: var(--serif); font-size: 1.3rem; margin-bottom: 20px; }
@@ -149,3 +138,4 @@
   .side .tab .badge { display: none; }
   .row2 { grid-template-columns: 1fr; }
 }
+
