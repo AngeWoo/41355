@@ -16,7 +16,7 @@
 
 **B-1 直接匯入既有試算表的分頁**
 - Google 試算表 → 檔案 → 匯入 → 上傳對應 CSV → 選「插入新工作表」。
-- 工作表名稱請改成與分頁相同：`最新消息`、`Podcast`、`行事曆`、`總部會聯絡事項`、`親苑時報`、`瑞聲法語`、`互動程式`、`真如開講`。
+- 工作表名稱請改成與分頁相同：`最新消息`、`Podcast`、`行事曆`、`總部會聯絡事項`、`親苑時報`、`瑞聲法語`、`互動程式`、`真如開講`、`會員`。
 
 **B-2 讓 GAS 改用你指定的試算表**
 1. 自己建立一份試算表，複製其網址中的 ID（`/d/` 與 `/edit` 之間那段）。
@@ -37,8 +37,9 @@
 | 總部會聯絡事項 | id, date, title, category, body, link, order, createdAt, updatedAt |
 | 親苑時報 | id, issue, title, date, link, cover, order, createdAt, updatedAt |
 | 瑞聲法語 | id, title, category, date, content, link, cover, order, createdAt, updatedAt |
-| 互動程式 | id, title, desc, link, icon, order, createdAt, updatedAt |
+| 互動程式 | id, title, date, desc, link, icon, order, createdAt, updatedAt |
 | 真如開講 | id, title, icon, desc, link, order, createdAt, updatedAt |
+| 會員 | id, name, email, mobile, createdAt, updatedAt |
 
 - `id`：每筆唯一識別碼。透過後台新增時會自動產生（UUID）；手動建表時請自填不重複的值。
 - `order`：排序，數字越小越前。
