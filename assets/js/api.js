@@ -13,8 +13,19 @@
 
   var MODE = GAS ? 'gas' : (PUB ? 'published' : 'demo');
 
-  var TYPES = ['news', 'podcast', 'calendar', 'newsletter', 'dharma', 'tools'];
-  var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], newsletter: [], dharma: [], tools: [] };
+  var TYPES = ['news', 'podcast', 'calendar', 'newsletter', 'dharma', 'tools', 'talks'];
+  var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], newsletter: [], dharma: [], tools: [], talks: [] };
+
+  function freshUrl(url) {
+    var sep = url.indexOf('?') === -1 ? '?' : '&';
+    return url + sep + 'fresh=1&_ts=' + encodeURIComponent(Date.now());
+  }
+
+  function fetchFresh(url, options) {
+    options = options || {};
+    options.cache = 'no-store';
+    return fetch(freshUrl(url), options);
+  }
 
   // ---------- 共用：排序（與 GAS 後端一致）----------
   function sortRecords(arr) {
@@ -65,7 +76,7 @@
     var gid = PUB.gid[type];
     if (gid == null) return Promise.resolve([]);
     var url = PUB.base + '?output=csv&gid=' + encodeURIComponent(gid) + '&single=true';
-    return fetch(url, { method: 'GET' })
+    return fetchFresh(url, { method: 'GET' })
       .then(function (r) { return r.text(); })
       .then(function (t) { return sortRecords(csvToRecords(t)); });
   }
@@ -73,7 +84,7 @@
   // ---------- 讀取 ----------
   function listType(type) {
     if (MODE === 'gas') {
-      return fetch(GAS + '?action=list&type=' + encodeURIComponent(type))
+      return fetchFresh(GAS + '?action=list&type=' + encodeURIComponent(type))
         .then(function (r) { return r.json(); });
     }
     if (MODE === 'published') {
@@ -84,7 +95,7 @@
 
   function listAll() {
     if (MODE === 'gas') {
-      return fetch(GAS + '?action=all').then(function (r) { return r.json(); });
+      return fetchFresh(GAS + '?action=all').then(function (r) { return r.json(); });
     }
     if (MODE === 'published') {
       return Promise.all(TYPES.map(fetchPublished)).then(function (arr) {
@@ -97,7 +108,7 @@
 
   function officialLive() {
     if (MODE === 'gas') {
-      return fetch(GAS + '?action=officialLive').then(function (r) { return r.json(); });
+      return fetchFresh(GAS + '?action=officialLive').then(function (r) { return r.json(); });
     }
     return Promise.resolve({ ok: false, error: 'officialLive requires GAS mode' });
   }
@@ -135,7 +146,6 @@
     create: function (type, record, token) { return post({ action: 'create', type: type, record: record, token: token }); },
     update: function (type, record, token) { return post({ action: 'update', type: type, record: record, token: token }); },
     remove: function (type, id, token) { return post({ action: 'delete', type: type, id: id, token: token }); },
-    uploadImage: function (file, token) { return post({ action: 'uploadImage', file: file, token: token }); },
     changePassword: function (oldP, newP, token) { return post({ action: 'changePassword', oldPassword: oldP, newPassword: newP, token: token }); }
   };
 })();

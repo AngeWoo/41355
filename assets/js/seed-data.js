@@ -1816,6 +1816,16 @@ window.SEED_DATA = {
       "cover": "https://drive.google.com/thumbnail?id=1QmJhTq2sKQufuyCIofr-58E2c9Vv67xw&sz=w700"
     }
   ],
+  "talks": [
+    {
+      "id": "talk-default",
+      "title": "真如開講",
+      "icon": "講",
+      "desc": "開啟真如開講相關內容。",
+      "link": "../assets/audio/01.mp3",
+      "order": 1
+    }
+  ],
   "tools": [
     {
       "id": "tool-history-today",

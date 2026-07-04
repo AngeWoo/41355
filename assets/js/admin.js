@@ -1,4 +1,4 @@
-/* 後台維護邏輯：登入 → 分頁 → CRUD */
+﻿/* 後台維護邏輯：登入 → 分頁 → CRUD */
 (function () {
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var TOKEN_KEY = 'shinnyo_admin_token';
@@ -91,6 +91,19 @@
       ],
       title: function (r) { return r.title; },
       sub: function (r) { return [r.desc, r.link].filter(Boolean).join(' · '); }
+    },
+    {
+      type: 'talks', label: '真如開講',
+      icon: '<path d="M4 6h16v9H8l-4 4z"/><path d="M8 10h8M8 13h5"/>',
+      fields: [
+        { k: 'title', label: '標題', type: 'text', req: true },
+        { k: 'icon', label: '圖示', type: 'text' },
+        { k: 'desc', label: '說明', type: 'textarea' },
+        { k: 'link', label: '網址', type: 'url', req: true },
+        { k: 'order', label: '排序', type: 'number' }
+      ],
+      title: function (r) { return r.title; },
+      sub: function (r) { return [r.icon, r.desc, r.link].filter(Boolean).join(' · '); }
     }
   ];
 
@@ -188,11 +201,18 @@
 
   // ---------- 載入與渲染 ----------
   function loadAll() { COLLECTIONS.forEach(function (c) { loadType(c.type); }); }
+  function seedFallbackRows(type) {
+    return ((window.SEED_DATA && window.SEED_DATA[type]) || []).map(function (r) {
+      var copy = Object.assign({}, r);
+      copy._seedFallback = true;
+      return copy;
+    });
+  }
   function loadType(type) {
     API.list(type).then(function (res) {
       if (!res.ok) {
-        if (type === 'tools' && window.SEED_DATA && window.SEED_DATA.tools) {
-          cache[type] = window.SEED_DATA.tools;
+        if ((type === 'tools' || type === 'talks') && window.SEED_DATA && window.SEED_DATA[type]) {
+          cache[type] = seedFallbackRows(type);
           renderList(type);
           toast('互動程式已先載入預設資料；若要編輯，請同步部署 GAS。', true);
           return;
@@ -200,6 +220,7 @@
         toast(res.error || '讀取失敗', true); return;
       }
       cache[type] = res.data || [];
+      if (type === 'talks' && !cache[type].length) cache[type] = seedFallbackRows(type);
       renderList(type);
     });
   }
@@ -234,13 +255,6 @@
       (f.type === 'date' ? ' class="date-picker"' : '') +
       (f.type === 'url' ? ' inputmode="url" autocomplete="url"' : '') +
       (f.req ? ' required' : '') + ' />';
-    if (f.k === 'cover') {
-      input += '<div class="upload-row">' +
-        '<input class="upload-file" type="file" id="upload_' + f.k + '" accept="image/*" />' +
-        '<button type="button" class="btn btn-ghost btn-sm upload-btn" data-upload="' + f.k + '">上傳縮圖</button>' +
-        '<span class="upload-status" id="uploadStatus_' + f.k + '"></span>' +
-        '</div>';
-    }
     return input;
   }
   function openEditor(type, record) {
@@ -254,59 +268,28 @@
         fieldHtml(f, record ? record[f.k] : (f.k === 'category' && type === 'dharma' ? '瑞聲法語' : '')) + '</div>';
     }).join('');
     $('#modalMask').classList.add('open');
+    document.documentElement.classList.add('admin-modal-open');
   }
-  function closeEditor() { $('#modalMask').classList.remove('open'); editing = null; }
+  function closeEditor() {
+    $('#modalMask').classList.remove('open');
+    document.documentElement.classList.remove('admin-modal-open');
+    editing = null;
+  }
   $('#cancelBtn').addEventListener('click', closeEditor);
-  $('#modalMask').addEventListener('click', function (e) { if (e.target === $('#modalMask')) closeEditor(); });
-  $('#formFields').addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-upload]');
-    if (!btn) return;
-    var key = btn.getAttribute('data-upload');
-    var fileInput = $('#upload_' + key);
-    var urlInput = $('#f_' + key);
-    var status = $('#uploadStatus_' + key);
-    var file = fileInput && fileInput.files && fileInput.files[0];
-    if (!file) { status.textContent = '請先選擇圖片'; return; }
-    if (!/^image\//.test(file.type)) { status.textContent = '只能上傳圖片'; return; }
-    if (file.size > 4 * 1024 * 1024) { status.textContent = '圖片請小於 4MB'; return; }
-    if (API.isReadOnly()) { status.textContent = '目前模式無法上傳'; return; }
-    btn.disabled = true;
-    status.textContent = '上傳中…';
-    var reader = new FileReader();
-    reader.onload = function () {
-      var dataUrl = String(reader.result || '');
-      var base64 = dataUrl.split(',')[1] || '';
-      API.uploadImage({ name: file.name, mimeType: file.type, data: base64 }, token).then(function (res) {
-        btn.disabled = false;
-        if (res.ok && res.data && res.data.url) {
-          urlInput.value = res.data.url;
-          status.textContent = '已上傳';
-        } else {
-          status.textContent = res.error || '上傳失敗';
-        }
-      }).catch(function () {
-        btn.disabled = false;
-        status.textContent = '上傳失敗';
-      });
-    };
-    reader.onerror = function () {
-      btn.disabled = false;
-      status.textContent = '讀取圖片失敗';
-    };
-    reader.readAsDataURL(file);
-  });
+  $('#modalMask').addEventListener('click', function (e) { if (e.target === $('#modalMask')) return; });
 
   $('#recordForm').addEventListener('submit', function (e) {
     e.preventDefault();
     var c = byType(current), rec = {};
-    if (editing) rec.id = editing.id;
+    var seedFallback = editing && editing._seedFallback;
+    if (editing && !seedFallback) rec.id = editing.id;
     c.fields.forEach(function (f) {
       var el = $('#f_' + f.k);
       if (el) rec[f.k] = f.type === 'url' ? el.value.trim() : el.value;
     });
     if (API.isReadOnly()) { toast(API.mode === 'published' ? '唯讀模式：請在 Google 試算表編輯' : '展示模式無法儲存', true); return; }
     var btn = $('#saveBtn'); btn.disabled = true; btn.textContent = '儲存中…';
-    var op = editing ? API.update(current, rec, token) : API.create(current, rec, token);
+    var op = editing && !seedFallback ? API.update(current, rec, token) : API.create(current, rec, token);
     op.then(function (res) {
       btn.disabled = false; btn.textContent = '儲存';
       if (res.ok) {
@@ -329,14 +312,23 @@
   }
 
   // ---------- 修改密碼 ----------
-  $('#pwdBtn').addEventListener('click', function () { alertBox($('#pwdAlert'), '', ''); $('#pwdForm').reset(); $('#pwdMask').classList.add('open'); });
-  $('#pwdCancel').addEventListener('click', function () { $('#pwdMask').classList.remove('open'); });
-  $('#pwdMask').addEventListener('click', function (e) { if (e.target === $('#pwdMask')) $('#pwdMask').classList.remove('open'); });
+  function closePwdModal() {
+    $('#pwdMask').classList.remove('open');
+    document.documentElement.classList.remove('admin-modal-open');
+  }
+  $('#pwdBtn').addEventListener('click', function () {
+    alertBox($('#pwdAlert'), '', '');
+    $('#pwdForm').reset();
+    $('#pwdMask').classList.add('open');
+    document.documentElement.classList.add('admin-modal-open');
+  });
+  $('#pwdCancel').addEventListener('click', closePwdModal);
+  $('#pwdMask').addEventListener('click', function (e) { if (e.target === $('#pwdMask')) return; });
   $('#pwdForm').addEventListener('submit', function (e) {
     e.preventDefault();
     if (API.isReadOnly()) { alertBox($('#pwdAlert'), '唯讀模式無法修改密碼。', 'err'); return; }
     API.changePassword($('#oldPwd').value, $('#newPwd').value, token).then(function (res) {
-      if (res.ok) { alertBox($('#pwdAlert'), '密碼已更新。', 'ok'); setTimeout(function () { $('#pwdMask').classList.remove('open'); }, 1200); }
+      if (res.ok) { alertBox($('#pwdAlert'), '密碼已更新。', 'ok'); setTimeout(closePwdModal, 1200); }
       else alertBox($('#pwdAlert'), res.error || '更新失敗', 'err');
     });
   });
@@ -344,3 +336,6 @@
   // ---------- 啟動 ----------
   if (token) { showAdmin(); } else { showLogin(); }
 })();
+
+
+
