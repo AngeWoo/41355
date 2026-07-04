@@ -124,6 +124,7 @@
   var cache = {};        // type -> records
   var current = COLLECTIONS[0].type;
   var editing = null;    // 正在編輯的紀錄（null = 新增）
+  var seedingTools = false;
 
   // ---------- 提示 ----------
   var toastEl = $('#toast'), toastT;
@@ -231,19 +232,54 @@
       return copy;
     });
   }
+  function seedDefaultTools() {
+    if (seedingTools || API.isReadOnly()) return Promise.resolve(false);
+    var rows = seedFallbackRows('tools');
+    if (!rows.length) return Promise.resolve(false);
+    seedingTools = true;
+    toast('正在補入 5 筆互動程式資料…');
+    return Promise.all(rows.map(function (r) {
+      var rec = Object.assign({}, r);
+      delete rec._seedFallback;
+      return API.create('tools', rec, token);
+    })).then(function (results) {
+      seedingTools = false;
+      var failed = results.filter(function (r) { return !r || !r.ok; });
+      if (failed.length) {
+        toast('互動程式部分資料補入失敗，請稍後重試。', true);
+        return false;
+      }
+      toast('已補入 5 筆互動程式資料');
+      return true;
+    }).catch(function () {
+      seedingTools = false;
+      toast('互動程式資料補入失敗，請檢查連線。', true);
+      return false;
+    });
+  }
   function loadType(type) {
     API.list(type).then(function (res) {
       if (!res.ok) {
         if ((type === 'tools' || type === 'talks') && window.SEED_DATA && window.SEED_DATA[type]) {
           cache[type] = seedFallbackRows(type);
           renderList(type);
-          toast('互動程式已先載入預設資料；若要編輯，請同步部署 GAS。', true);
+          toast('已先載入預設資料；若要寫入後台，請儲存一次。', true);
           return;
         }
         toast(res.error || '讀取失敗', true); return;
       }
       cache[type] = res.data || [];
-      if (type === 'talks' && !cache[type].length) cache[type] = seedFallbackRows(type);
+      if (type === 'tools' && !cache[type].length && !API.isReadOnly()) {
+        seedDefaultTools().then(function (ok) {
+          if (ok) loadType(type);
+          else {
+            cache[type] = seedFallbackRows(type);
+            renderList(type);
+          }
+        });
+        return;
+      }
+      if ((type === 'tools' || type === 'talks') && !cache[type].length) cache[type] = seedFallbackRows(type);
       renderList(type);
     });
   }
