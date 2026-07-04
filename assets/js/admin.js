@@ -299,6 +299,7 @@
     editing = null;
   }
   $('#cancelBtn').addEventListener('click', closeEditor);
+  $('#modalClose').addEventListener('click', closeEditor);
   $('#modalMask').addEventListener('click', function (e) { if (e.target === $('#modalMask')) return; });
 
   $('#recordForm').addEventListener('submit', function (e) {
@@ -349,6 +350,7 @@
     document.documentElement.classList.add('admin-modal-open');
   });
   $('#pwdCancel').addEventListener('click', closePwdModal);
+  $('#pwdClose').addEventListener('click', closePwdModal);
   $('#pwdMask').addEventListener('click', function (e) { if (e.target === $('#pwdMask')) return; });
   $('#pwdForm').addEventListener('submit', function (e) {
     e.preventDefault();
