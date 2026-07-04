@@ -6,7 +6,7 @@
   <title>後台維護｜真如苑資料網站</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css?v=58" />
-  <link rel="stylesheet" href="assets/css/admin.css?v=13" />
+  <link rel="stylesheet" href="assets/css/admin.css?v=15" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body class="admin-body">
@@ -23,8 +23,15 @@
       <form id="loginForm">
         <div class="field">
           <label>管理密碼</label>
-          <input type="password" id="pwd" placeholder="請輸入密碼" autocomplete="current-password" required />
+          <div class="password-row">
+            <input type="password" id="pwd" placeholder="請輸入密碼" autocomplete="current-password" required />
+            <button type="button" class="password-toggle" data-toggle-password="pwd">顯示</button>
+          </div>
         </div>
+        <label class="remember-row">
+          <input type="checkbox" id="rememberLogin" />
+          <span>記住登入狀態，下次不用輸入密碼</span>
+        </label>
         <button type="submit" class="btn btn-gold full" id="loginBtn">登入</button>
       </form>
       <p style="margin-top:18px;"><a href="index.html" style="color:var(--text-dim);font-size:.84rem;">← 返回前台</a></p>
@@ -74,8 +81,21 @@
       <h3>修改管理密碼</h3>
       <div class="alert" id="pwdAlert"></div>
       <form id="pwdForm">
-        <div class="field"><label>舊密碼</label><input type="password" id="oldPwd" required /></div>
-        <div class="field"><label>新密碼（至少 6 碼）</label><input type="password" id="newPwd" minlength="6" required /></div>
+        <div class="field">
+          <label>舊密碼</label>
+          <div class="password-row">
+            <input type="password" id="oldPwd" autocomplete="current-password" required />
+            <button type="button" class="password-toggle" data-toggle-password="oldPwd">顯示</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>新密碼（至少 6 碼）</label>
+          <div class="password-row">
+            <input type="password" id="newPwd" autocomplete="new-password" minlength="6" required />
+            <button type="button" class="password-toggle" data-toggle-password="newPwd">顯示</button>
+          </div>
+          <div class="hint">系統只會儲存加密後的密碼，無法反查目前密碼。</div>
+        </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" id="pwdCancel">取消</button>
           <button type="submit" class="btn btn-gold">更新密碼</button>
@@ -89,6 +109,6 @@
   <script src="assets/js/config.js?v=5"></script>
   <script src="assets/js/seed-data.js?v=10"></script>
   <script src="assets/js/api.js?v=14"></script>
-  <script src="assets/js/admin.js?v=20"></script>
+  <script src="assets/js/admin.js?v=22"></script>
 </body>
 </html>
