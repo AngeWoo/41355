@@ -120,7 +120,7 @@
     return m[1] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[3]).padStart(2, '0');
   }
 
-  var token = sessionStorage.getItem(TOKEN_KEY) || '';
+  var token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || '';
   var cache = {};        // type -> records
   var current = COLLECTIONS[0].type;
   var editing = null;    // 正在編輯的紀錄（null = 新增）
@@ -135,6 +135,17 @@
     el.textContent = msg; el.className = 'alert ' + (type || 'err');
     if (!msg) el.className = 'alert';
   }
+  function setPasswordVisible(input, visible, btn) {
+    if (!input) return;
+    input.type = visible ? 'text' : 'password';
+    if (btn) btn.textContent = visible ? '隱藏' : '顯示';
+  }
+  document.querySelectorAll('[data-toggle-password]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var input = $('#' + btn.getAttribute('data-toggle-password'));
+      setPasswordVisible(input, input && input.type === 'password', btn);
+    });
+  });
 
   // ---------- 登入 ----------
   function showLogin() { $('#loginView').style.display = 'grid'; $('#adminShell').classList.remove('active'); }
@@ -153,14 +164,23 @@
         ? '目前為唯讀模式（讀取已發布的 Google 試算表）。可瀏覽資料，但需在 Google 試算表內編輯；如要在後台直接增刪改，請部署 GAS 並設定 GAS_URL。'
         : '尚未設定資料來源，僅能預覽介面（無法儲存）。';
       alertBox($('#loginAlert'), note, 'ok');
-      token = 'readonly-token'; sessionStorage.setItem(TOKEN_KEY, token);
+      token = 'readonly-token';
+      if ($('#rememberLogin') && $('#rememberLogin').checked) localStorage.setItem(TOKEN_KEY, token);
+      else sessionStorage.setItem(TOKEN_KEY, token);
       setTimeout(showAdmin, 800); return;
     }
     var btn = $('#loginBtn'); btn.textContent = '登入中…'; btn.disabled = true;
     API.login(pwd).then(function (res) {
       btn.textContent = '登入'; btn.disabled = false;
       if (res.ok && res.token) {
-        token = res.token; sessionStorage.setItem(TOKEN_KEY, token);
+        token = res.token;
+        if ($('#rememberLogin') && $('#rememberLogin').checked) {
+          localStorage.setItem(TOKEN_KEY, token);
+          sessionStorage.removeItem(TOKEN_KEY);
+        } else {
+          sessionStorage.setItem(TOKEN_KEY, token);
+          localStorage.removeItem(TOKEN_KEY);
+        }
         alertBox($('#loginAlert'), '', '');
         showAdmin();
       } else {
@@ -170,7 +190,10 @@
   });
 
   $('#logoutBtn').addEventListener('click', function () {
-    token = ''; sessionStorage.removeItem(TOKEN_KEY); showLogin();
+    token = '';
+    sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    showLogin();
   });
 
   // ---------- 分頁 ----------
@@ -319,6 +342,9 @@
   $('#pwdBtn').addEventListener('click', function () {
     alertBox($('#pwdAlert'), '', '');
     $('#pwdForm').reset();
+    document.querySelectorAll('#pwdForm [data-toggle-password]').forEach(function (btn) {
+      setPasswordVisible($('#' + btn.getAttribute('data-toggle-password')), false, btn);
+    });
     $('#pwdMask').classList.add('open');
     document.documentElement.classList.add('admin-modal-open');
   });
