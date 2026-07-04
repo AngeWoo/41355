@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 真如苑資料網站 (非官方) — Google Apps Script 後端 API
  * ----------------------------------------------------------------
  * 部署方式：
@@ -50,6 +50,10 @@ var SCHEMA = {
   tools: {
     sheet: '互動程式',
     headers: ['id', 'title', 'desc', 'link', 'icon', 'order', 'createdAt', 'updatedAt']
+  },
+  talks: {
+    sheet: '真如開講',
+    headers: ['id', 'title', 'icon', 'desc', 'link', 'order', 'createdAt', 'updatedAt']
   }
 };
 
@@ -118,12 +122,13 @@ function doGet(e) {
   try {
     var params = (e && e.parameter) || {};
     var action = params.action || 'list';
+    var fresh = params.fresh === '1' || params.nocache === '1';
     if (action === 'list') {
-      return json({ ok: true, data: cachedListRecords(params.type) });
+      return json({ ok: true, data: fresh ? listRecords(params.type) : cachedListRecords(params.type) });
     }
     if (action === 'all') {
       var out = {};
-      Object.keys(SCHEMA).forEach(function (t) { out[t] = cachedListRecords(t); });
+      Object.keys(SCHEMA).forEach(function (t) { out[t] = fresh ? listRecords(t) : cachedListRecords(t); });
       return json({ ok: true, data: out });
     }
     if (action === 'ping') {
@@ -151,7 +156,7 @@ function doPost(e) {
     }
 
     // 以下動作需驗證 token
-    var mutating = ['create', 'update', 'delete', 'reorder', 'changePassword', 'uploadImage'];
+    var mutating = ['create', 'update', 'delete', 'reorder', 'changePassword'];
     if (mutating.indexOf(action) !== -1) {
       if (!verifyToken(body.token)) {
         return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
@@ -163,7 +168,6 @@ function doPost(e) {
       case 'update':         return jsonWithFreshCache({ ok: true, data: updateRecord(body.type, body.record) });
       case 'delete':         return jsonWithFreshCache({ ok: true, data: deleteRecord(body.type, body.id) });
       case 'reorder':        return jsonWithFreshCache({ ok: true, data: reorder(body.type, body.ids) });
-      case 'uploadImage':    return json({ ok: true, data: uploadImage(body.file) });
       case 'changePassword': return handleChangePassword(body);
       default:               return json({ ok: false, error: '未知的 action: ' + action });
     }
@@ -273,37 +277,6 @@ function embedUrlToPublicUrl(embedUrl) {
 }
 
 // ====================== 認證 ======================
-function uploadImage(file) {
-  file = file || {};
-  var name = String(file.name || 'cover.png').replace(/[\\\/:*?"<>|]/g, '_');
-  var mimeType = String(file.mimeType || 'image/png');
-  var data = String(file.data || '');
-  if (!/^image\//.test(mimeType)) throw new Error('只能上傳圖片檔');
-  if (!data) throw new Error('沒有收到圖片資料');
-  var bytes = Utilities.base64Decode(data);
-  if (bytes.length > 4 * 1024 * 1024) throw new Error('圖片請小於 4MB');
-  var folder = getUploadFolder();
-  var stamp = Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyyMMdd-HHmmss');
-  var blob = Utilities.newBlob(bytes, mimeType, stamp + '-' + name);
-  var driveFile = folder.createFile(blob);
-  driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  var id = driveFile.getId();
-  return {
-    id: id,
-    url: 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w900',
-    viewUrl: driveFile.getUrl()
-  };
-}
-
-function getUploadFolder() {
-  var id = PROP.getProperty('UPLOAD_FOLDER_ID');
-  if (id) {
-    try { return DriveApp.getFolderById(id); } catch (e) { }
-  }
-  var folder = DriveApp.createFolder('shinnyo-archive-cover-uploads');
-  PROP.setProperty('UPLOAD_FOLDER_ID', folder.getId());
-  return folder;
-}
 
 function sha256(str) {
   var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, str, Utilities.Charset.UTF_8);
@@ -2228,6 +2201,16 @@ function seedSampleData() {
         "order": 48
       }
     ],
+    "talks": [
+      {
+        "id": "talk-default",
+        "title": "真如開講",
+        "icon": "講",
+        "desc": "開啟真如開講相關內容。",
+        "link": "../assets/audio/01.mp3",
+        "order": 1
+      }
+    ],
     "tools": [
       {
         "id": "tool-history-today",
@@ -2312,3 +2295,6 @@ function whichDatabase() {
   Logger.log('筆數：' + counts);
   return url + '  |  ' + counts;
 }
+
+
+
