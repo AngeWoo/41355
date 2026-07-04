@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css?v=74" />
+  <link rel="stylesheet" href="assets/css/style.css?v=85" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -35,6 +35,7 @@
         <a href="#newsletter">親苑時報</a>
         <a href="#dharma">瑞聲法語</a>
         <a href="#tools">互動程式</a>
+        <button type="button" class="member-nav-btn" id="memberOpen">會員登入</button>
         <a href="admin.html" class="nav-cta">後台維護</a>
       </div>
     </div>
@@ -109,6 +110,34 @@
       </div>
       <div class="talk-list" id="talkList"></div>
       <div class="talk-pager" id="talkPager"></div>
+    </section>
+  </div>
+
+  <div class="member-popover" id="memberPopover" hidden>
+    <div class="member-backdrop"></div>
+    <section class="member-panel" role="dialog" aria-modal="true" aria-label="會員登入與註冊">
+      <button type="button" class="member-close" id="memberClose" aria-label="關閉會員視窗">×</button>
+      <h2>會員登入</h2>
+      <div class="member-current" id="memberCurrent" hidden>
+        <span id="memberCurrentName"></span>
+        <button type="button" id="memberLogout">登出</button>
+      </div>
+      <p class="member-status" id="memberStatus">輸入手機即可登入。</p>
+      <div class="member-tabs">
+        <button type="button" class="active" data-member-tab="login">登入</button>
+        <button type="button" data-member-tab="register">註冊</button>
+      </div>
+      <form class="member-form active" id="memberLoginForm">
+        <label>手機<input type="tel" id="memberLoginMobile" autocomplete="tel" inputmode="tel" placeholder="例：0968711059" required /></label>
+        <div class="member-hint">請輸入註冊時填寫的手機號碼。</div>
+        <button type="submit" class="btn btn-gold member-submit">會員登入</button>
+      </form>
+      <form class="member-form" id="memberRegisterForm">
+        <label>姓名<input type="text" id="memberName" autocomplete="name" placeholder="請輸入姓名" required /></label>
+        <label>Email<input type="email" id="memberEmail" autocomplete="email" placeholder="name@example.com" required /></label>
+        <label>手機<input type="tel" id="memberMobile" autocomplete="tel" inputmode="tel" placeholder="例：0968711059" required /></label>
+        <button type="submit" class="btn btn-gold member-submit">註冊會員</button>
+      </form>
     </section>
   </div>
 
@@ -306,8 +335,8 @@
   </footer>
 
   <script src="assets/js/config.js?v=5"></script>
-  <script src="assets/js/seed-data.js?v=11"></script>
-  <script src="assets/js/api.js?v=15"></script>
+  <script src="assets/js/seed-data.js?v=12"></script>
+  <script src="assets/js/api.js?v=18"></script>
   <script>
     window.openLiveVideoFallback = function () {
       var modal = document.getElementById('liveVideoModal');
@@ -322,6 +351,6 @@
       document.documentElement.classList.remove('modal-open');
     };
   </script>
-  <script src="assets/js/app.js?v=49"></script>
+  <script src="assets/js/app.js?v=66"></script>
 </body>
 </html>
