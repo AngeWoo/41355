@@ -19,6 +19,7 @@
 
 // ====================== 設定 ======================
 var ADMIN_PASSWORD_DEFAULT = 'shinnyo2026'; // 第一次 setup() 後請從後台或這裡修改
+var ADMIN_ACCOUNT_DEFAULT = 'admin';
 var TOKEN_TTL_SECONDS = 60 * 60 * 6;        // token 有效 6 小時
 var DATA_CACHE_SECONDS = 60 * 5;            // 前台公開資料快取 5 分鐘
 var OFFICIAL_LIVE_PAGE = 'https://www.shinnyo-en.org.tw/at2026/index2026.html';
@@ -53,11 +54,15 @@ var SCHEMA = {
   },
   tools: {
     sheet: '互動程式',
-    headers: ['id', 'title', 'desc', 'link', 'icon', 'order', 'createdAt', 'updatedAt']
+    headers: ['id', 'title', 'date', 'desc', 'link', 'icon', 'order', 'createdAt', 'updatedAt']
   },
   talks: {
     sheet: '真如開講',
     headers: ['id', 'title', 'icon', 'desc', 'link', 'order', 'createdAt', 'updatedAt']
+  },
+  members: {
+    sheet: '會員',
+    headers: ['id', 'name', 'email', 'mobile', 'createdAt', 'updatedAt']
   }
 };
 
@@ -69,6 +74,9 @@ function setup() {
   });
   if (!PROP.getProperty('ADMIN_PWD_HASH')) {
     setAdminPassword(ADMIN_PASSWORD_DEFAULT);
+  }
+  if (!PROP.getProperty('ADMIN_ACCOUNT')) {
+    PROP.setProperty('ADMIN_ACCOUNT', ADMIN_ACCOUNT_DEFAULT);
   }
   seedSampleData();
   return '安裝完成，試算表：' + ss.getUrl();
@@ -99,6 +107,7 @@ function ensureSheet(ss, def) {
     sh.setFrozenRows(1);
   }
   syncHeaders(sh, def.headers);
+  applyTextColumns(sh, ['mobile']);
   return sh;
 }
 
@@ -119,6 +128,16 @@ function syncHeaders(sh, expectedHeaders) {
     sh.setFrozenRows(1);
     sh.getRange(1, 1, 1, headers.length).setFontWeight('bold');
   }
+}
+
+function applyTextColumns(sh, names) {
+  var headers = readHeaders(sh);
+  names.forEach(function (name) {
+    var idx = headers.indexOf(name);
+    if (idx !== -1) {
+      sh.getRange(1, idx + 1, Math.max(sh.getMaxRows(), 1), 1).setNumberFormat('@');
+    }
+  });
 }
 
 // ====================== HTTP 入口 ======================
@@ -157,6 +176,12 @@ function doPost(e) {
 
     if (action === 'login') {
       return handleLogin(body);
+    }
+    if (action === 'memberRegister') {
+      return handleMemberRegister(body);
+    }
+    if (action === 'memberLogin') {
+      return handleMemberLogin(body);
     }
 
     // 以下動作需驗證 token
@@ -308,9 +333,14 @@ function checkPassword(pwd) {
 }
 
 function handleLogin(body) {
+  var account = PROP.getProperty('ADMIN_ACCOUNT') || ADMIN_ACCOUNT_DEFAULT;
+  if (body.account && String(body.account).trim() !== account) {
+    Utilities.sleep(600);
+    return json({ ok: false, error: '帳號或密碼錯誤。' });
+  }
   if (!checkPassword(body.password || '')) {
     Utilities.sleep(600); // 簡單防爆破
-    return json({ ok: false, error: '密碼錯誤。' });
+    return json({ ok: false, error: '帳號或密碼錯誤。' });
   }
   var token = Utilities.getUuid().replace(/-/g, '');
   CacheService.getScriptCache().put('tok_' + token, '1', TOKEN_TTL_SECONDS);
@@ -331,6 +361,70 @@ function handleChangePassword(body) {
   }
   setAdminPassword(body.newPassword);
   return json({ ok: true, msg: '密碼已更新。' });
+}
+
+function publicMember(row) {
+  return {
+    id: row.id || '',
+    name: row.name || '',
+    email: row.email || '',
+    mobile: String(row.mobile || '')
+  };
+}
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function normalizeMobile(mobile) {
+  return String(mobile || '')
+    .trim()
+    .replace(/[０-９]/g, function (d) { return String.fromCharCode(d.charCodeAt(0) - 0xFEE0); })
+    .replace(/\.0+$/, '')
+    .replace(/[^\d+]/g, '');
+}
+
+function mobileLookupKey(mobile) {
+  return normalizeMobile(mobile).replace(/^\+?886/, '').replace(/^0+/, '');
+}
+
+function findMemberByEmail(email) {
+  var target = normalizeEmail(email);
+  return listRecords('members').filter(function (m) {
+    return normalizeEmail(m.email) === target;
+  })[0] || null;
+}
+
+function findMemberByMobile(mobile) {
+  var target = normalizeMobile(mobile);
+  var key = mobileLookupKey(mobile);
+  return listRecords('members').filter(function (m) {
+    return normalizeMobile(m.mobile) === target || mobileLookupKey(m.mobile) === key;
+  })[0] || null;
+}
+
+function handleMemberRegister(body) {
+  var record = body.record || {};
+  var name = String(record.name || '').trim();
+  var email = normalizeEmail(record.email);
+  var mobile = normalizeMobile(record.mobile);
+  if (!name) return json({ ok: false, error: '請輸入姓名。' });
+  if (!email) return json({ ok: false, error: '請輸入 email。' });
+  if (!mobile) return json({ ok: false, error: '請輸入手機。' });
+  if (findMemberByEmail(email)) return json({ ok: false, error: '此 email 已註冊。' });
+  if (findMemberByMobile(mobile)) return json({ ok: false, error: '此手機已註冊。' });
+  var created = createRecord('members', { name: name, email: email, mobile: mobile });
+  return jsonWithFreshCache({ ok: true, data: publicMember(created) });
+}
+
+function handleMemberLogin(body) {
+  var mobile = normalizeMobile(body.mobile);
+  var member = findMemberByMobile(mobile);
+  if (!member) {
+    Utilities.sleep(400);
+    return json({ ok: false, error: '找不到此手機會員：' + mobile + '。請確認後台會員資料的手機欄位。' });
+  }
+  return json({ ok: true, data: publicMember(member) });
 }
 
 // ====================== 資料操作 ======================
