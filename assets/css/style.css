@@ -409,15 +409,20 @@ img { max-width: 100%; display: block; }
   width: clamp(320px, 20vw, 390px);
   min-height: 146px;
   padding: 22px 24px;
-  border: 1px solid rgba(255,255,255,.20);
+  border: 1px solid rgba(255,255,255,.42);
   border-radius: 18px;
   background:
-    radial-gradient(220px 120px at 18% 0%, rgba(255,255,255,.22), transparent 68%),
-    linear-gradient(125deg, rgba(226,189,97,.18), transparent 28%),
-    linear-gradient(135deg, rgba(51,78,128,.86), rgba(15,26,48,.92) 46%, rgba(90,70,32,.50) 100%);
-  background-size: 100% 100%, 220% 220%, 220% 220%;
-  box-shadow: 0 22px 54px -30px rgba(0, 0, 0, .92), 0 0 28px -18px rgba(255,255,255,.65), inset 0 1px 0 rgba(255,255,255,.18);
-  backdrop-filter: blur(8px);
+    radial-gradient(260px 140px at 18% 0%, rgba(255,255,255,.38), transparent 68%),
+    radial-gradient(220px 120px at 88% 12%, rgba(242,210,126,.34), transparent 72%),
+    linear-gradient(125deg, rgba(226,189,97,.30), transparent 34%),
+    linear-gradient(135deg, rgba(69,101,160,.94), rgba(24,40,72,.96) 48%, rgba(126,94,38,.68) 100%);
+  background-size: 100% 100%, 100% 100%, 220% 220%, 220% 220%;
+  box-shadow:
+    0 28px 68px -28px rgba(0, 0, 0, .94),
+    0 0 34px -10px rgba(255,255,255,.72),
+    0 0 30px -8px rgba(226,189,97,.58),
+    inset 0 1px 0 rgba(255,255,255,.34);
+  backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -459,17 +464,19 @@ img { max-width: 100%; display: block; }
 .hero-feature:hover::before { transform: translateX(120%); }
 .hero-feature > * { position: relative; z-index: 1; }
 .hero-feature .mini-kicker {
-  color: var(--gold-400);
+  color: #ffe3a0;
   font-size: .68rem;
   letter-spacing: .24em;
+  text-shadow: 0 0 12px rgba(226,189,97,.46);
 }
 .hero-feature b {
-  color: var(--text);
+  color: #fff;
   font-family: var(--serif);
   font-size: 1.22rem;
+  text-shadow: 0 2px 12px rgba(0,0,0,.34), 0 0 18px rgba(255,255,255,.28);
 }
 .hero-feature span:last-child {
-  color: var(--text-soft);
+  color: rgba(242,248,255,.90);
   font-size: .94rem;
   line-height: 1.55;
 }
@@ -479,8 +486,8 @@ img { max-width: 100%; display: block; }
 }
 .hero-feature-1 { left: 9.2%; top: 23.5%; }
 .hero-feature-2 { right: 9.2%; top: 23.5%; }
-.hero-feature-3 { left: 9.2%; bottom: 19.5%; }
-.hero-feature-4 { right: 9.2%; bottom: 19.5%; }
+.hero-feature-3 { left: 9.2%; bottom: 22%; }
+.hero-feature-4 { right: 9.2%; bottom: 22%; }
 .hero-feature-1::after,
 .hero-feature-3::after {
   left: 100%;
