@@ -2282,6 +2282,27 @@ function forceReseed() {
 }
 
 /**
+ * 只補入預設的 5 筆互動程式。已存在相同 id 時會略過，不會清空其他資料。
+ */
+function seedDefaultTools() {
+  var rows = [
+    { id: 'tool-history-today', title: '真如苑史上的今天', desc: '依日期查閱真如苑史上的重要事件。', link: 'https://angewoo.github.io/-search/', icon: '史', order: 1 },
+    { id: 'tool-quote', title: '真如拔苦代受靈訓', desc: '隨機閱讀拔苦代受相關靈訓。', link: 'https://angewoo.github.io/quote/', icon: '訓', order: 2 },
+    { id: 'tool-17', title: '法母17訓', desc: '快速研讀法母十七訓。', link: 'https://supr.link/xrUjU', icon: '17', order: 3 },
+    { id: 'tool-song-calendar', title: '苑歌月曆', desc: '以月曆方式瀏覽苑歌內容。', link: 'https://supr.link/zx2lz', icon: '歌', order: 4 },
+    { id: 'tool-history', title: '真如苑史', desc: '查閱真如苑歷史資料。', link: 'https://supr.link/X2LmQ', icon: '苑', order: 5 }
+  ];
+  var created = 0;
+  rows.forEach(function (row) {
+    if (findRowById(sheetFor('tools'), row.id) === -1) {
+      createRecord('tools', row);
+      created++;
+    }
+  });
+  return '已補入 ' + created + ' 筆互動程式資料。';
+}
+
+/**
  * 查出「網站實際使用的資料庫」是哪一份。
  * 執行後看「執行紀錄」會印出該試算表的網址，點進去就是有資料的那一份；
  * Drive 裡其他同名檔案即為重複，可刪除以免混淆。
