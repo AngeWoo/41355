@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css?v=50" />
+  <link rel="stylesheet" href="assets/css/style.css?v=70" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -22,6 +22,9 @@
         <img class="mark" src="assets/img/slogo.png" alt="" aria-hidden="true" />
         <span><b>真如苑資料網站</b><small>SHINNYO ARCHIVE</small></span>
       </a>
+      <button type="button" class="talk-nav-btn" id="talkFloatBtn" aria-label="開啟真如開講">
+        <span>真如</span><span>開講</span>
+      </button>
       <button class="hamburger" id="hamburger" aria-label="選單">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
@@ -97,6 +100,18 @@
     </div>
   </div>
 
+  <div class="talk-popover" id="talkPopover" hidden>
+    <div class="talk-backdrop" data-talk-close></div>
+    <section class="talk-panel" role="dialog" aria-modal="true" aria-label="真如開講">
+      <div class="talk-head">
+        <b>真如開講</b>
+        <button type="button" id="talkClose" aria-label="關閉真如開講">×</button>
+      </div>
+      <div class="talk-list" id="talkList"></div>
+      <div class="talk-pager" id="talkPager"></div>
+    </section>
+  </div>
+
   <main>
     <!-- 首頁四大區 -->
     <section class="block" id="home">
@@ -110,7 +125,7 @@
           <a href="#podcast" class="card feature reveal">
             <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
             <h3>Shinnyo Podcast</h3>
-            <p>「等一個人的真如café」系列訪談，聆聽信徒的修行故事。</p>
+            <p>「等一個人的真如cafe」系列訪談，聆聽信徒的修行故事。</p>
             <span class="more">前往收聽 →</span>
           </a>
           <a href="#calendar" class="card feature reveal">
@@ -218,7 +233,7 @@
       <div class="container">
         <div class="section-head reveal">
           <span class="kicker">PODCAST</span>
-          <h2>等一個人的真如café</h2>
+          <h2>等一個人的真如cafe</h2>
         </div>
         <div class="grid cols-3" id="podcastGrid"><div class="skeleton">載入中…</div></div>
       </div>
@@ -272,31 +287,16 @@
   <!-- 頁尾 -->
   <footer class="site">
     <div class="container">
-      <div class="foot-grid">
-        <div class="foot-brand">
-          <img class="mark" src="assets/img/slogo.png" alt="" aria-hidden="true" />
-          <span>真如苑資料網站<br/><small style="color:var(--text-dim)">非官方資訊彙整</small></span>
-        </div>
-        <div class="foot-links">
-          <a href="#podcast">Podcast</a>
-          <a href="#calendar">行事曆</a>
-          <a href="#newsletter">親苑時報</a>
-          <a href="#dharma">瑞聲法語</a>
-          <a href="#tools">互動程式</a>
-          <a href="#" id="officialLink" target="_blank" rel="noopener">官方網站</a>
-          <a href="admin.html">後台維護</a>
-        </div>
-      </div>
       <div class="foot-bottom">
-        <span>© <span id="year"></span> 真如苑資料網站（非官方）</span>
-        <span>Designed with 莊嚴禪意 · Powered by Google Apps Script</span>
+        <span>c <span id="year"></span> 真如苑資料網站（非官方）</span>
+        <span>經號:41355所有</span>
       </div>
     </div>
   </footer>
 
   <script src="assets/js/config.js?v=5"></script>
-  <script src="assets/js/seed-data.js?v=9"></script>
-  <script src="assets/js/api.js?v=8"></script>
+  <script src="assets/js/seed-data.js?v=10"></script>
+  <script src="assets/js/api.js?v=14"></script>
   <script>
     window.openLiveVideoFallback = function () {
       var modal = document.getElementById('liveVideoModal');
@@ -311,7 +311,6 @@
       document.documentElement.classList.remove('modal-open');
     };
   </script>
-  <script src="assets/js/app.js?v=24"></script>
+  <script src="assets/js/app.js?v=48"></script>
 </body>
 </html>
-
