@@ -214,6 +214,24 @@ img { max-width: 100%; display: block; }
   pointer-events: none;
   z-index: 0;
 }
+.hero::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: min(1320px, 68vw);
+  aspect-ratio: 1600 / 777;
+  transform: translate(calc(-50% + 10px), calc(-50% + 12px));
+  background: url("../img/hero-shinnyo-wash.png") center / contain no-repeat;
+  border-radius: 999px;
+  opacity: .18;
+  mix-blend-mode: multiply;
+  filter: saturate(.35) brightness(.62) blur(.6px);
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 0 58%, rgba(0,0,0,.72) 70%, transparent 100%);
+  mask-image: radial-gradient(ellipse at center, #000 0 58%, rgba(0,0,0,.72) 70%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
 .hero .ensou {
   position: absolute; top: 54%; left: 50%; width: min(900px, 124vw); aspect-ratio: 1;
   transform: translate(-50%, -50%); opacity: .62; z-index: 0; pointer-events: none;
@@ -1505,6 +1523,12 @@ html.talk-open body {
     width: min(760px, 88vw);
     opacity: .30;
   }
+  .hero::after {
+    top: 43%;
+    width: min(760px, 88vw);
+    transform: translate(calc(-50% + 6px), calc(-50% + 8px));
+    opacity: .14;
+  }
   .hero-search { width: calc(100% - 24px); margin-top: 24px; }
   .hero-search input { height: 42px; padding-left: 12px; }
   .hero-search button { width: 42px; height: 42px; }
@@ -1662,6 +1686,12 @@ html.talk-open body {
     top: 43%;
     width: 88vw;
     opacity: .28;
+  }
+  .hero::after {
+    top: 43%;
+    width: 88vw;
+    transform: translate(calc(-50% + 5px), calc(-50% + 7px));
+    opacity: .12;
   }
   .stats {
     width: calc(100vw - 24px);
