@@ -6,7 +6,7 @@
   <title>後台維護｜真如苑資料網站</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css?v=58" />
-  <link rel="stylesheet" href="assets/css/admin.css?v=15" />
+  <link rel="stylesheet" href="assets/css/admin.css?v=16" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body class="admin-body">
@@ -64,6 +64,7 @@
   <!-- 編輯彈窗 -->
   <div class="modal-mask" id="modalMask">
     <div class="card modal" id="modal">
+      <button type="button" class="modal-close" id="modalClose" aria-label="關閉編輯視窗">×</button>
       <h3 id="modalTitle">編輯</h3>
       <div class="alert" id="modalAlert"></div>
       <form id="recordForm"><div id="formFields"></div>
@@ -78,6 +79,7 @@
   <!-- 修改密碼彈窗 -->
   <div class="modal-mask" id="pwdMask">
     <div class="card modal" style="max-width:420px;">
+      <button type="button" class="modal-close" id="pwdClose" aria-label="關閉修改密碼視窗">×</button>
       <h3>修改管理密碼</h3>
       <div class="alert" id="pwdAlert"></div>
       <form id="pwdForm">
@@ -109,6 +111,6 @@
   <script src="assets/js/config.js?v=5"></script>
   <script src="assets/js/seed-data.js?v=10"></script>
   <script src="assets/js/api.js?v=14"></script>
-  <script src="assets/js/admin.js?v=22"></script>
+  <script src="assets/js/admin.js?v=24"></script>
 </body>
 </html>
