@@ -13,8 +13,8 @@
 
   var MODE = GAS ? 'gas' : (PUB ? 'published' : 'demo');
 
-  var TYPES = ['news', 'podcast', 'calendar', 'newsletter', 'dharma', 'tools', 'talks'];
-  var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], newsletter: [], dharma: [], tools: [], talks: [] };
+  var TYPES = ['news', 'podcast', 'calendar', 'headquarters', 'newsletter', 'dharma', 'tools', 'talks'];
+  var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], headquarters: [], newsletter: [], dharma: [], tools: [], talks: [] };
 
   function freshUrl(url) {
     var sep = url.indexOf('?') === -1 ? '?' : '&';

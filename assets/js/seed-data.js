@@ -1,4 +1,4 @@
-window.SEED_DATA = {
+﻿window.SEED_DATA = {
   "news": [
     {
       "id": "an-1",
@@ -306,6 +306,7 @@ window.SEED_DATA = {
       "order": 8
     }
   ],
+  "headquarters": [],
   "newsletter": [
     {
       "id": "news-202606",

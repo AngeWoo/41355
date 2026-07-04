@@ -51,6 +51,20 @@
       sub: function (r) { return [r.date, r.location, r.tag].filter(Boolean).join(' · '); }
     },
     {
+      type: 'headquarters', label: '總部會聯絡事項',
+      icon: '<path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h8M8 17h4"/>',
+      fields: [
+        { k: 'date', label: '日期', type: 'date' },
+        { k: 'title', label: '標題', type: 'text', req: true },
+        { k: 'category', label: '分類', type: 'text' },
+        { k: 'body', label: '內容', type: 'textarea' },
+        { k: 'link', label: '連結網址（選填）', type: 'url' },
+        { k: 'order', label: '排序', type: 'number' }
+      ],
+      title: function (r) { return r.title; },
+      sub: function (r) { return [r.date, r.category].filter(Boolean).join(' · '); }
+    },
+    {
       type: 'newsletter', label: '親苑時報',
       icon: '<path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h8M8 17h5"/>',
       fields: [

@@ -153,6 +153,15 @@
       (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
       (url ? '<span class="more-link">查看連結 →</span>' : '') + close;
   }
+  function headquartersItem(it) {
+    var url = fallbackLink('headquarters', it);
+    var open = url ? '<a class="card reveal stack" style="text-decoration:none"' + linkAttr(url) + '>' : '<div class="card reveal stack">';
+    var close = url ? '</a>' : '</div>';
+    var meta = '<div class="item-date">' + esc(fmtDate(it.date)) + (it.category ? ' <span class="tag">' + esc(it.category) + '</span>' : '') + '</div>';
+    return open + meta + '<h4>' + esc(it.title) + '</h4>' +
+      (it.body ? '<p class="muted small">' + esc(it.body) + '</p>' : '') +
+      (url ? '<span class="more-link">查看連結 →</span>' : '') + close;
+  }
   function newsletterItem(it) {
     var issueStr = fmtDate(it.issue || it.date);
     var cover = it.cover
@@ -198,6 +207,7 @@
     { type: 'news', gridId: 'newsGrid', minW: 330, item: newsItem, empty: '目前沒有最新消息' },
     { type: 'podcast', gridId: 'podcastGrid', minW: 300, item: podcastItem, empty: '目前沒有 Podcast' },
     { type: 'calendar', gridId: 'calendarGrid', minW: 320, item: calItem, empty: '目前沒有行事曆' },
+    { type: 'headquarters', gridId: 'headquartersGrid', minW: 320, item: headquartersItem, empty: '目前沒有總部會聯絡事項' },
     { type: 'newsletter', gridId: 'newsletterGrid', minW: 210, item: newsletterItem, empty: '目前沒有親苑時報' },
     { type: 'dharma', gridId: 'dharmaGrid', minW: 300, item: dharmaItem, empty: '目前沒有瑞聲法語' },
     { type: 'tools', gridId: 'toolsGrid', minW: 260, maxCols: 5, item: toolItem, empty: '目前沒有互動程式' }
@@ -220,6 +230,7 @@
     var defs = [
       { type: 'news', label: '最新消息', href: '#home', fields: ['title', 'body', 'date'] },
       { type: 'calendar', label: '行事曆', href: '#calendar', fields: ['title', 'desc', 'location', 'tag', 'date'] },
+      { type: 'headquarters', label: '總部會聯絡事項', href: '#headquarters', fields: ['title', 'body', 'category', 'date'] },
       { type: 'newsletter', label: '親苑時報', href: '#newsletter', fields: ['title', 'issue', 'date'] },
       { type: 'dharma', label: '瑞聲法語', href: '#dharma', fields: ['title', 'content', 'category', 'date'] },
       { type: 'tools', label: '互動程式', href: '#tools', fields: ['title', 'desc'] },
