@@ -1,4 +1,4 @@
-/* Frontend interactions, data rendering, pagination, search, and modal controls. */
+﻿/* Frontend interactions, data rendering, pagination, search, and modal controls. */
 (function () {
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
@@ -30,6 +30,36 @@
   }
   function truthy(v) { var s = String(v).toLowerCase(); return s === 'true' || s === '1' || s === 'yes' || v === true; }
   function linkAttr(url) { return url ? ' href="' + esc(url) + '" target="_blank" rel="noopener"' : ' href="javascript:void(0)"'; }
+  function parseRecordDate(value) {
+    var s = String(value || '').trim();
+    if (!s) return null;
+    var m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    m = s.match(/^(\d{1,2})[-/](\d{1,2})$/);
+    if (m) return new Date(new Date().getFullYear(), Number(m[1]) - 1, Number(m[2]));
+    var d = new Date(s);
+    return !isNaN(d.getTime()) ? d : null;
+  }
+  function recordDateValues(it, fields) {
+    fields = fields || ['createdAt', 'updatedAt', 'date', 'issue'];
+    return fields.map(function (field) { return it && it[field]; });
+  }
+  function isRecentRecord(it, fields) {
+    var dates = recordDateValues(it, fields)
+      .map(parseRecordDate)
+      .filter(Boolean);
+    if (!dates.length) return false;
+    var now = new Date();
+    return dates.some(function (d) {
+      var age = now.getTime() - d.getTime();
+      return age >= 0 && age <= 7 * 24 * 60 * 60 * 1000;
+    });
+  }
+  function hasRecordDate(it, fields) {
+    return recordDateValues(it, fields)
+      .map(parseRecordDate)
+      .some(Boolean);
+  }
   function fallbackLink(type, it) {
     if (it && it.link) return it.link;
     var rows = (window.SEED_DATA && window.SEED_DATA[type]) || [];
@@ -41,6 +71,9 @@
       )) return r.link;
     }
     return '';
+  }
+  function newBadge(it) {
+    return it && it._latest ? '<span class="latest-badge">最新上架</span>' : '';
   }
   function driveThumb(url) {
     var s = String(url || '');
@@ -120,14 +153,14 @@
   // ---- ?桀撐?∠?皜脫???----
   function newsItem(it) {
     var more = it.link ? '<a' + linkAttr(it.link) + ' class="more-link">閱讀更多 →</a>' : '';
-    return '<div class="card reveal stack">' +
+    return '<div class="card reveal stack">' + newBadge(it) +
       '<div class="item-date">' + esc(fmtDate(it.date)) + '</div>' +
       '<h4>' + esc(it.title) + '</h4>' +
       (it.body ? '<p class="muted small">' + esc(it.body) + '</p>' : '') + more + '</div>';
   }
   function podcastItem(it) {
     var meta = (it.guest ? '來賓：' + esc(it.guest) + (it.date ? ' · ' : '') : '') + esc(fmtDate(it.date));
-    return '<a class="card pod cafe-card reveal"' + linkAttr(it.link) + '>' +
+    return '<a class="card pod cafe-card reveal"' + linkAttr(it.link) + '>' + newBadge(it) +
       '<span class="ep">' + esc(it.ep || 'EP') + '</span>' +
       '<h4>' + esc(it.title) + '</h4>' +
       '<div class="meta">' + meta + '</div>' +
@@ -138,7 +171,7 @@
     var open = it.link ? '<a class="card reveal stack" style="text-decoration:none"' + linkAttr(it.link) + '>' : '<div class="card reveal stack">';
     var close = it.link ? '</a>' : '</div>';
     var meta = '<div class="item-date">' + esc(fmtDate(it.date)) + (it.tag ? ' <span class="tag">' + esc(it.tag) + '</span>' : '') + '</div>';
-    return open + meta + '<h4>' + esc(it.title) + '</h4>' +
+    return open + newBadge(it) + meta + '<h4>' + esc(it.title) + '</h4>' +
       (it.location ? '<div class="where"><span>?? ' + esc(it.location) + '</span></div>' : '') +
       (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
       (it.link ? '<span class="more-link">查看連結 →</span>' : '') + close;
@@ -148,7 +181,7 @@
     var open = url ? '<a class="card reveal stack" style="text-decoration:none"' + linkAttr(url) + '>' : '<div class="card reveal stack">';
     var close = url ? '</a>' : '</div>';
     var meta = '<div class="item-date">' + esc(fmtDate(it.date)) + (it.tag ? ' <span class="tag">' + esc(it.tag) + '</span>' : '') + '</div>';
-    return open + meta + '<h4>' + esc(it.title) + '</h4>' +
+    return open + newBadge(it) + meta + '<h4>' + esc(it.title) + '</h4>' +
       (it.location ? '<div class="where"><span>' + esc(it.location) + '</span></div>' : '') +
       (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
       (url ? '<span class="more-link">查看連結 →</span>' : '') + close;
@@ -158,7 +191,7 @@
     var open = url ? '<a class="card reveal stack" style="text-decoration:none"' + linkAttr(url) + '>' : '<div class="card reveal stack">';
     var close = url ? '</a>' : '</div>';
     var meta = '<div class="item-date">' + esc(fmtDate(it.date)) + (it.category ? ' <span class="tag">' + esc(it.category) + '</span>' : '') + '</div>';
-    return open + meta + '<h4>' + esc(it.title) + '</h4>' +
+    return open + newBadge(it) + meta + '<h4>' + esc(it.title) + '</h4>' +
       (it.body ? '<p class="muted small">' + esc(it.body) + '</p>' : '') +
       (url ? '<span class="more-link">查看連結 →</span>' : '') + close;
   }
@@ -167,24 +200,26 @@
     var cover = it.cover
       ? '<img src="' + esc(it.cover) + '" alt="' + esc(it.title) + '" />'
       : '<div class="ph"><b>' + esc(issueStr.slice(0, 7)) + '</b><span>親苑時報</span></div>';
-    return '<a class="card paper reveal"' + linkAttr(it.link) + '>' +
+    return '<a class="card paper reveal"' + linkAttr(it.link) + '>' + newBadge(it) +
       '<div class="cover">' + cover + '</div>' +
       '<h4>' + esc(it.title) + '</h4>' +
       '<div class="issue">' + esc(issueStr) + '</div></a>';
   }
   function newsletterItem(it) {
     var issueStr = fmtDate(it.issue || it.date);
-    return '<a class="card paper reveal"' + linkAttr(it.link) + '>' +
+    return '<a class="card paper reveal"' + linkAttr(it.link) + '>' + newBadge(it) +
       '<div class="cover">' + newsletterCover(it) + '</div>' +
       '<h4>' + esc(it.title) + '</h4>' +
       '<div class="issue">' + esc(issueStr) + '</div></a>';
   }
   function dharmaItem(it) {
     var dstr = esc(fmtDate(it.date));
-    var content = String(it.content || '').trim();
+    var content = String(it.content || '').trim()
+      .replace(/（?點選下方連結閱讀本則瑞聲法語全文）?/g, '')
+      .trim();
     if (!content) content = '';
     var full = it.link ? '<a' + linkAttr(it.link) + ' class="more-link dharma-read">閱讀全文 →</a>' : '';
-    return '<div class="card dharma-item reveal">' +
+    return '<div class="card dharma-item reveal">' + newBadge(it) +
       '<div class="dharma-cover cover">' + coverMarkup('dharma', it, it.category || '瑞聲法語') + '</div>' +
       '<span class="cat">' + esc(it.category || '瑞聲法語') + '</span>' +
       '<h4>' + esc(it.title) + '</h4>' +
@@ -193,8 +228,10 @@
       (dstr ? '<div class="date">' + dstr + '</div>' : '') + '</div>';
   }
   function toolItem(it) {
-    return '<a class="card tool-card reveal"' + linkAttr(it.link) + '>' +
+    var date = fmtDate(it.date);
+    return '<a class="card tool-card reveal"' + linkAttr(it.link) + '>' + newBadge(it) +
       '<span class="tool-mark">' + esc(it.icon || '工具') + '</span>' +
+      (date ? '<div class="item-date">' + esc(date) + '</div>' : '') +
       '<h4>' + esc(it.title) + '</h4>' +
       (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
       '<span class="more-link">開啟程式 →</span></a>';
@@ -210,7 +247,7 @@
     { type: 'headquarters', gridId: 'headquartersGrid', minW: 320, item: headquartersItem, empty: '目前沒有總部會聯絡事項' },
     { type: 'newsletter', gridId: 'newsletterGrid', minW: 210, item: newsletterItem, empty: '目前沒有親苑時報' },
     { type: 'dharma', gridId: 'dharmaGrid', minW: 300, item: dharmaItem, empty: '目前沒有瑞聲法語' },
-    { type: 'tools', gridId: 'toolsGrid', minW: 260, maxCols: 5, item: toolItem, empty: '目前沒有互動程式' }
+    { type: 'tools', gridId: 'toolsGrid', minW: 260, maxCols: 5, item: toolItem, empty: '目前沒有互動程式', latestFields: ['date'] }
   ];
   var store = {};
   var searchReady = false;
@@ -233,7 +270,7 @@
       { type: 'headquarters', label: '總部會聯絡事項', href: '#headquarters', fields: ['title', 'body', 'category', 'date'] },
       { type: 'newsletter', label: '親苑時報', href: '#newsletter', fields: ['title', 'issue', 'date'] },
       { type: 'dharma', label: '瑞聲法語', href: '#dharma', fields: ['title', 'content', 'category', 'date'] },
-      { type: 'tools', label: '互動程式', href: '#tools', fields: ['title', 'desc'] },
+      { type: 'tools', label: '互動程式', href: '#tools', fields: ['title', 'desc', 'date'] },
       { type: 'podcast', label: 'Podcast', href: '#podcast', fields: ['title', 'desc', 'guest', 'ep', 'date'] }
     ];
     var rows = [];
@@ -383,6 +420,16 @@
     grid.classList.toggle('can-swipe-next', pages > 1 && s.page < pages - 1);
     var start = s.page * cols;
     var pageItems = items.slice(start, start + cols);
+    var hasAnyDate = items.some(function (it) { return hasRecordDate(it, s.cfg.latestFields); });
+    var latestId = items[0] && (items[0].id || [items[0].title, items[0].date, items[0].issue, items[0].ep].join('|'));
+    pageItems = pageItems.map(function (it) {
+      var copy = Object.assign({}, it);
+      var key = copy.id || [copy.title, copy.date, copy.issue, copy.ep].join('|');
+      copy._latest = s.cfg.latestMode === 'first'
+        ? (latestId && key === latestId)
+        : (hasAnyDate ? isRecentRecord(copy, s.cfg.latestFields) : (latestId && key === latestId));
+      return copy;
+    });
   // Internal section.
     grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
     var blanks = '';
@@ -808,7 +855,162 @@
     els.forEach(function (e) { io.observe(e); });
   }
 
+  function setupMemberAuth() {
+    var MEMBER_KEY = 'shinnyo_member';
+    var memberOpen = document.getElementById('memberOpen');
+    var memberPopover = document.getElementById('memberPopover');
+    var memberClose = document.getElementById('memberClose');
+    var memberCurrent = document.getElementById('memberCurrent');
+    var memberCurrentName = document.getElementById('memberCurrentName');
+    var memberLogout = document.getElementById('memberLogout');
+    var memberStatus = document.getElementById('memberStatus');
+    var memberTabs = document.querySelector('.member-tabs');
+    var memberLoginForm = document.getElementById('memberLoginForm');
+    var memberRegisterForm = document.getElementById('memberRegisterForm');
+    var memberLoginMobile = document.getElementById('memberLoginMobile');
+    var memberCloseTimer = null;
+    function currentMember() {
+      try { return JSON.parse(localStorage.getItem(MEMBER_KEY) || 'null'); } catch (e) { return null; }
+    }
+    function saveMember(member) {
+      localStorage.setItem(MEMBER_KEY, JSON.stringify(member || {}));
+      syncMemberUi();
+    }
+    function clearMember() {
+      localStorage.removeItem(MEMBER_KEY);
+      clearTimeout(memberCloseTimer);
+      syncMemberUi();
+      setMemberStatus('已登出，請重新輸入手機。', '');
+      if (memberLoginMobile) memberLoginMobile.focus();
+    }
+    function updateMemberButton() {
+      if (!memberOpen) return;
+      var m = currentMember();
+      memberOpen.textContent = m && m.name ? '會員：' + m.name : '會員登入';
+      memberOpen.classList.toggle('is-logged-in', !!(m && m.name));
+      memberOpen.setAttribute('aria-pressed', m && m.name ? 'true' : 'false');
+      if (ham) {
+        ham.classList.toggle('member-logged-in', !!(m && m.name));
+        ham.setAttribute('data-member-state', m && m.name ? '會員已登入' : '會員未登入');
+      }
+    }
+    function updateMemberCurrent() {
+      if (!memberCurrent || !memberCurrentName) return;
+      var m = currentMember();
+      memberCurrent.hidden = !(m && m.name);
+      memberCurrentName.textContent = m && m.name ? '目前登入：' + m.name : '';
+    }
+    function selectMemberTab(tab) {
+      document.querySelectorAll('[data-member-tab]').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-member-tab') === tab);
+      });
+      if (memberLoginForm) memberLoginForm.classList.toggle('active', tab === 'login');
+      if (memberRegisterForm) memberRegisterForm.classList.toggle('active', tab === 'register');
+    }
+    function syncMemberUi() {
+      var m = currentMember();
+      updateMemberButton();
+      updateMemberCurrent();
+      if (memberTabs) memberTabs.hidden = !!(m && m.name);
+      if (m && m.name) {
+        if (memberLoginForm) memberLoginForm.classList.remove('active');
+        if (memberRegisterForm) memberRegisterForm.classList.remove('active');
+      } else {
+        if (memberTabs) memberTabs.hidden = false;
+        selectMemberTab('login');
+      }
+    }
+    function setMemberStatus(msg, type) {
+      if (!memberStatus) return;
+      memberStatus.textContent = msg;
+      memberStatus.className = 'member-status' + (type ? ' ' + type : '');
+    }
+    function openMemberPopover() {
+      if (!memberPopover) return;
+      clearTimeout(memberCloseTimer);
+      var m = currentMember();
+      memberPopover.hidden = false;
+      syncMemberUi();
+      setMemberStatus(m ? '您已登入會員：' + m.name : '輸入手機即可登入。', m ? 'ok' : '');
+      if (!m && memberLoginMobile) setTimeout(function () { memberLoginMobile.focus(); }, 80);
+    }
+    function closeMemberPopover() {
+      clearTimeout(memberCloseTimer);
+      if (memberPopover) memberPopover.hidden = true;
+    }
+    function closeMemberPopoverSoon() {
+      clearTimeout(memberCloseTimer);
+      memberCloseTimer = setTimeout(closeMemberPopover, 900);
+    }
+    if (memberOpen) memberOpen.addEventListener('click', openMemberPopover);
+    if (memberClose) memberClose.addEventListener('click', closeMemberPopover);
+    if (memberLogout) memberLogout.addEventListener('click', clearMember);
+    if (memberPopover) {
+      memberPopover.addEventListener('click', function (e) {
+        if (e.target && e.target.classList.contains('member-backdrop')) closeMemberPopover();
+      });
+    }
+    document.querySelectorAll('[data-member-tab]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var tab = btn.getAttribute('data-member-tab');
+        selectMemberTab(tab);
+        setMemberStatus(tab === 'login' ? '輸入手機即可登入。' : '請填寫會員資料。', '');
+        var firstInput = (tab === 'login' ? memberLoginForm : memberRegisterForm).querySelector('input');
+        if (firstInput) firstInput.focus();
+      });
+    });
+    if (memberLoginForm) {
+      memberLoginForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var loginBtn = memberLoginForm.querySelector('button[type="submit"]');
+        var loginMobile = memberLoginMobile ? memberLoginMobile.value.trim() : '';
+        if (!loginMobile) {
+          setMemberStatus('請輸入手機號碼。', 'err');
+          if (memberLoginMobile) memberLoginMobile.focus();
+          return;
+        }
+        if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = '登入中...'; }
+        setMemberStatus('登入中...', '');
+        API.memberLogin(loginMobile).then(function (res) {
+          if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = '會員登入'; }
+          if (res.ok) {
+            saveMember(res.data);
+            setMemberStatus('登入成功，歡迎 ' + res.data.name + '。', 'ok');
+            closeMemberPopoverSoon();
+          } else {
+            setMemberStatus(res.error || '登入失敗。', 'err');
+          }
+        }).catch(function () {
+          if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = '會員登入'; }
+          setMemberStatus('連線失敗，請稍後再試。', 'err');
+        });
+      });
+    }
+    if (memberRegisterForm) {
+      memberRegisterForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var record = {
+          name: document.getElementById('memberName').value,
+          email: document.getElementById('memberEmail').value,
+          mobile: document.getElementById('memberMobile').value.trim()
+        };
+        setMemberStatus('註冊中...', '');
+        API.memberRegister(record).then(function (res) {
+          if (res.ok) {
+            saveMember(res.data);
+            setMemberStatus('註冊完成，已登入會員。', 'ok');
+            closeMemberPopoverSoon();
+          } else {
+            setMemberStatus(res.error || '註冊失敗。', 'err');
+          }
+        }).catch(function () { setMemberStatus('連線失敗，請稍後再試。', 'err'); });
+      });
+    }
+    syncMemberUi();
+  }
+
   observeReveal();
+  setupMemberAuth();
   boot();
   refreshOfficialLive();
 })();

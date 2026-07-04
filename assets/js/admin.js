@@ -98,13 +98,14 @@
       icon: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12h8M12 8v8"/>',
       fields: [
         { k: 'title', label: '標題', type: 'text', req: true },
+        { k: 'date', label: '日期', type: 'date' },
         { k: 'desc', label: '描述', type: 'textarea' },
         { k: 'link', label: '程式連結', type: 'url', req: true },
         { k: 'icon', label: '圖示文字（如 史、訓）', type: 'text' },
         { k: 'order', label: '排序', type: 'number' }
       ],
       title: function (r) { return r.title; },
-      sub: function (r) { return [r.desc, r.link].filter(Boolean).join(' · '); }
+      sub: function (r) { return [r.date, r.desc, r.link].filter(Boolean).join(' · '); }
     },
     {
       type: 'talks', label: '真如開講',
@@ -118,6 +119,17 @@
       ],
       title: function (r) { return r.title; },
       sub: function (r) { return [r.icon, r.desc, r.link].filter(Boolean).join(' · '); }
+    },
+    {
+      type: 'members', label: '會員',
+      icon: '<path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+      fields: [
+        { k: 'name', label: '姓名', type: 'text', req: true },
+        { k: 'email', label: 'Email', type: 'text', req: true },
+        { k: 'mobile', label: '手機', type: 'text', req: true }
+      ],
+      title: function (r) { return r.name; },
+      sub: function (r) { return [r.email, r.mobile].filter(Boolean).join(' · '); }
     }
   ];
 
@@ -173,6 +185,7 @@
 
   $('#loginForm').addEventListener('submit', function (e) {
     e.preventDefault();
+    var account = $('#adminAccount') ? $('#adminAccount').value.trim() : 'admin';
     var pwd = $('#pwd').value;
     if (API.isReadOnly()) {
       var note = API.mode === 'published'
@@ -185,7 +198,7 @@
       setTimeout(showAdmin, 800); return;
     }
     var btn = $('#loginBtn'); btn.textContent = '登入中…'; btn.disabled = true;
-    API.login(pwd).then(function (res) {
+    API.login(pwd, account).then(function (res) {
       btn.textContent = '登入'; btn.disabled = false;
       if (res.ok && res.token) {
         token = res.token;

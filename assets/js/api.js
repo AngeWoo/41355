@@ -13,8 +13,8 @@
 
   var MODE = GAS ? 'gas' : (PUB ? 'published' : 'demo');
 
-  var TYPES = ['news', 'podcast', 'calendar', 'headquarters', 'newsletter', 'dharma', 'tools', 'talks'];
-  var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], headquarters: [], newsletter: [], dharma: [], tools: [], talks: [] };
+  var TYPES = ['news', 'podcast', 'calendar', 'headquarters', 'newsletter', 'dharma', 'tools', 'talks', 'members'];
+  var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], headquarters: [], newsletter: [], dharma: [], tools: [], talks: [], members: [] };
 
   function freshUrl(url) {
     var sep = url.indexOf('?') === -1 ? '?' : '&';
@@ -142,10 +142,15 @@
     all: listAll,
     seedAll: seedAll,
     officialLive: officialLive,
-    login: function (password) { return post({ action: 'login', password: password }); },
+    login: function (password, account) { return post({ action: 'login', account: account, password: password }); },
     create: function (type, record, token) { return post({ action: 'create', type: type, record: record, token: token }); },
     update: function (type, record, token) { return post({ action: 'update', type: type, record: record, token: token }); },
     remove: function (type, id, token) { return post({ action: 'delete', type: type, id: id, token: token }); },
     changePassword: function (oldP, newP, token) { return post({ action: 'changePassword', oldPassword: oldP, newPassword: newP, token: token }); }
+    ,
+    memberRegister: function (record) { return post({ action: 'memberRegister', record: record }); },
+    memberLogin: function (mobile, legacyMobile) {
+      return post({ action: 'memberLogin', mobile: legacyMobile || mobile });
+    }
   };
 })();

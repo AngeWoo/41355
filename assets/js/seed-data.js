@@ -1817,6 +1817,7 @@
       "cover": "https://drive.google.com/thumbnail?id=1QmJhTq2sKQufuyCIofr-58E2c9Vv67xw&sz=w700"
     }
   ],
+  "members": [],
   "talks": [
     {
       "id": "talk-default",
