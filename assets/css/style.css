@@ -1693,7 +1693,7 @@ html.talk-open body {
     font-weight: 700;
   }
   .nav-links .member-nav-btn.is-logged-in::after {
-    content: '已登入';
+    content: '登入';
     position: absolute;
     right: 10px;
     top: 50%;
