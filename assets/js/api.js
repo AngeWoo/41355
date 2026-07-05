@@ -113,6 +113,14 @@
     return Promise.resolve({ ok: false, error: 'officialLive requires GAS mode' });
   }
 
+  function resolveCover(url) {
+    if (MODE === 'gas' && url) {
+      return fetchFresh(GAS + '?action=resolveCover&url=' + encodeURIComponent(url))
+        .then(function (r) { return r.json(); });
+    }
+    return Promise.resolve({ ok: false, error: 'resolveCover requires GAS mode' });
+  }
+
   // ---------- 寫入（僅 gas 模式）----------
   function post(body) {
     if (MODE !== 'gas') {
@@ -142,6 +150,7 @@
     all: listAll,
     seedAll: seedAll,
     officialLive: officialLive,
+    resolveCover: resolveCover,
     login: function (password, account) { return post({ action: 'login', account: account, password: password }); },
     create: function (type, record, token) { return post({ action: 'create', type: type, record: record, token: token }); },
     update: function (type, record, token) { return post({ action: 'update', type: type, record: record, token: token }); },

@@ -80,28 +80,46 @@
     var m = s.match(/drive\.google\.com\/file\/d\/([^/]+)/) || s.match(/[?&]id=([^&]+)/);
     return m ? 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(m[1]) + '&sz=w700' : '';
   }
-  function newsletterCover(it) {
-    var issueStr = fmtDate(it.issue || it.date);
-    var seedCover = '';
-    var rows = (window.SEED_DATA && window.SEED_DATA.newsletter) || [];
-    for (var i = 0; i < rows.length; i++) {
-      if (it && rows[i].cover && (
-        (it.id && rows[i].id === it.id) ||
-        (it.issue && rows[i].issue === it.issue)
-      )) {
-        seedCover = rows[i].cover;
-        break;
-      }
-    }
-    var src = it.cover || seedCover || driveThumb(it.link);
-    var fallback = '<div class="ph"><b>' + esc(issueStr.slice(0, 7)) + '</b><span>親苑時報</span></div>';
-    if (!src) return fallback;
-    return "<img src=\"" + esc(src) + "\" alt=\"" + esc(it.title) + "\" loading=\"lazy\" referrerpolicy=\"no-referrer\" onerror=\"this.closest('.cover').classList.add('no-thumb');this.remove();\" />" + fallback;
+  function uniqueUrls(urls) {
+    var seen = {};
+    return (urls || []).filter(function (url) {
+      url = String(url || '').trim();
+      if (!url || seen[url]) return false;
+      seen[url] = true;
+      return true;
+    });
   }
+  function issueKey(it) {
+    if (!it) return '';
+    var issue = fmtDate(it.issue || it.date).slice(0, 7);
+    if (issue) return issue;
+    var m = String(it.title || '').match(/(\d{4})\s*年\s*(\d{1,2})\s*月/);
+    return m ? m[1] + '-' + pad(m[2]) : '';
+  }
+  function coverImgMarkup(urls, title) {
+    urls = uniqueUrls(urls);
+    if (!urls.length) return '';
+    var rest = urls.slice(1);
+    return '<img src="' + esc(urls[0]) + '" alt="' + esc(title || '') + '" loading="lazy" referrerpolicy="no-referrer" data-cover-srcs="' + esc(JSON.stringify(rest)) + '" onerror="window.__tryNextCover&&window.__tryNextCover(this)" />';
+  }
+  window.__tryNextCover = function (img) {
+    if (!img) return;
+    var cover = img.closest && img.closest('.cover');
+    var urls = [];
+    try { urls = JSON.parse(img.getAttribute('data-cover-srcs') || '[]'); } catch (e) { urls = []; }
+    urls = uniqueUrls(urls);
+    if (urls.length) {
+      img.setAttribute('data-cover-srcs', JSON.stringify(urls.slice(1)));
+      img.src = urls[0];
+      return;
+    }
+    if (cover) cover.classList.add('no-thumb');
+    img.remove();
+  };
   function newsletterCover(it) {
     var issueStr = fmtDate(it.issue || it.date);
     var seed = seedCover('newsletter', it);
-    var src = it.cover || seed || driveThumb(it.link);
+    var urls = [it.cover, seed, driveThumb(it.cover), driveThumb(seed), driveThumb(it.link)];
     var parts = issueStr.slice(0, 7).split('-');
     var fallback = '<div class="ph news-ph">' +
       '<span class="news-ph-strip"></span>' +
@@ -110,25 +128,26 @@
       '<b>' + esc(parts[0] || '') + '</b>' +
       '<em>' + esc(parts[1] || '') + '</em>' +
       '</div>';
-    if (!src) return fallback;
-    return "<img src=\"" + esc(src) + "\" alt=\"" + esc(it.title) + "\" loading=\"lazy\" referrerpolicy=\"no-referrer\" onerror=\"this.closest('.cover').classList.add('no-thumb');this.remove();\" />" + fallback;
+    var marker = it.link ? '<span class="cover-resolve" data-cover-link="' + esc(it.link) + '" data-cover-title="' + esc(it.title || '') + '"></span>' : '';
+    return coverImgMarkup(urls, it.title) + fallback + marker;
   }
   function seedCover(type, it) {
     var rows = (window.SEED_DATA && window.SEED_DATA[type]) || [];
+    var key = issueKey(it);
     for (var i = 0; i < rows.length; i++) {
       if (it && rows[i].cover && (
         (it.id && rows[i].id === it.id) ||
         (it.issue && rows[i].issue === it.issue) ||
-        (it.title && rows[i].title === it.title)
+        (it.title && rows[i].title === it.title) ||
+        (key && issueKey(rows[i]) === key)
       )) return rows[i].cover;
     }
     return '';
   }
   function coverMarkup(type, it, label) {
-    var src = it.cover || seedCover(type, it) || driveThumb(it.link);
+    var urls = [it.cover, seedCover(type, it), driveThumb(it.cover), driveThumb(it.link)];
     var fallback = '<div class="ph"><b>' + esc(label || '') + '</b><span>' + esc(it.title || '') + '</span></div>';
-    if (!src) return fallback;
-    return "<img src=\"" + esc(src) + "\" alt=\"" + esc(it.title) + "\" loading=\"lazy\" referrerpolicy=\"no-referrer\" onerror=\"this.closest('.cover').classList.add('no-thumb');this.remove();\" />" + fallback;
+    return coverImgMarkup(urls, it.title) + fallback;
   }
   function pad(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
 
@@ -194,16 +213,6 @@
     return open + newBadge(it) + meta + '<h4>' + esc(it.title) + '</h4>' +
       (it.body ? '<p class="muted small">' + esc(it.body) + '</p>' : '') +
       (url ? '<span class="more-link">查看連結 →</span>' : '') + close;
-  }
-  function newsletterItem(it) {
-    var issueStr = fmtDate(it.issue || it.date);
-    var cover = it.cover
-      ? '<img src="' + esc(it.cover) + '" alt="' + esc(it.title) + '" />'
-      : '<div class="ph"><b>' + esc(issueStr.slice(0, 7)) + '</b><span>親苑時報</span></div>';
-    return '<a class="card paper reveal"' + linkAttr(it.link) + '>' + newBadge(it) +
-      '<div class="cover">' + cover + '</div>' +
-      '<h4>' + esc(it.title) + '</h4>' +
-      '<div class="issue">' + esc(issueStr) + '</div></a>';
   }
   function newsletterItem(it) {
     var issueStr = fmtDate(it.issue || it.date);
@@ -401,6 +410,46 @@
     }, { passive: true });
   }
 
+  var coverResolveCache = {};
+  function setCoverImage(cover, urls, title) {
+    urls = uniqueUrls(urls);
+    if (!cover || !urls.length) return;
+    var img = cover.querySelector('img');
+    if (!img) {
+      img = document.createElement('img');
+      img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
+      img.onerror = function () { window.__tryNextCover && window.__tryNextCover(img); };
+      var fallback = cover.querySelector('.ph');
+      cover.insertBefore(img, fallback || cover.firstChild);
+    }
+    var current = img.currentSrc || img.getAttribute('src') || '';
+    var rest = [];
+    try { rest = JSON.parse(img.getAttribute('data-cover-srcs') || '[]'); } catch (e) { rest = []; }
+    var chain = uniqueUrls([current].concat(urls, rest)).filter(function (url) { return url; });
+    if (!chain.length) return;
+    img.alt = title || img.alt || '';
+    img.setAttribute('data-cover-srcs', JSON.stringify(chain.slice(1)));
+    if (!current || cover.classList.contains('no-thumb')) img.src = chain[0];
+    cover.classList.remove('no-thumb');
+  }
+
+  function resolveRemoteCovers(root) {
+    if (!window.API || !API.resolveCover) return;
+    root.querySelectorAll('.cover-resolve[data-cover-link]:not([data-cover-done])').forEach(function (marker) {
+      marker.setAttribute('data-cover-done', '1');
+      var link = marker.getAttribute('data-cover-link') || '';
+      if (!link) return;
+      coverResolveCache[link] = coverResolveCache[link] || API.resolveCover(link).catch(function () { return null; });
+      coverResolveCache[link].then(function (res) {
+        var data = res && res.data ? res.data : {};
+        var coverUrl = data.cover || data.coverUrl || '';
+        if (!coverUrl) return;
+        setCoverImage(marker.closest('.cover'), [coverUrl, driveThumb(data.finalUrl)], marker.getAttribute('data-cover-title') || '');
+      });
+    });
+  }
+
   function draw(type, direction) {
     var s = store[type]; if (!s) return;
     var grid = s.grid, items = s.items;
@@ -435,6 +484,7 @@
     var blanks = '';
     for (var i = pageItems.length; i < cols; i++) blanks += '<div class="grid-spacer" aria-hidden="true"></div>';
     grid.innerHTML = pageItems.map(s.cfg.item).join('') + blanks;
+    resolveRemoteCovers(grid);
     grid.classList.remove('slide-next', 'slide-prev');
     if (direction === 'next' || direction === 'prev') {
       grid.classList.add(direction === 'next' ? 'slide-next' : 'slide-prev');
@@ -765,6 +815,10 @@
   updateNavActive();
 
   var ham = document.getElementById('hamburger'), navLinks = document.getElementById('navLinks');
+  function closeNavMenu() {
+    navLinks.classList.remove('open');
+    ham.setAttribute('aria-expanded', 'false');
+  }
   ham.setAttribute('aria-expanded', 'false');
   ham.addEventListener('click', function () {
     updateNavActive();
@@ -772,9 +826,16 @@
     ham.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   });
   navLinks.addEventListener('click', function (e) {
-    if (e.target.tagName !== 'A') return;
-    navLinks.classList.remove('open');
-    ham.setAttribute('aria-expanded', 'false');
+    if (!e.target.closest('a, button')) return;
+    closeNavMenu();
+  });
+  document.addEventListener('click', function (e) {
+    if (!navLinks.classList.contains('open')) return;
+    if (e.target.closest('#hamburger') || e.target.closest('#navLinks')) return;
+    closeNavMenu();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeNavMenu();
   });
 
   var jumpTop = document.getElementById('jumpTop');
