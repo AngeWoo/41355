@@ -96,6 +96,14 @@
     var m = String(it.title || '').match(/(\d{4})\s*年\s*(\d{1,2})\s*月/);
     return m ? m[1] + '-' + pad(m[2]) : '';
   }
+  var KNOWN_NEWSLETTER_COVERS = {
+    '2026-07': 'https://drive.google.com/thumbnail?id=152-UzlgrDZC0VqUT3OHrILskwzemWeJQ&sz=w700',
+    'https://meee.ing/18d09c': 'https://drive.google.com/thumbnail?id=152-UzlgrDZC0VqUT3OHrILskwzemWeJQ&sz=w700'
+  };
+  function knownNewsletterCover(it) {
+    if (!it) return '';
+    return KNOWN_NEWSLETTER_COVERS[issueKey(it)] || KNOWN_NEWSLETTER_COVERS[String(it.link || '').trim()] || '';
+  }
   function coverImgMarkup(urls, title) {
     urls = uniqueUrls(urls);
     if (!urls.length) return '';
@@ -119,7 +127,8 @@
   function newsletterCover(it) {
     var issueStr = fmtDate(it.issue || it.date);
     var seed = seedCover('newsletter', it);
-    var urls = [it.cover, seed, driveThumb(it.cover), driveThumb(seed), driveThumb(it.link)];
+    var known = knownNewsletterCover(it);
+    var urls = [it.cover, known, seed, driveThumb(it.cover), driveThumb(known), driveThumb(seed), driveThumb(it.link)];
     var parts = issueStr.slice(0, 7).split('-');
     var fallback = '<div class="ph news-ph">' +
       '<span class="news-ph-strip"></span>' +
