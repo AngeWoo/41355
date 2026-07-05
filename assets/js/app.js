@@ -952,7 +952,7 @@
       memberOpen.setAttribute('aria-pressed', m && m.name ? 'true' : 'false');
       if (ham) {
         ham.classList.toggle('member-logged-in', !!(m && m.name));
-        ham.setAttribute('data-member-state', m && m.name ? '會員已登入' : '會員未登入');
+        ham.setAttribute('data-member-state', m && m.name ? '會員登入' : '會員未登入');
       }
     }
     function updateMemberCurrent() {
