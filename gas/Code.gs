@@ -154,6 +154,9 @@ function doGet(e) {
       Object.keys(SCHEMA).forEach(function (t) { out[t] = fresh ? listRecords(t) : cachedListRecords(t); });
       return json({ ok: true, data: out });
     }
+    if (action === 'resolveCover') {
+      return json({ ok: true, data: resolveCoverInfo(params.url) });
+    }
     if (action === 'ping') {
       return json({ ok: true, msg: 'pong' });
     }
@@ -239,6 +242,87 @@ function cachedListRecords(type) {
 function clearDataCache() {
   var keys = Object.keys(SCHEMA).map(dataCacheKey);
   CacheService.getScriptCache().removeAll(keys);
+}
+
+function resolveCoverInfo(url) {
+  url = String(url || '').trim();
+  if (!url) return { source: '', finalUrl: '', fileId: '', cover: '' };
+
+  var cache = CacheService.getScriptCache();
+  var key = 'cover_' + Utilities.base64EncodeWebSafe(
+    Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, url)
+  ).slice(0, 40);
+  var cached = cache.get(key);
+  if (cached) {
+    try { return JSON.parse(cached); } catch (e) { }
+  }
+
+  var finalUrl = url;
+  var text = '';
+  var contentType = '';
+  for (var i = 0; i < 6; i++) {
+    var res = UrlFetchApp.fetch(finalUrl, {
+      muteHttpExceptions: true,
+      followRedirects: false,
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    var code = res.getResponseCode();
+    var headers = res.getAllHeaders();
+    var location = headers.Location || headers.location || '';
+    if (code >= 300 && code < 400 && location) {
+      finalUrl = resolveRelativeUrl(finalUrl, location);
+      continue;
+    }
+    contentType = String(headers['Content-Type'] || headers['content-type'] || '');
+    if (/html|text/i.test(contentType)) {
+      text = res.getContentText('UTF-8').slice(0, 120000);
+      var metaUrl = pickMetaRefreshUrl(text);
+      if (metaUrl && metaUrl !== finalUrl) {
+        finalUrl = resolveRelativeUrl(finalUrl, metaUrl);
+        continue;
+      }
+    }
+    break;
+  }
+
+  var fileId = extractDriveFileId(finalUrl) || extractDriveFileId(text);
+  var cover = fileId ? driveThumbnailUrl(fileId) : '';
+  if (!cover && (/^image\//i.test(contentType) || /\.(png|jpe?g|webp|gif)(\?|#|$)/i.test(finalUrl))) {
+    cover = finalUrl;
+  }
+
+  var out = { source: url, finalUrl: finalUrl, fileId: fileId || '', cover: cover };
+  cache.put(key, JSON.stringify(out), 60 * 60 * 6);
+  return out;
+}
+
+function extractDriveFileId(value) {
+  var s = String(value || '');
+  var m = s.match(/drive\.google\.com\/file\/d\/([A-Za-z0-9_-]+)/) ||
+    s.match(/[?&]id=([A-Za-z0-9_-]+)/) ||
+    s.match(/\/d\/([A-Za-z0-9_-]{20,})/) ||
+    s.match(/thumbnail\?id=([A-Za-z0-9_-]+)/);
+  return m ? m[1] : '';
+}
+
+function driveThumbnailUrl(fileId) {
+  return fileId ? 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(fileId) + '&sz=w700' : '';
+}
+
+function pickMetaRefreshUrl(text) {
+  var s = String(text || '');
+  var m = s.match(/http-equiv=["']refresh["'][^>]+content=["'][^"']*url=([^"'>\s]+)/i) ||
+    s.match(/content=["'][^"']*url=([^"'>\s]+)["'][^>]+http-equiv=["']refresh["']/i);
+  return m ? m[1].replace(/&amp;/g, '&') : '';
+}
+
+function resolveRelativeUrl(base, href) {
+  href = String(href || '').trim();
+  if (/^https?:\/\//i.test(href)) return href;
+  if (/^\/\//.test(href)) return String(base).match(/^https?:/i)[0] + href;
+  var origin = String(base).match(/^(https?:\/\/[^/]+)/i);
+  if (href.charAt(0) === '/') return (origin ? origin[1] : '') + href;
+  return String(base).replace(/[#?].*$/, '').replace(/\/[^/]*$/, '/') + href;
 }
 
 function officialLiveInfo() {
