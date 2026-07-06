@@ -29,7 +29,7 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   function truthy(v) { var s = String(v).toLowerCase(); return s === 'true' || s === '1' || s === 'yes' || v === true; }
-  function linkAttr(url) { return url ? ' href="' + esc(url) + '" target="_blank" rel="noopener"' : ' href="javascript:void(0)"'; }
+  function linkAttr(url) { return url ? ' href="' + esc(url) + '"' : ' href="javascript:void(0)"'; }
   function parseRecordDate(value) {
     var s = String(value || '').trim();
     if (!s) return null;
@@ -319,7 +319,7 @@
       return;
     }
     out.innerHTML = rows.map(function (r) {
-      return '<a class="search-result" href="' + esc(r.href) + '"' + (r.external ? ' target="_blank" rel="noopener"' : '') + '>' +
+      return '<a class="search-result" href="' + esc(r.href) + '">' +
         '<span class="type">' + esc(r.label) + '</span>' +
         '<b>' + esc(r.title) + '</b>' +
         (r.body ? '<p>' + esc(String(r.body).slice(0, 96)) + '</p>' : '') +
@@ -571,23 +571,38 @@
   }
 
   function boot() {
-    var renderedSeed = false;
-    if (API.seedAll) {
-      renderData(API.seedAll(), true);
-      renderedSeed = true;
+    var seedData = API.seedAll ? API.seedAll() : null;
+    var didRender = false;
+    function renderFallback() {
+      if (didRender || !seedData) return;
+      didRender = true;
+      renderData(seedData, true);
+      showModeBanner('<b>展示模式</b>：目前顯示內建資料');
     }
     refreshTalks();
 
+    if (!API.all) {
+      renderFallback();
+      return;
+    }
     API.all().then(function (res) {
-      if (!res.ok) { console.error(res.error); return; }
+      if (!res || !res.ok) {
+        console.error(res && res.error);
+        renderFallback();
+        return;
+      }
+      didRender = true;
       apiReady = true;
       talksReady = true;
-      renderData(res.data, !renderedSeed);
+      renderData(res.data, true);
       var bannerMsg = res.mode === 'published' ? '<b>資料來源：Google 試算表</b>'
         : res.mode === 'demo' ? '<b>展示模式</b>：目前顯示內建資料'
         : '<b>本機資料模式</b>';
       showModeBanner(bannerMsg);
-    }).catch(function (e) { console.error(e); });
+    }).catch(function (e) {
+      console.error(e);
+      renderFallback();
+    });
   }
 
   function setStat(id, n) {
@@ -607,8 +622,14 @@
     el.textContent = target + (target > 0 ? '+' : '');
   }
 
+  function shouldReduceMotion() {
+    if (!window.matchMedia) return false;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      window.matchMedia('(max-width: 860px)').matches;
+  }
+
   function updateStats(d, animate) {
-    var fn = animate ? setStat : setStatNow;
+    var fn = animate && !shouldReduceMotion() ? setStat : setStatNow;
     fn('statPodcast', (d.podcast || []).length);
     fn('statNews', (d.news || []).length);
     fn('statDharma', (d.dharma || []).length);
