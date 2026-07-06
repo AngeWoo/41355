@@ -274,6 +274,8 @@
   var talkPage = 0;
   var talksReady = false;
   var talksLoading = false;
+  var DATA_CACHE_KEY = 'shinnyo_front_data_cache_v1';
+  var DATA_CACHE_MAX_AGE = 30 * 60 * 1000;
 
   function textOf(it, fields) {
     return fields.map(function (f) { return it && it[f] ? String(it[f]) : ''; }).join(' ');
@@ -570,16 +572,51 @@
     if (talkPopover && !talkPopover.hidden) renderTalkListAudio();
   }
 
+  function dataSignature(d) {
+    try { return JSON.stringify(d || {}); } catch (e) { return ''; }
+  }
+
+  function readCachedFrontData() {
+    try {
+      var cached = JSON.parse(localStorage.getItem(DATA_CACHE_KEY) || 'null');
+      if (!cached || !cached.data || !cached.savedAt) return null;
+      if (Date.now() - Number(cached.savedAt) > DATA_CACHE_MAX_AGE) return null;
+      return cached;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeCachedFrontData(data, mode) {
+    try {
+      localStorage.setItem(DATA_CACHE_KEY, JSON.stringify({
+        savedAt: Date.now(),
+        mode: mode || '',
+        data: data || {}
+      }));
+    } catch (e) {}
+  }
+
   function boot() {
     var seedData = API.seedAll ? API.seedAll() : null;
+    var cachedData = readCachedFrontData();
     var didRender = false;
+    var renderedSignature = '';
     function renderFallback() {
       if (didRender || !seedData) return;
       didRender = true;
+      renderedSignature = dataSignature(seedData);
       renderData(seedData, true);
       showModeBanner('<b>展示模式</b>：目前顯示內建資料');
     }
     refreshTalks();
+
+    if (cachedData) {
+      didRender = true;
+      renderedSignature = dataSignature(cachedData.data);
+      renderData(cachedData.data, false);
+      showModeBanner('<b>快取資料</b>：背景同步 Google 試算表中');
+    }
 
     if (!API.all) {
       renderFallback();
@@ -591,10 +628,15 @@
         renderFallback();
         return;
       }
+      writeCachedFrontData(res.data, res.mode);
+      var incomingSignature = dataSignature(res.data);
       didRender = true;
       apiReady = true;
       talksReady = true;
-      renderData(res.data, true);
+      if (incomingSignature !== renderedSignature) {
+        renderedSignature = incomingSignature;
+        renderData(res.data, !cachedData);
+      }
       var bannerMsg = res.mode === 'published' ? '<b>資料來源：Google 試算表</b>'
         : res.mode === 'demo' ? '<b>展示模式</b>：目前顯示內建資料'
         : '<b>本機資料模式</b>';

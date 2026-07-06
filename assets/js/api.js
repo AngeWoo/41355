@@ -16,15 +16,26 @@
   var TYPES = ['news', 'podcast', 'calendar', 'headquarters', 'newsletter', 'dharma', 'tools', 'talks', 'members'];
   var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], headquarters: [], newsletter: [], dharma: [], tools: [], talks: [], members: [] };
 
-  function freshUrl(url) {
+  function requestUrl(url, fresh) {
     var sep = url.indexOf('?') === -1 ? '?' : '&';
-    return url + sep + 'fresh=1&_ts=' + encodeURIComponent(Date.now());
+    return url + sep + (fresh ? 'fresh=1&' : '') + '_ts=' + encodeURIComponent(Date.now());
   }
 
   function fetchFresh(url, options) {
     options = options || {};
     options.cache = 'no-store';
-    return fetch(freshUrl(url), options);
+    return fetch(requestUrl(url, true), options);
+  }
+
+  function fetchCached(url, options) {
+    options = options || {};
+    options.cache = 'no-store';
+    return fetch(requestUrl(url, false), options);
+  }
+
+  function clearFrontDataCache(action) {
+    if (['create', 'update', 'delete', 'reorder'].indexOf(action) === -1) return;
+    try { localStorage.removeItem('shinnyo_front_data_cache_v1'); } catch (e) {}
   }
 
   // ---------- 共用：排序（與 GAS 後端一致）----------
@@ -76,7 +87,7 @@
     var gid = PUB.gid[type];
     if (gid == null) return Promise.resolve([]);
     var url = PUB.base + '?output=csv&gid=' + encodeURIComponent(gid) + '&single=true';
-    return fetchFresh(url, { method: 'GET' })
+    return fetchCached(url, { method: 'GET' })
       .then(function (r) { return r.text(); })
       .then(function (t) { return sortRecords(csvToRecords(t)); });
   }
@@ -84,7 +95,7 @@
   // ---------- 讀取 ----------
   function listType(type) {
     if (MODE === 'gas') {
-      return fetchFresh(GAS + '?action=list&type=' + encodeURIComponent(type))
+      return fetchCached(GAS + '?action=list&type=' + encodeURIComponent(type))
         .then(function (r) { return r.json(); });
     }
     if (MODE === 'published') {
@@ -95,7 +106,7 @@
 
   function listAll() {
     if (MODE === 'gas') {
-      return fetchFresh(GAS + '?action=all').then(function (r) { return r.json(); });
+      return fetchCached(GAS + '?action=all').then(function (r) { return r.json(); });
     }
     if (MODE === 'published') {
       return Promise.all(TYPES.map(fetchPublished)).then(function (arr) {
@@ -115,7 +126,7 @@
 
   function resolveCover(url) {
     if (MODE === 'gas' && url) {
-      return fetchFresh(GAS + '?action=resolveCover&url=' + encodeURIComponent(url))
+      return fetchCached(GAS + '?action=resolveCover&url=' + encodeURIComponent(url))
         .then(function (r) { return r.json(); });
     }
     return Promise.resolve({ ok: false, error: 'resolveCover requires GAS mode' });
@@ -133,7 +144,10 @@
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(body)
-    }).then(function (r) { return r.json(); });
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      if (res && res.ok) clearFrontDataCache(body && body.action);
+      return res;
+    });
   }
 
   window.API = {
