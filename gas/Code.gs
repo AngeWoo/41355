@@ -23,6 +23,7 @@ var ADMIN_ACCOUNT_DEFAULT = 'admin';
 var TOKEN_TTL_SECONDS = 60 * 60 * 6;        // token 有效 6 小時
 var DATA_CACHE_SECONDS = 60 * 5;            // 前台公開資料快取 5 分鐘
 var OFFICIAL_LIVE_PAGE = 'https://www.shinnyo-en.org.tw/at2026/index2026.html';
+var MEMBER_NOTIFY_EMAIL = 'angewu@hotmail.com';
 var PROP = PropertiesService.getScriptProperties();
 
 // 每個內容類型對應的分頁與預設欄位（標頭）。
@@ -456,6 +457,15 @@ function publicMember(row) {
   };
 }
 
+function htmlEscape(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
@@ -487,6 +497,43 @@ function findMemberByMobile(mobile) {
   })[0] || null;
 }
 
+function notifyMemberRegistered(member) {
+  if (!MEMBER_NOTIFY_EMAIL) return;
+  var createdAt = member.createdAt
+    ? Utilities.formatDate(new Date(member.createdAt), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss')
+    : Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  var subject = '新會員註冊通知：' + (member.name || '');
+  var body = [
+    '有新會員完成註冊。',
+    '',
+    '姓名：' + (member.name || ''),
+    'Email：' + (member.email || ''),
+    '手機：' + (member.mobile || ''),
+    '會員 ID：' + (member.id || ''),
+    '註冊時間：' + createdAt
+  ].join('\n');
+  var htmlBody =
+    '<p>有新會員完成註冊。</p>' +
+    '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;">' +
+    '<tr><th align="left">姓名</th><td>' + htmlEscape(member.name) + '</td></tr>' +
+    '<tr><th align="left">Email</th><td>' + htmlEscape(member.email) + '</td></tr>' +
+    '<tr><th align="left">手機</th><td>' + htmlEscape(member.mobile) + '</td></tr>' +
+    '<tr><th align="left">會員 ID</th><td>' + htmlEscape(member.id) + '</td></tr>' +
+    '<tr><th align="left">註冊時間</th><td>' + htmlEscape(createdAt) + '</td></tr>' +
+    '</table>';
+  try {
+    MailApp.sendEmail({
+      to: MEMBER_NOTIFY_EMAIL,
+      subject: subject,
+      body: body,
+      htmlBody: htmlBody,
+      name: '真如苑資料網站'
+    });
+  } catch (err) {
+    console.error('member notification email failed: ' + err);
+  }
+}
+
 function handleMemberRegister(body) {
   var record = body.record || {};
   var name = String(record.name || '').trim();
@@ -498,6 +545,7 @@ function handleMemberRegister(body) {
   if (findMemberByEmail(email)) return json({ ok: false, error: '此 email 已註冊。' });
   if (findMemberByMobile(mobile)) return json({ ok: false, error: '此手機已註冊。' });
   var created = createRecord('members', { name: name, email: email, mobile: mobile });
+  notifyMemberRegistered(created);
   return jsonWithFreshCache({ ok: true, data: publicMember(created) });
 }
 
