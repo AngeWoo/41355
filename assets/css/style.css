@@ -1656,6 +1656,21 @@ html.talk-open body {
 
 /* ---------- RWD ---------- */
 @media (max-width: 860px) {
+  .nav,
+  footer.site,
+  .hero .ensou,
+  .hero-feature,
+  .grid.can-swipe-prev::before,
+  .grid.can-swipe-next::after,
+  .talk-list.can-swipe-prev::before,
+  .talk-list.can-swipe-next::after {
+    animation: none;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
   .nav-inner { gap: 12px; }
   .nav-links {
     position: fixed; top: 76px; right: 12px; left: auto; width: clamp(180px, 33.333vw, 240px);
@@ -1988,7 +2003,12 @@ html.talk-open body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero .ensou { animation: none; }
-  .hero-feature { animation: none; }
-  .hero-feature::before { transition: none; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .001ms !important;
+  }
 }
