@@ -332,6 +332,9 @@
   function find(type, id) { return (cache[type] || []).filter(function (r) { return String(r.id) === String(id); })[0]; }
 
   // ---------- 編輯彈窗 ----------
+  function canNotifyMembers(c) {
+    return c.type !== 'members' && c.fields.some(function (f) { return f.k === 'link'; });
+  }
   function fieldHtml(f, val) {
     var v = esc(f.type === 'date' ? dateValue(val) : (val == null ? '' : val));
     if (f.type === 'textarea') return '<textarea id="f_' + f.k + '"' + (f.req ? ' required' : '') + '>' + v + '</textarea>';
@@ -352,7 +355,10 @@
     $('#formFields').innerHTML = c.fields.map(function (f) {
       return '<div class="field"><label>' + esc(f.label) + (f.req ? ' *' : '') + '</label>' +
         fieldHtml(f, record ? record[f.k] : (f.k === 'category' && type === 'dharma' ? '瑞聲法語' : '')) + '</div>';
-    }).join('');
+    }).join('') + (canNotifyMembers(c)
+      ? '<label class="notify-members-toggle"><input type="checkbox" id="notifyMembers" />' +
+        '<span><b>發信通知所有會員</b><small>本次儲存後，若有連結網址，寄送新上架通知到會員 Email。</small></span></label>'
+      : '');
     $('#modalMask').classList.add('open');
     document.documentElement.classList.add('admin-modal-open');
   }
@@ -374,13 +380,24 @@
       var el = $('#f_' + f.k);
       if (el) rec[f.k] = f.type === 'url' ? el.value.trim() : el.value;
     });
+    var notifyMembers = !!($('#notifyMembers') && $('#notifyMembers').checked);
     if (API.isReadOnly()) { toast(API.mode === 'published' ? '唯讀模式：請在 Google 試算表編輯' : '展示模式無法儲存', true); return; }
     var btn = $('#saveBtn'); btn.disabled = true; btn.textContent = '儲存中…';
-    var op = editing && !seedFallback ? API.update(current, rec, token) : API.create(current, rec, token);
+    var op = editing && !seedFallback ? API.update(current, rec, token, { notifyMembers: notifyMembers }) : API.create(current, rec, token, { notifyMembers: notifyMembers });
     op.then(function (res) {
       btn.disabled = false; btn.textContent = '儲存';
       if (res.ok) {
-        closeEditor(); toast(editing ? '已更新' : '已新增'); loadType(current);
+        var wasEditing = !!(editing && !seedFallback);
+        closeEditor();
+        var notify = res.memberNotify;
+        if (notifyMembers && notify) {
+          if (notify.ok) toast((wasEditing ? '已更新，' : '已新增，') + '已通知 ' + (notify.sent || 0) + ' 位會員');
+          else toast((wasEditing ? '已更新，但會員通知失敗：' : '已新增，但會員通知失敗：') + (notify.error || '未知錯誤'), true);
+          if (console.table && notify.results) console.table(notify.results);
+        } else {
+          toast(wasEditing ? '已更新' : '已新增');
+        }
+        loadType(current);
       } else {
         alertBox($('#modalAlert'), res.error || '儲存失敗', 'err');
         if (/未授權|逾時/.test(res.error || '')) setTimeout(function () { $('#logoutBtn').click(); }, 1500);

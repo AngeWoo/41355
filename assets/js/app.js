@@ -1002,8 +1002,24 @@
     var memberRegisterForm = document.getElementById('memberRegisterForm');
     var memberLoginMobile = document.getElementById('memberLoginMobile');
     var memberCloseTimer = null;
+    var protectedHashes = {
+      '#home': true,
+      '#podcast': true,
+      '#calendar': true,
+      '#headquarters': true,
+      '#newsletter': true,
+      '#dharma': true,
+      '#tools': true
+    };
     function currentMember() {
       try { return JSON.parse(localStorage.getItem(MEMBER_KEY) || 'null'); } catch (e) { return null; }
+    }
+    function isMemberLoggedIn() {
+      var m = currentMember();
+      return !!(m && m.name);
+    }
+    function syncMemberGate() {
+      document.documentElement.classList.toggle('member-locked', !isMemberLoggedIn());
     }
     function saveMember(member) {
       localStorage.setItem(MEMBER_KEY, JSON.stringify(member || {}));
@@ -1044,6 +1060,7 @@
       var m = currentMember();
       updateMemberButton();
       updateMemberCurrent();
+      syncMemberGate();
       if (memberTabs) memberTabs.hidden = !!(m && m.name);
       if (m && m.name) {
         if (memberLoginForm) memberLoginForm.classList.remove('active');
@@ -1058,14 +1075,19 @@
       memberStatus.textContent = msg;
       memberStatus.className = 'member-status' + (type ? ' ' + type : '');
     }
-    function openMemberPopover() {
+    function openMemberPopover(tab, msg) {
+      if (tab && tab.type) tab = '';
       if (!memberPopover) return;
       clearTimeout(memberCloseTimer);
       var m = currentMember();
       memberPopover.hidden = false;
       syncMemberUi();
-      setMemberStatus(m ? '您已登入會員：' + m.name : '輸入手機即可登入。', m ? 'ok' : '');
-      if (!m && memberLoginMobile) setTimeout(function () { memberLoginMobile.focus(); }, 80);
+      if (!m && tab === 'register') selectMemberTab('register');
+      setMemberStatus(m ? '您已登入會員：' + m.name : (msg || '請先註冊或登入會員後觀看內容。'), m ? 'ok' : '');
+      if (!m) {
+        var focusTarget = tab === 'register' ? document.getElementById('memberName') : memberLoginMobile;
+        if (focusTarget) setTimeout(function () { focusTarget.focus(); }, 80);
+      }
     }
     function closeMemberPopover() {
       clearTimeout(memberCloseTimer);
@@ -1092,6 +1114,42 @@
         if (firstInput) firstInput.focus();
       });
     });
+    function isProtectedHashLink(a) {
+      var href = a && a.getAttribute('href');
+      if (!href) return false;
+      if (href.charAt(0) === '#') return !!protectedHashes[href];
+      try {
+        var url = new URL(href, location.href);
+        return url.pathname === location.pathname && !!protectedHashes[url.hash];
+      } catch (e) {
+        return false;
+      }
+    }
+    function requiresMember(target) {
+      if (!target || target.closest('.member-popover') || target.closest('#memberOpen')) return false;
+      if (target.closest('#jumpBottom') || target.closest('#liveVideoOpen')) return true;
+      var a = target.closest('a');
+      if (!a) return !!target.closest('main section.block');
+      if (a.closest('.brand') || a.closest('.member-panel')) return false;
+      if (/admin\.html/i.test(a.getAttribute('href') || '')) return false;
+      return isProtectedHashLink(a) || !!a.closest('main, .hero-features, .search-results');
+    }
+    function promptMemberRegistration(e) {
+      if (isMemberLoggedIn() || !requiresMember(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof closeNavMenu === 'function') closeNavMenu();
+      openMemberPopover('register', '請先註冊會員，完成後即可觀看所有內容。');
+    }
+    document.addEventListener('click', promptMemberRegistration, true);
+    var siteSearch = document.getElementById('siteSearch');
+    if (siteSearch) {
+      siteSearch.addEventListener('submit', function (e) {
+        if (isMemberLoggedIn()) return;
+        e.preventDefault();
+        openMemberPopover('register', '請先註冊會員，完成後即可搜尋與觀看內容。');
+      }, true);
+    }
     function normalizeMemberMobileInput(value) {
       var mobile = String(value || '')
         .trim()
@@ -1131,27 +1189,56 @@
       });
     }
     if (memberRegisterForm) {
+      function formatMailResults(mail) {
+        return (mail || []).map(function (m) {
+          return [
+            'label=' + (m.label || ''),
+            'to=' + (m.to || ''),
+            'ok=' + !!m.ok,
+            'error=' + (m.error || '')
+          ].join(' | ');
+        }).join('\n');
+      }
       memberRegisterForm.addEventListener('submit', function (e) {
         e.preventDefault();
+        var registerBtn = memberRegisterForm.querySelector('button[type="submit"]');
+        if (registerBtn && registerBtn.disabled) return;
         var record = {
           name: document.getElementById('memberName').value,
           email: document.getElementById('memberEmail').value,
           mobile: normalizeMemberMobileInput(document.getElementById('memberMobile').value)
         };
         document.getElementById('memberMobile').value = record.mobile;
+        if (registerBtn) { registerBtn.disabled = true; registerBtn.textContent = '註冊中...'; }
         setMemberStatus('註冊中...', '');
         API.memberRegister(record).then(function (res) {
+          if (registerBtn) { registerBtn.disabled = false; registerBtn.textContent = '完成註冊'; }
           if (res.ok) {
             saveMember(res.data);
             var failedMail = (res.mail || []).filter(function (m) { return !m.ok; });
+            var mailError = failedMail.map(function (m) { return (m.label || 'mail') + ': ' + (m.error || 'unknown'); }).join('；');
+            if (res.mail && res.mail.length) {
+              if (failedMail.length) {
+                console.error('會員註冊郵件通知失敗\n' + formatMailResults(res.mail));
+                if (console.table) console.table(res.mail);
+              } else {
+                console.log('會員註冊郵件通知成功\n' + formatMailResults(res.mail));
+                if (console.table) console.table(res.mail);
+              }
+            } else {
+              console.warn('會員註冊未回傳郵件通知狀態', res);
+            }
             setMemberStatus(failedMail.length
-              ? '註冊完成，但郵件通知失敗，請通知管理員查看 Apps Script 授權或執行紀錄。'
+              ? '註冊完成，但郵件通知失敗，詳細錯誤已寫入瀏覽器 console。'
               : '註冊完成，已登入會員。', failedMail.length ? 'err' : 'ok');
-            closeMemberPopoverSoon();
+            if (!failedMail.length) closeMemberPopoverSoon();
           } else {
             setMemberStatus(res.error || '註冊失敗。', 'err');
           }
-        }).catch(function () { setMemberStatus('連線失敗，請稍後再試。', 'err'); });
+        }).catch(function () {
+          if (registerBtn) { registerBtn.disabled = false; registerBtn.textContent = '完成註冊'; }
+          setMemberStatus('連線失敗，請稍後再試。', 'err');
+        });
       });
     }
     syncMemberUi();

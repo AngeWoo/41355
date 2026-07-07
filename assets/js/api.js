@@ -166,8 +166,14 @@
     officialLive: officialLive,
     resolveCover: resolveCover,
     login: function (password, account) { return post({ action: 'login', account: account, password: password }); },
-    create: function (type, record, token) { return post({ action: 'create', type: type, record: record, token: token }); },
-    update: function (type, record, token) { return post({ action: 'update', type: type, record: record, token: token }); },
+    create: function (type, record, token, options) {
+      options = options || {};
+      return post({ action: 'create', type: type, record: record, token: token, notifyMembers: !!options.notifyMembers });
+    },
+    update: function (type, record, token, options) {
+      options = options || {};
+      return post({ action: 'update', type: type, record: record, token: token, notifyMembers: !!options.notifyMembers });
+    },
     remove: function (type, id, token) { return post({ action: 'delete', type: type, id: id, token: token }); },
     changePassword: function (oldP, newP, token) { return post({ action: 'changePassword', oldPassword: oldP, newPassword: newP, token: token }); }
     ,
