@@ -501,12 +501,13 @@ function findMemberByMobile(mobile) {
 }
 
 function notifyMemberRegistered(member) {
-  if (!MEMBER_NOTIFY_EMAIL) return;
+  var adminEmail = normalizeEmail(MEMBER_NOTIFY_EMAIL);
+  var memberEmail = normalizeEmail(member.email);
   var createdAt = member.createdAt
     ? Utilities.formatDate(new Date(member.createdAt), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss')
     : Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
-  var subject = '新會員註冊通知：' + (member.name || '');
-  var body = [
+  var adminSubject = '新會員註冊通知：' + (member.name || '');
+  var adminBody = [
     '有新會員完成註冊。',
     '',
     '姓名：' + (member.name || ''),
@@ -515,7 +516,7 @@ function notifyMemberRegistered(member) {
     '會員 ID：' + (member.id || ''),
     '註冊時間：' + createdAt
   ].join('\n');
-  var htmlBody =
+  var adminHtmlBody =
     '<p>有新會員完成註冊。</p>' +
     '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;">' +
     '<tr><th align="left">姓名</th><td>' + htmlEscape(member.name) + '</td></tr>' +
@@ -525,13 +526,49 @@ function notifyMemberRegistered(member) {
     '<tr><th align="left">註冊時間</th><td>' + htmlEscape(createdAt) + '</td></tr>' +
     '</table>';
   try {
-    MailApp.sendEmail({
-      to: MEMBER_NOTIFY_EMAIL,
-      subject: subject,
-      body: body,
-      htmlBody: htmlBody,
-      name: '真如苑資料網站'
-    });
+    if (adminEmail) {
+      MailApp.sendEmail({
+        to: adminEmail,
+        subject: adminSubject,
+        body: adminBody,
+        htmlBody: adminHtmlBody,
+        name: '真如苑資料網站'
+      });
+    }
+    if (memberEmail && memberEmail !== adminEmail) {
+      var memberSubject = '會員註冊完成確認';
+      var memberBody = [
+        (member.name || '會員') + ' 您好：',
+        '',
+        '您的會員註冊已完成。',
+        '',
+        '姓名：' + (member.name || ''),
+        'Email：' + (member.email || ''),
+        '手機：' + (member.mobile || ''),
+        '註冊時間：' + createdAt,
+        '',
+        '如非本人操作，請直接回覆此信通知管理員。'
+      ].join('\n');
+      var memberHtmlBody =
+        '<p>' + htmlEscape(member.name || '會員') + ' 您好：</p>' +
+        '<p>您的會員註冊已完成。</p>' +
+        '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;">' +
+        '<tr><th align="left">姓名</th><td>' + htmlEscape(member.name) + '</td></tr>' +
+        '<tr><th align="left">Email</th><td>' + htmlEscape(member.email) + '</td></tr>' +
+        '<tr><th align="left">手機</th><td>' + htmlEscape(member.mobile) + '</td></tr>' +
+        '<tr><th align="left">註冊時間</th><td>' + htmlEscape(createdAt) + '</td></tr>' +
+        '</table>' +
+        '<p>如非本人操作，請直接回覆此信通知管理員。</p>';
+      var memberMail = {
+        to: memberEmail,
+        subject: memberSubject,
+        body: memberBody,
+        htmlBody: memberHtmlBody,
+        name: '真如苑資料網站'
+      };
+      if (adminEmail) memberMail.replyTo = adminEmail;
+      MailApp.sendEmail(memberMail);
+    }
   } catch (err) {
     console.error('member notification email failed: ' + err);
   }
