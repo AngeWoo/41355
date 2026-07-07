@@ -83,6 +83,15 @@ function setup() {
   return '安裝完成，試算表：' + ss.getUrl();
 }
 
+function authorizeMailPermission() {
+  MailApp.sendEmail({
+    to: MEMBER_NOTIFY_EMAIL,
+    subject: '會員註冊郵件權限測試',
+    body: '如果收到這封信，代表 Apps Script 已取得 MailApp.sendEmail 權限。'
+  });
+  return 'MailApp.sendEmail 授權測試完成；剩餘每日寄信額度：' + MailApp.getRemainingDailyQuota();
+}
+
 function getSpreadsheet() {
   var id = PROP.getProperty('SPREADSHEET_ID');
   if (id) {
@@ -197,8 +206,16 @@ function doPost(e) {
     }
 
     switch (action) {
-      case 'create':         return jsonWithFreshCache({ ok: true, data: createRecord(body.type, body.record) });
-      case 'update':         return jsonWithFreshCache({ ok: true, data: updateRecord(body.type, body.record) });
+      case 'create': {
+        var created = createRecord(body.type, body.record);
+        created = normalizeRecordOrder(body.type, created.id, created.order) || created;
+        return jsonWithFreshCache({ ok: true, data: created, memberNotify: notifyMembersForRecord(body.type, created, body.notifyMembers) });
+      }
+      case 'update': {
+        var updated = updateRecord(body.type, body.record);
+        updated = normalizeRecordOrder(body.type, updated.id, updated.order) || updated;
+        return jsonWithFreshCache({ ok: true, data: updated, memberNotify: notifyMembersForRecord(body.type, updated, body.notifyMembers) });
+      }
       case 'delete':         return jsonWithFreshCache({ ok: true, data: deleteRecord(body.type, body.id) });
       case 'reorder':        return jsonWithFreshCache({ ok: true, data: reorder(body.type, body.ids) });
       case 'changePassword': return handleChangePassword(body);
@@ -500,9 +517,20 @@ function findMemberByMobile(mobile) {
   })[0] || null;
 }
 
+function sendMemberMail(label, mail) {
+  try {
+    MailApp.sendEmail(mail);
+    return { label: label, ok: true, to: mail.to || '' };
+  } catch (err) {
+    console.error('member notification email failed [' + label + ']: ' + err);
+    return { label: label, ok: false, to: mail.to || '', error: String(err) };
+  }
+}
+
 function notifyMemberRegistered(member) {
   var adminEmail = normalizeEmail(MEMBER_NOTIFY_EMAIL);
   var memberEmail = normalizeEmail(member.email);
+  var results = [];
   var createdAt = member.createdAt
     ? Utilities.formatDate(new Date(member.createdAt), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss')
     : Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
@@ -525,53 +553,47 @@ function notifyMemberRegistered(member) {
     '<tr><th align="left">會員 ID</th><td>' + htmlEscape(member.id) + '</td></tr>' +
     '<tr><th align="left">註冊時間</th><td>' + htmlEscape(createdAt) + '</td></tr>' +
     '</table>';
-  try {
-    if (adminEmail) {
-      MailApp.sendEmail({
+  if (adminEmail) {
+    results.push(sendMemberMail('admin', {
         to: adminEmail,
         subject: adminSubject,
         body: adminBody,
-        htmlBody: adminHtmlBody,
-        name: '真如苑資料網站'
-      });
-    }
-    if (memberEmail && memberEmail !== adminEmail) {
-      var memberSubject = '會員註冊完成確認';
-      var memberBody = [
-        (member.name || '會員') + ' 您好：',
-        '',
-        '您的會員註冊已完成。',
-        '',
-        '姓名：' + (member.name || ''),
-        'Email：' + (member.email || ''),
-        '手機：' + (member.mobile || ''),
-        '註冊時間：' + createdAt,
-        '',
-        '如非本人操作，請直接回覆此信通知管理員。'
-      ].join('\n');
-      var memberHtmlBody =
-        '<p>' + htmlEscape(member.name || '會員') + ' 您好：</p>' +
-        '<p>您的會員註冊已完成。</p>' +
-        '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;">' +
-        '<tr><th align="left">姓名</th><td>' + htmlEscape(member.name) + '</td></tr>' +
-        '<tr><th align="left">Email</th><td>' + htmlEscape(member.email) + '</td></tr>' +
-        '<tr><th align="left">手機</th><td>' + htmlEscape(member.mobile) + '</td></tr>' +
-        '<tr><th align="left">註冊時間</th><td>' + htmlEscape(createdAt) + '</td></tr>' +
-        '</table>' +
-        '<p>如非本人操作，請直接回覆此信通知管理員。</p>';
-      var memberMail = {
-        to: memberEmail,
-        subject: memberSubject,
-        body: memberBody,
-        htmlBody: memberHtmlBody,
-        name: '真如苑資料網站'
-      };
-      if (adminEmail) memberMail.replyTo = adminEmail;
-      MailApp.sendEmail(memberMail);
-    }
-  } catch (err) {
-    console.error('member notification email failed: ' + err);
+        htmlBody: adminHtmlBody
+    }));
   }
+  if (memberEmail && memberEmail !== adminEmail) {
+    var memberSubject = '會員註冊完成確認';
+    var memberBody = [
+      (member.name || '會員') + ' 您好：',
+      '',
+      '您的會員註冊已完成。',
+      '',
+      '姓名：' + (member.name || ''),
+      'Email：' + (member.email || ''),
+      '手機：' + (member.mobile || ''),
+      '註冊時間：' + createdAt,
+      '',
+      '如非本人操作，請直接回覆此信通知管理員。'
+    ].join('\n');
+    var memberHtmlBody =
+      '<p>' + htmlEscape(member.name || '會員') + ' 您好：</p>' +
+      '<p>您的會員註冊已完成。</p>' +
+      '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;">' +
+      '<tr><th align="left">姓名</th><td>' + htmlEscape(member.name) + '</td></tr>' +
+      '<tr><th align="left">Email</th><td>' + htmlEscape(member.email) + '</td></tr>' +
+      '<tr><th align="left">手機</th><td>' + htmlEscape(member.mobile) + '</td></tr>' +
+      '<tr><th align="left">註冊時間</th><td>' + htmlEscape(createdAt) + '</td></tr>' +
+      '</table>' +
+      '<p>如非本人操作，請直接回覆此信通知管理員。</p>';
+    var memberMail = {
+      to: memberEmail,
+      subject: memberSubject,
+      body: memberBody,
+      htmlBody: memberHtmlBody
+    };
+    results.push(sendMemberMail('member', memberMail));
+  }
+  return results;
 }
 
 function handleMemberRegister(body) {
@@ -585,8 +607,8 @@ function handleMemberRegister(body) {
   if (findMemberByEmail(email)) return json({ ok: false, error: '此 email 已註冊。' });
   if (findMemberByMobile(mobile)) return json({ ok: false, error: '此手機已註冊。' });
   var created = createRecord('members', { name: name, email: email, mobile: mobile });
-  notifyMemberRegistered(created);
-  return jsonWithFreshCache({ ok: true, data: publicMember(created) });
+  var mail = notifyMemberRegistered(created);
+  return jsonWithFreshCache({ ok: true, data: publicMember(created), mail: mail });
 }
 
 function handleMemberLogin(body) {
@@ -597,6 +619,92 @@ function handleMemberLogin(body) {
     return json({ ok: false, error: '找不到此手機會員：' + mobile + '。請確認後台會員資料的手機欄位。' });
   }
   return json({ ok: true, data: publicMember(member) });
+}
+
+function memberEmails() {
+  var seen = {};
+  return listRecords('members').map(function (m) {
+    return normalizeEmail(m.email);
+  }).filter(function (email) {
+    if (!email || email.indexOf('@') === -1 || seen[email]) return false;
+    seen[email] = true;
+    return true;
+  });
+}
+
+function recordTitle(type, record) {
+  record = record || {};
+  if (type === 'podcast') return [record.ep, record.title].filter(Boolean).join('｜') || 'Podcast';
+  if (type === 'newsletter') return record.title || record.issue || '親苑時報';
+  return record.title || record.issue || record.date || SCHEMA[type].sheet || '新上架';
+}
+
+function recordDescription(record) {
+  return record.body || record.desc || record.content || record.location || '';
+}
+
+function notifyMembersForRecord(type, record, enabled) {
+  if (!enabled) return null;
+  if (!SCHEMA[type] || type === 'members') return { ok: false, error: '此資料類型不支援會員通知。', sent: 0, results: [] };
+  record = record || {};
+  var link = String(record.link || '').trim();
+  if (!link) return { ok: false, error: '此筆資料沒有連結網址，未寄送。', sent: 0, results: [] };
+  var emails = memberEmails();
+  if (!emails.length) return { ok: false, error: '沒有可寄送的會員 Email。', sent: 0, results: [] };
+
+  var title = recordTitle(type, record);
+  var category = SCHEMA[type].sheet || type;
+  var desc = recordDescription(record);
+  var subject = '新上架通知：' + title;
+  var body = [
+    '親愛的會員您好：',
+    '',
+    '網站有新內容上架。',
+    '',
+    '分類：' + category,
+    '標題：' + title,
+    desc ? '說明：' + desc : '',
+    '連結：' + link,
+    '',
+    '此信由真如苑資料網站後台寄出。'
+  ].filter(function (line) { return line !== ''; }).join('\n');
+  var htmlBody =
+    '<p>親愛的會員您好：</p>' +
+    '<p>網站有新內容上架。</p>' +
+    '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;">' +
+    '<tr><th align="left">分類</th><td>' + htmlEscape(category) + '</td></tr>' +
+    '<tr><th align="left">標題</th><td>' + htmlEscape(title) + '</td></tr>' +
+    (desc ? '<tr><th align="left">說明</th><td>' + htmlEscape(desc) + '</td></tr>' : '') +
+    '<tr><th align="left">連結</th><td><a href="' + htmlEscape(link) + '">' + htmlEscape(link) + '</a></td></tr>' +
+    '</table>' +
+    '<p>此信由真如苑資料網站後台寄出。</p>';
+
+  var adminEmail = normalizeEmail(MEMBER_NOTIFY_EMAIL);
+  var results = [];
+  var sent = 0;
+  for (var i = 0; i < emails.length; i += 50) {
+    var chunk = emails.slice(i, i + 50);
+    var mail = {
+      to: adminEmail || chunk[0],
+      subject: subject,
+      body: body,
+      htmlBody: htmlBody
+    };
+    var bcc = adminEmail ? chunk : chunk.slice(1);
+    if (bcc.length) mail.bcc = bcc.join(',');
+    var result = sendMemberMail('members-' + (results.length + 1), mail);
+    result.count = chunk.length;
+    results.push(result);
+    if (result.ok) sent += chunk.length;
+  }
+  var failed = results.filter(function (r) { return !r.ok; });
+  return {
+    ok: failed.length === 0,
+    sent: sent,
+    total: emails.length,
+    error: failed.map(function (r) { return r.error; }).filter(Boolean).join('；'),
+    results: results
+  };
 }
 
 // ====================== 資料操作 ======================
@@ -677,6 +785,60 @@ function updateRecord(type, record) {
   var obj = {};
   headers.forEach(function (h, i) { obj[h] = row[i]; });
   return obj;
+}
+
+function normalizeRecordOrder(type, activeId, desiredOrder) {
+  var def = SCHEMA[type];
+  if (!def) return null;
+  var sh = sheetFor(type);
+  var headers = readHeaders(sh);
+  var idIdx = headers.indexOf('id');
+  var orderIdx = headers.indexOf('order');
+  var lastRow = sh.getLastRow();
+  if (idIdx === -1 || orderIdx === -1 || lastRow < 2) return null;
+
+  var values = sh.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  var rows = values.map(function (row, idx) {
+    return { row: row, originalIndex: idx, id: String(row[idIdx] || '') };
+  }).filter(function (item) {
+    return item.id;
+  });
+  if (!rows.length) return null;
+
+  var active = null;
+  var others = [];
+  rows.forEach(function (item) {
+    if (item.id === String(activeId)) active = item;
+    else others.push(item);
+  });
+  if (!active) return null;
+
+  var target = Number(desiredOrder || active.row[orderIdx]);
+  if (!isFinite(target) || target < 1) target = rows.length;
+  target = Math.max(1, Math.min(rows.length, Math.round(target)));
+
+  others.sort(function (a, b) {
+    var ao = Number(a.row[orderIdx]);
+    var bo = Number(b.row[orderIdx]);
+    if (!isFinite(ao) || ao < 1) ao = a.originalIndex + 1;
+    if (!isFinite(bo) || bo < 1) bo = b.originalIndex + 1;
+    if (ao !== bo) return ao - bo;
+    return a.originalIndex - b.originalIndex;
+  });
+  others.splice(target - 1, 0, active);
+  others.forEach(function (item, idx) {
+    item.row[orderIdx] = idx + 1;
+  });
+
+  sh.getRange(2, orderIdx + 1, values.length, 1).setValues(values.map(function (row) {
+    return [row[orderIdx]];
+  }));
+
+  var normalizedActive = null;
+  active.row[orderIdx] = target;
+  normalizedActive = {};
+  headers.forEach(function (h, i) { normalizedActive[h] = active.row[i]; });
+  return normalizedActive;
 }
 
 function deleteRecord(type, id) {
