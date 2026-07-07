@@ -453,7 +453,7 @@ function publicMember(row) {
     id: row.id || '',
     name: row.name || '',
     email: row.email || '',
-    mobile: String(row.mobile || '')
+    mobile: normalizeMobile(row.mobile)
   };
 }
 
@@ -471,11 +471,14 @@ function normalizeEmail(email) {
 }
 
 function normalizeMobile(mobile) {
-  return String(mobile || '')
+  var value = String(mobile || '')
     .trim()
     .replace(/[０-９]/g, function (d) { return String.fromCharCode(d.charCodeAt(0) - 0xFEE0); })
     .replace(/\.0+$/, '')
     .replace(/[^\d+]/g, '');
+  value = value.replace(/^\+?886(9\d{8})$/, '0$1');
+  if (/^9\d{8}$/.test(value)) value = '0' + value;
+  return value;
 }
 
 function mobileLookupKey(mobile) {
@@ -583,6 +586,7 @@ function listRecords(type) {
   var rows = values.map(function (row) {
     var obj = {};
     headers.forEach(function (h, i) { obj[h] = row[i]; });
+    if (type === 'members' && obj.mobile) obj.mobile = normalizeMobile(obj.mobile);
     return obj;
   }).filter(function (o) { return String(o.id || '').length > 0; });
 
