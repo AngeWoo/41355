@@ -1143,7 +1143,10 @@
         API.memberRegister(record).then(function (res) {
           if (res.ok) {
             saveMember(res.data);
-            setMemberStatus('註冊完成，已登入會員。', 'ok');
+            var failedMail = (res.mail || []).filter(function (m) { return !m.ok; });
+            setMemberStatus(failedMail.length
+              ? '註冊完成，但郵件通知失敗，請通知管理員查看 Apps Script 授權或執行紀錄。'
+              : '註冊完成，已登入會員。', failedMail.length ? 'err' : 'ok');
             closeMemberPopoverSoon();
           } else {
             setMemberStatus(res.error || '註冊失敗。', 'err');
