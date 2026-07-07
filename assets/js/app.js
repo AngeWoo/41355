@@ -1092,11 +1092,22 @@
         if (firstInput) firstInput.focus();
       });
     });
+    function normalizeMemberMobileInput(value) {
+      var mobile = String(value || '')
+        .trim()
+        .replace(/[０-９]/g, function (d) { return String.fromCharCode(d.charCodeAt(0) - 0xFEE0); })
+        .replace(/\.0+$/, '')
+        .replace(/[^\d+]/g, '');
+      mobile = mobile.replace(/^\+?886(9\d{8})$/, '0$1');
+      if (/^9\d{8}$/.test(mobile)) mobile = '0' + mobile;
+      return mobile;
+    }
     if (memberLoginForm) {
       memberLoginForm.addEventListener('submit', function (e) {
         e.preventDefault();
         var loginBtn = memberLoginForm.querySelector('button[type="submit"]');
-        var loginMobile = memberLoginMobile ? memberLoginMobile.value.trim() : '';
+        var loginMobile = memberLoginMobile ? normalizeMemberMobileInput(memberLoginMobile.value) : '';
+        if (memberLoginMobile) memberLoginMobile.value = loginMobile;
         if (!loginMobile) {
           setMemberStatus('請輸入手機號碼。', 'err');
           if (memberLoginMobile) memberLoginMobile.focus();
@@ -1125,8 +1136,9 @@
         var record = {
           name: document.getElementById('memberName').value,
           email: document.getElementById('memberEmail').value,
-          mobile: document.getElementById('memberMobile').value.trim()
+          mobile: normalizeMemberMobileInput(document.getElementById('memberMobile').value)
         };
+        document.getElementById('memberMobile').value = record.mobile;
         setMemberStatus('註冊中...', '');
         API.memberRegister(record).then(function (res) {
           if (res.ok) {
