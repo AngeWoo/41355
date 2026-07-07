@@ -43,6 +43,36 @@ body {
 html.modal-open,
 html.modal-open body { overflow: hidden; }
 
+html.member-locked main section.block {
+  min-height: 260px;
+  isolation: isolate;
+  cursor: pointer;
+}
+html.member-locked main section.block > .container {
+  filter: blur(7px);
+  opacity: .38;
+  pointer-events: none;
+  user-select: none;
+}
+html.member-locked main section.block::after {
+  content: '會員限定｜請先註冊或登入後觀看';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 8;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100% - 36px));
+  padding: 18px 22px;
+  border: 1px solid rgba(255,255,255,.34);
+  border-radius: 16px;
+  color: var(--ink-900);
+  background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(243,217,143,.94));
+  box-shadow: 0 24px 64px -30px rgba(0,0,0,.82), inset 0 1px 0 rgba(255,255,255,.9);
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: .02em;
+}
+
 /* 背景氛圍：深藍墨色 + 金色光暈 */
 .bg-aura {
   position: fixed; inset: 0; z-index: -2;
