@@ -117,9 +117,10 @@
     return Promise.resolve({ ok: true, data: seedAll(), mode: 'demo' });
   }
 
-  function officialLive() {
+  function officialLive(fresh) {
     if (MODE === 'gas') {
-      return fetchFresh(GAS + '?action=officialLive').then(function (r) { return r.json(); });
+      var fetcher = fresh ? fetchFresh : fetchCached;
+      return fetcher(GAS + '?action=officialLive').then(function (r) { return r.json(); });
     }
     return Promise.resolve({ ok: false, error: 'officialLive requires GAS mode' });
   }

@@ -926,16 +926,25 @@
   var liveOpen = document.getElementById('liveVideoOpen');
   var liveModal = document.getElementById('liveVideoModal');
   var liveClose = document.getElementById('liveVideoClose');
+  var liveRefreshTimer = null;
   function openLiveVideo() {
     if (!liveModal) return;
+    refreshOfficialLive(true);
     liveModal.hidden = false;
     document.documentElement.classList.add('modal-open');
+    if (!liveRefreshTimer) {
+      liveRefreshTimer = window.setInterval(function () { refreshOfficialLive(true); }, 60000);
+    }
     if (liveClose) liveClose.focus();
   }
   function closeLiveVideo() {
     if (!liveModal) return;
     liveModal.hidden = true;
     document.documentElement.classList.remove('modal-open');
+    if (liveRefreshTimer) {
+      window.clearInterval(liveRefreshTimer);
+      liveRefreshTimer = null;
+    }
     if (liveOpen) liveOpen.focus();
   }
   if (liveOpen) liveOpen.addEventListener('click', openLiveVideo);
@@ -970,14 +979,15 @@
     if (officialPage && officialLink) officialLink.href = officialPage;
   }
 
-  function refreshOfficialLive() {
+  function refreshOfficialLive(fresh) {
     if (!API.officialLive) return;
-    API.officialLive().then(function (res) {
+    API.officialLive(!!fresh).then(function (res) {
       if (!res || !res.ok || !res.data) return;
       setLiveText(res.data.title);
       setLiveUrl(res.data.url, res.data.officialPage);
     }).catch(function (e) { console.warn('official live sync failed', e); });
   }
+  window.refreshOfficialLive = refreshOfficialLive;
 
   function observeReveal() {
     var els = document.querySelectorAll('.reveal:not(.in)');
@@ -1248,5 +1258,5 @@
   observeReveal();
   setupMemberAuth();
   boot();
-  refreshOfficialLive();
+  refreshOfficialLive(true);
 })();
