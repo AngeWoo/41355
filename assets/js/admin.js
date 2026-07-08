@@ -125,11 +125,12 @@
       icon: '<path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z"/><path d="M4 21a8 8 0 0 1 16 0"/>',
       fields: [
         { k: 'name', label: '姓名', type: 'text', req: true },
+        { k: 'dharmaName', label: '經名', type: 'text', req: true },
         { k: 'email', label: 'Email', type: 'text', req: true },
         { k: 'mobile', label: '手機', type: 'text', req: true }
       ],
       title: function (r) { return r.name; },
-      sub: function (r) { return [r.email, r.mobile].filter(Boolean).join(' · '); }
+      sub: function (r) { return [r.dharmaName, r.email, r.mobile].filter(Boolean).join(' · '); }
     }
   ];
 

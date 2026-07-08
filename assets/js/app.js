@@ -1205,6 +1205,7 @@
         if (registerBtn && registerBtn.disabled) return;
         var record = {
           name: document.getElementById('memberName').value,
+          dharmaName: document.getElementById('memberDharmaName').value,
           email: document.getElementById('memberEmail').value,
           mobile: normalizeMemberMobileInput(document.getElementById('memberMobile').value)
         };
