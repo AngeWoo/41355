@@ -72,6 +72,141 @@
     }
     return '';
   }
+  var SECTION_HASH = {
+    news: '#home',
+    podcast: '#podcast',
+    calendar: '#calendar',
+    headquarters: '#headquarters',
+    newsletter: '#newsletter',
+    dharma: '#dharma',
+    tools: '#tools',
+    talks: '#top'
+  };
+  var TYPE_LABEL = {
+    news: '最新消息',
+    podcast: 'Podcast',
+    calendar: '行事曆',
+    headquarters: '總部會聯絡事項',
+    newsletter: '親苑時報',
+    dharma: '瑞聲法語',
+    tools: '互動程式',
+    talks: '真如開講'
+  };
+  function absoluteUrl(url) {
+    var s = String(url || '').trim();
+    if (!s) return '';
+    try { return new URL(s, location.href).href; } catch (e) { return s; }
+  }
+  function currentSiteUrl(type) {
+    var hash = SECTION_HASH[type] || location.hash || '';
+    return location.origin + location.pathname + location.search + hash;
+  }
+  function cleanUrlForCompare(url) {
+    return String(url || '').trim().replace(/[),.，。；;!?！？]+$/, '');
+  }
+  function isSiteShareUrl(url) {
+    var clean = cleanUrlForCompare(url);
+    if (!clean) return false;
+    try {
+      var parsed = new URL(clean, location.href);
+      var host = parsed.hostname.toLowerCase();
+      var current = String(location.hostname || '').toLowerCase();
+      return host === current ||
+        /\.ngrok-free\.app$/.test(host) ||
+        host === 'localhost' ||
+        host === '127.0.0.1';
+    } catch (e) {
+      return false;
+    }
+  }
+  function replaceSiteShareUrls(value, replacementUrl) {
+    var replacement = replacementUrl || currentSiteUrl('');
+    return String(value || '')
+      .replace(/https?:\/\/[^\s<>"']+/g, function (match) {
+        return isSiteShareUrl(match) ? replacement : match;
+      })
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+  function cardShareUrl(type, it) {
+    var url = fallbackLink(type, it);
+    url = url ? absoluteUrl(url) : '';
+    return isSiteShareUrl(url) ? currentSiteUrl(type) : (url || currentSiteUrl(type));
+  }
+  function compactShareText(value, maxLen) {
+    var s = replaceSiteShareUrls(value).replace(/\s+/g, ' ').trim();
+    if (!s || !maxLen || s.length <= maxLen) return s;
+    return s.slice(0, maxLen - 1) + '…';
+  }
+  function cardShareText(type, it, url) {
+    it = it || {};
+    var title = compactShareText(it.title || it.ep || it.issue || TYPE_LABEL[type] || '分享內容', 80);
+    var date = fmtDate(it.date || it.issue || '');
+    var body = compactShareText(it.body || it.desc || it.content || it.location || it.guest || it.category || '', 110);
+    var lines = [title];
+    if (date) lines.push(date);
+    if (body && body !== title) lines.push(body);
+    if (url && lines.join('\n').indexOf(url) === -1) lines.push(url);
+    return replaceSiteShareUrls(lines.filter(Boolean).join('\n'), currentSiteUrl(type));
+  }
+  function lineShareUrl(text) {
+    return 'https://line.me/R/msg/text/?' + encodeURIComponent(text);
+  }
+  function lineShareButton(type, it, url) {
+    url = url || cardShareUrl(type, it);
+    var text = cardShareText(type, it, url);
+    return '<span class="line-card-share" role="button" tabindex="0" data-share-type="' + esc(type) + '" data-line-share="' + esc(lineShareUrl(text)) + '" aria-label="LINE 分享：' + esc(it && (it.title || it.ep) || TYPE_LABEL[type] || '內容') + '">LINE</span>';
+  }
+  function sanitizeLineShareHref(href, replacementUrl) {
+    var value = String(href || '');
+    var marker = '/R/msg/text/?';
+    var idx = value.indexOf(marker);
+    if (idx === -1) return value;
+    var raw = value.slice(idx + marker.length);
+    try { raw = decodeURIComponent(raw); } catch (e) {}
+    return lineShareUrl(replaceSiteShareUrls(raw, replacementUrl || currentSiteUrl('')));
+  }
+  function openLineShare(el) {
+    var type = el && el.getAttribute('data-share-type');
+    var href = el && el.getAttribute('data-line-share');
+    if (!href) return;
+    href = sanitizeLineShareHref(href, currentSiteUrl(type || ''));
+    el.setAttribute('data-line-share', href);
+    window.open(href, '_blank', 'noopener');
+  }
+  document.addEventListener('click', function (e) {
+    var share = e.target.closest && e.target.closest('.line-card-share');
+    if (!share) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    openLineShare(share);
+  }, true);
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var share = e.target.closest && e.target.closest('.line-card-share');
+    if (!share) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openLineShare(share);
+  }, true);
+  function hydrateStaticCardShares() {
+    document.querySelectorAll('#featureGrid .card.feature:not([data-line-ready])').forEach(function (card) {
+      card.setAttribute('data-line-ready', '1');
+      var title = card.querySelector('h3');
+      var body = card.querySelector('p');
+      var url = absoluteUrl(card.getAttribute('href') || location.href);
+      var text = [
+        title ? title.textContent : '真如苑資料網站',
+        body ? body.textContent : '',
+        url
+      ].map(function (line) { return String(line || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean).join('\n');
+      card.insertAdjacentHTML('afterbegin',
+        '<span class="line-card-share" role="button" tabindex="0" data-line-share="' + esc(lineShareUrl(text)) + '" aria-label="LINE 分享：' + esc(title ? title.textContent : '卡片') + '">LINE</span>'
+      );
+    });
+  }
   function newBadge(it) {
     return it && it._latest ? '<span class="latest-badge">最新上架</span>' : '';
   }
@@ -181,14 +316,16 @@
   // ---- ?桀撐?∠?皜脫???----
   function newsItem(it) {
     var more = it.link ? '<a' + linkAttr(it.link) + ' class="more-link">閱讀更多 →</a>' : '';
-    return '<div class="card reveal stack">' + newBadge(it) +
+    var url = cardShareUrl('news', it);
+    return '<div class="card reveal stack">' + newBadge(it) + lineShareButton('news', it, url) +
       '<div class="item-date">' + esc(fmtDate(it.date)) + '</div>' +
       '<h4>' + esc(it.title) + '</h4>' +
       (it.body ? '<p class="muted small">' + esc(it.body) + '</p>' : '') + more + '</div>';
   }
   function podcastItem(it) {
     var meta = (it.guest ? '來賓：' + esc(it.guest) + (it.date ? ' · ' : '') : '') + esc(fmtDate(it.date));
-    return '<a class="card pod cafe-card reveal"' + linkAttr(it.link) + '>' + newBadge(it) +
+    var url = cardShareUrl('podcast', it);
+    return '<a class="card pod cafe-card reveal"' + linkAttr(it.link) + '>' + newBadge(it) + lineShareButton('podcast', it, url) +
       '<span class="ep">' + esc(it.ep || 'EP') + '</span>' +
       '<h4>' + esc(it.title) + '</h4>' +
       '<div class="meta">' + meta + '</div>' +
@@ -209,7 +346,8 @@
     var open = url ? '<a class="card reveal stack" style="text-decoration:none"' + linkAttr(url) + '>' : '<div class="card reveal stack">';
     var close = url ? '</a>' : '</div>';
     var meta = '<div class="item-date">' + esc(fmtDate(it.date)) + (it.tag ? ' <span class="tag">' + esc(it.tag) + '</span>' : '') + '</div>';
-    return open + newBadge(it) + meta + '<h4>' + esc(it.title) + '</h4>' +
+    var shareUrl = cardShareUrl('calendar', it);
+    return open + newBadge(it) + lineShareButton('calendar', it, shareUrl) + meta + '<h4>' + esc(it.title) + '</h4>' +
       (it.location ? '<div class="where"><span>' + esc(it.location) + '</span></div>' : '') +
       (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
       (url ? '<span class="more-link">查看連結 →</span>' : '') + close;
@@ -219,13 +357,15 @@
     var open = url ? '<a class="card reveal stack" style="text-decoration:none"' + linkAttr(url) + '>' : '<div class="card reveal stack">';
     var close = url ? '</a>' : '</div>';
     var meta = '<div class="item-date">' + esc(fmtDate(it.date)) + (it.category ? ' <span class="tag">' + esc(it.category) + '</span>' : '') + '</div>';
-    return open + newBadge(it) + meta + '<h4>' + esc(it.title) + '</h4>' +
+    var shareUrl = cardShareUrl('headquarters', it);
+    return open + newBadge(it) + lineShareButton('headquarters', it, shareUrl) + meta + '<h4>' + esc(it.title) + '</h4>' +
       (it.body ? '<p class="muted small">' + esc(it.body) + '</p>' : '') +
       (url ? '<span class="more-link">查看連結 →</span>' : '') + close;
   }
   function newsletterItem(it) {
     var issueStr = fmtDate(it.issue || it.date);
-    return '<a class="card paper reveal"' + linkAttr(it.link) + '>' + newBadge(it) +
+    var url = cardShareUrl('newsletter', it);
+    return '<a class="card paper reveal"' + linkAttr(it.link) + '>' + newBadge(it) + lineShareButton('newsletter', it, url) +
       '<div class="cover">' + newsletterCover(it) + '</div>' +
       '<h4>' + esc(it.title) + '</h4>' +
       '<div class="issue">' + esc(issueStr) + '</div></a>';
@@ -237,7 +377,8 @@
       .trim();
     if (!content) content = '';
     var full = it.link ? '<a' + linkAttr(it.link) + ' class="more-link dharma-read">閱讀全文 →</a>' : '';
-    return '<div class="card dharma-item reveal">' + newBadge(it) +
+    var url = cardShareUrl('dharma', it);
+    return '<div class="card dharma-item reveal">' + newBadge(it) + lineShareButton('dharma', it, url) +
       '<div class="dharma-cover cover">' + coverMarkup('dharma', it, it.category || '瑞聲法語') + '</div>' +
       '<span class="cat">' + esc(it.category || '瑞聲法語') + '</span>' +
       '<h4>' + esc(it.title) + '</h4>' +
@@ -247,7 +388,8 @@
   }
   function toolItem(it) {
     var date = fmtDate(it.date);
-    return '<a class="card tool-card reveal"' + linkAttr(it.link) + '>' + newBadge(it) +
+    var url = cardShareUrl('tools', it);
+    return '<a class="card tool-card reveal"' + linkAttr(it.link) + '>' + newBadge(it) + lineShareButton('tools', it, url) +
       '<span class="tool-mark">' + esc(it.icon || '工具') + '</span>' +
       (date ? '<div class="item-date">' + esc(date) + '</div>' : '') +
       '<h4>' + esc(it.title) + '</h4>' +
@@ -927,6 +1069,26 @@
   var liveModal = document.getElementById('liveVideoModal');
   var liveClose = document.getElementById('liveVideoClose');
   var liveRefreshTimer = null;
+  var initialLiveTitle = document.getElementById('liveVideoTitle');
+  var initialLiveLink = document.getElementById('liveVideoLink');
+  var currentLiveTitle = initialLiveTitle ? initialLiveTitle.textContent : '';
+  var currentLiveUrl = initialLiveLink ? (initialLiveLink.getAttribute('href') || initialLiveLink.href) : '';
+
+  function buildLiveLineShareUrl(url, title) {
+    var lines = [];
+    var cleanTitle = String(title || '').replace(/\s+/g, ' ').trim();
+    var cleanUrl = String(url || '').trim();
+    if (cleanTitle) lines.push(cleanTitle);
+    if (cleanUrl) lines.push(cleanUrl);
+    return 'https://line.me/R/msg/text/?' + encodeURIComponent(lines.join('\n'));
+  }
+
+  function updateLiveLineShare() {
+    var lineShare = document.getElementById('liveLineShare');
+    if (!lineShare || !currentLiveUrl) return;
+    lineShare.href = buildLiveLineShareUrl(currentLiveUrl, currentLiveTitle);
+  }
+
   function openLiveVideo() {
     if (!liveModal) return;
     refreshOfficialLive(true);
@@ -962,20 +1124,24 @@
     var title = document.getElementById('liveVideoTitle');
     var tabText = document.getElementById('liveVideoTabText');
     if (!text) return;
+    currentLiveTitle = String(text).replace(/\s+/g, ' ').trim();
     if (title) title.textContent = text;
     if (tabText) {
-      var normalized = String(text).replace(/\s+/g, ' ').trim();
+      var normalized = currentLiveTitle;
       var parts = normalized.match(/^(\d{4}\/\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2})\s+(.+)$/);
       tabText.innerHTML = parts ? esc(parts[1]) + '<br/>' + esc(parts[2]) : esc(normalized);
     }
+    updateLiveLineShare();
   }
 
   function setLiveUrl(url, officialPage) {
     var videoLink = document.getElementById('liveVideoLink');
-    var lineShare = document.getElementById('liveLineShare');
     var officialLink = document.getElementById('liveOfficialPageLink');
-    if (url && videoLink) videoLink.href = url;
-    if (url && lineShare) lineShare.href = 'https://social-plugins.line.me/lineit/share?url=' + encodeURIComponent(url);
+    if (url) {
+      currentLiveUrl = url;
+      if (videoLink) videoLink.href = url;
+      updateLiveLineShare();
+    }
     if (officialPage && officialLink) officialLink.href = officialPage;
   }
 
@@ -1256,6 +1422,7 @@
   }
 
   observeReveal();
+  hydrateStaticCardShares();
   setupMemberAuth();
   boot();
   refreshOfficialLive(true);
