@@ -296,7 +296,7 @@
     <span class="live-play" aria-hidden="true">
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
     </span>
-    <span class="live-copy" id="liveVideoTabText">2026/7/8 10:00<br/>弁才尊天法樂法會</span>
+    <span class="live-copy" id="liveVideoTabText">2026/7/11 10:00<br/>正輪會</span>
   </button>
 
   <div class="live-video-modal" id="liveVideoModal" hidden>
@@ -310,7 +310,7 @@
           <span class="live-launch-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
           </span>
-          <h3 id="liveVideoTitle">2026/7/8 10:00 弁才尊天法樂法會</h3>
+          <h3 id="liveVideoTitle">2026/7/11 10:00 正輪會</h3>
           <a class="live-source-link primary" id="liveVideoLink" href="https://vimeo.com/event/4854885">開啟官方影片 →</a>
         </div>
       </div>
@@ -338,9 +338,10 @@
 
   <script src="assets/js/config.js?v=5"></script>
   <script src="assets/js/seed-data.js?v=12"></script>
-  <script src="assets/js/api.js?v=20"></script>
+  <script src="assets/js/api.js?v=21"></script>
   <script>
     window.openLiveVideoFallback = function () {
+      if (window.refreshOfficialLive) window.refreshOfficialLive(true);
       var modal = document.getElementById('liveVideoModal');
       if (!modal) return;
       modal.hidden = false;
@@ -353,6 +354,6 @@
       document.documentElement.classList.remove('modal-open');
     };
   </script>
-  <script src="assets/js/app.js?v=80"></script>
+  <script src="assets/js/app.js?v=81"></script>
 </body>
 </html>
