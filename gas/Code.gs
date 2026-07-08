@@ -171,7 +171,7 @@ function doGet(e) {
       return json({ ok: true, msg: 'pong' });
     }
     if (action === 'officialLive') {
-      return json({ ok: true, data: officialLiveInfo() });
+      return json({ ok: true, data: officialLiveInfo(fresh) });
     }
     return json({ ok: false, error: '未知的 action: ' + action });
   } catch (err) {
@@ -343,19 +343,19 @@ function resolveRelativeUrl(base, href) {
   return String(base).replace(/[#?].*$/, '').replace(/\/[^/]*$/, '/') + href;
 }
 
-function officialLiveInfo() {
+function officialLiveInfo(fresh) {
   var cache = CacheService.getScriptCache();
-  var cached = cache.get('official_live');
+  var cached = fresh ? null : cache.get('official_live');
   if (cached) {
     try { return JSON.parse(cached); } catch (e) { }
   }
 
-  var pageText = UrlFetchApp.fetch(OFFICIAL_LIVE_PAGE, {
+  var pageText = UrlFetchApp.fetch(cacheBustOfficialUrl(OFFICIAL_LIVE_PAGE), {
     muteHttpExceptions: true,
     followRedirects: true
   }).getContentText('UTF-8');
   var sourceUrl = pickOfficialHomeDataUrl(pageText);
-  var text = UrlFetchApp.fetch(sourceUrl, {
+  var text = UrlFetchApp.fetch(cacheBustOfficialUrl(sourceUrl), {
     muteHttpExceptions: true,
     followRedirects: true
   }).getContentText('UTF-8');
@@ -371,8 +371,13 @@ function officialLiveInfo() {
     source: sourceUrl,
     updatedAt: new Date().toISOString()
   };
-  cache.put('official_live', JSON.stringify(data), 60 * 10);
+  cache.put('official_live', JSON.stringify(data), 60);
   return data;
+}
+
+function cacheBustOfficialUrl(url) {
+  var sep = String(url || '').indexOf('?') === -1 ? '?' : '&';
+  return url + sep + '_ts=' + encodeURIComponent(new Date().getTime());
 }
 
 function pickOfficialHomeDataUrl(pageText) {
