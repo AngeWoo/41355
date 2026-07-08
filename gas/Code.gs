@@ -63,7 +63,7 @@ var SCHEMA = {
   },
   members: {
     sheet: '會員',
-    headers: ['id', 'name', 'email', 'mobile', 'createdAt', 'updatedAt']
+    headers: ['id', 'name', 'dharmaName', 'email', 'mobile', 'createdAt', 'updatedAt']
   }
 };
 
@@ -469,6 +469,7 @@ function publicMember(row) {
   return {
     id: row.id || '',
     name: row.name || '',
+    dharmaName: row.dharmaName || '',
     email: row.email || '',
     mobile: normalizeMobile(row.mobile)
   };
@@ -539,6 +540,7 @@ function notifyMemberRegistered(member) {
     '有新會員完成註冊。',
     '',
     '姓名：' + (member.name || ''),
+    '經名：' + (member.dharmaName || ''),
     'Email：' + (member.email || ''),
     '手機：' + (member.mobile || ''),
     '會員 ID：' + (member.id || ''),
@@ -548,6 +550,7 @@ function notifyMemberRegistered(member) {
     '<p>有新會員完成註冊。</p>' +
     '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;">' +
     '<tr><th align="left">姓名</th><td>' + htmlEscape(member.name) + '</td></tr>' +
+    '<tr><th align="left">經名</th><td>' + htmlEscape(member.dharmaName) + '</td></tr>' +
     '<tr><th align="left">Email</th><td>' + htmlEscape(member.email) + '</td></tr>' +
     '<tr><th align="left">手機</th><td>' + htmlEscape(member.mobile) + '</td></tr>' +
     '<tr><th align="left">會員 ID</th><td>' + htmlEscape(member.id) + '</td></tr>' +
@@ -569,6 +572,7 @@ function notifyMemberRegistered(member) {
       '您的會員註冊已完成。',
       '',
       '姓名：' + (member.name || ''),
+      '經名：' + (member.dharmaName || ''),
       'Email：' + (member.email || ''),
       '手機：' + (member.mobile || ''),
       '註冊時間：' + createdAt,
@@ -580,6 +584,7 @@ function notifyMemberRegistered(member) {
       '<p>您的會員註冊已完成。</p>' +
       '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;">' +
       '<tr><th align="left">姓名</th><td>' + htmlEscape(member.name) + '</td></tr>' +
+      '<tr><th align="left">經名</th><td>' + htmlEscape(member.dharmaName) + '</td></tr>' +
       '<tr><th align="left">Email</th><td>' + htmlEscape(member.email) + '</td></tr>' +
       '<tr><th align="left">手機</th><td>' + htmlEscape(member.mobile) + '</td></tr>' +
       '<tr><th align="left">註冊時間</th><td>' + htmlEscape(createdAt) + '</td></tr>' +
@@ -599,14 +604,16 @@ function notifyMemberRegistered(member) {
 function handleMemberRegister(body) {
   var record = body.record || {};
   var name = String(record.name || '').trim();
+  var dharmaName = String(record.dharmaName || '').trim();
   var email = normalizeEmail(record.email);
   var mobile = normalizeMobile(record.mobile);
   if (!name) return json({ ok: false, error: '請輸入姓名。' });
+  if (!dharmaName) return json({ ok: false, error: '請輸入經名。' });
   if (!email) return json({ ok: false, error: '請輸入 email。' });
   if (!mobile) return json({ ok: false, error: '請輸入手機。' });
   if (findMemberByEmail(email)) return json({ ok: false, error: '此 email 已註冊。' });
   if (findMemberByMobile(mobile)) return json({ ok: false, error: '此手機已註冊。' });
-  var created = createRecord('members', { name: name, email: email, mobile: mobile });
+  var created = createRecord('members', { name: name, dharmaName: dharmaName, email: email, mobile: mobile });
   var mail = notifyMemberRegistered(created);
   return jsonWithFreshCache({ ok: true, data: publicMember(created), mail: mail });
 }
