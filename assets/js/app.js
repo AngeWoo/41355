@@ -833,7 +833,8 @@
     }
     out.innerHTML = rows.map(function (it) {
       var src = talkAudioSrc(it.link);
-      return '<article class="talk-item">' +
+      var url = cardShareUrl('talks', it);
+      return '<article class="talk-item">' + lineShareButton('talks', it, url) +
         '<span class="talk-icon">' + esc(it.icon || '講') + '</span>' +
         '<div><h3>' + esc(it.title || '真如開講') + '</h3>' +
         (it.desc ? '<p>' + esc(it.desc) + '</p>' : '') +
@@ -911,7 +912,8 @@
     var it = rows[talkPage];
     out.innerHTML = (function () {
       var src = talkAudioSrc(it.link);
-      return '<article class="talk-item">' +
+      var url = cardShareUrl('talks', it);
+      return '<article class="talk-item">' + lineShareButton('talks', it, url) +
         '<span class="talk-icon">' + esc(it.icon || '講') + '</span>' +
         '<div><h3>' + esc(it.title || '真如開講') + '</h3>' +
         (it.desc ? '<p>' + esc(it.desc) + '</p>' : '') +
