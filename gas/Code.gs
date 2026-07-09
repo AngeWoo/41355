@@ -203,7 +203,7 @@ function doPost(e) {
     }
 
     // 以下動作需驗證 token
-    var mutating = ['create', 'update', 'delete', 'reorder', 'changePassword'];
+    var mutating = ['create', 'update', 'delete', 'reorder', 'changePassword', 'recalculateStats'];
     if (mutating.indexOf(action) !== -1) {
       if (!verifyToken(body.token)) {
         return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
@@ -224,6 +224,7 @@ function doPost(e) {
       case 'delete':         return jsonWithFreshCache({ ok: true, data: deleteRecord(body.type, body.id) });
       case 'reorder':        return jsonWithFreshCache({ ok: true, data: reorder(body.type, body.ids) });
       case 'changePassword': return handleChangePassword(body);
+      case 'recalculateStats': return json({ ok: true, stats: recalculateStats() });
       default:               return json({ ok: false, error: '未知的 action: ' + action });
     }
   } catch (err) {
@@ -265,6 +266,17 @@ function cachedListRecords(type) {
 function clearDataCache() {
   var keys = Object.keys(SCHEMA).map(dataCacheKey);
   CacheService.getScriptCache().removeAll(keys);
+}
+
+function recalculateStats() {
+  clearDataCache();
+  return {
+    podcast: listRecords('podcast').length,
+    news: listRecords('news').length,
+    newsletter: listRecords('newsletter').length,
+    dharma: listRecords('dharma').length,
+    calendar: listRecords('calendar').length
+  };
 }
 
 function resolveCoverInfo(url) {
