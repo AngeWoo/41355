@@ -34,7 +34,7 @@
   }
 
   function clearFrontDataCache(action) {
-    if (['create', 'update', 'delete', 'reorder'].indexOf(action) === -1) return;
+    if (['create', 'update', 'delete', 'reorder', 'recalculateStats'].indexOf(action) === -1) return;
     try { localStorage.removeItem('shinnyo_front_data_cache_v1'); } catch (e) {}
   }
 
@@ -83,33 +83,36 @@
     }).filter(function (o) { return String(o.id || '').length > 0; });
   }
 
-  function fetchPublished(type) {
+  function fetchPublished(type, fresh) {
     var gid = PUB.gid[type];
     if (gid == null) return Promise.resolve([]);
     var url = PUB.base + '?output=csv&gid=' + encodeURIComponent(gid) + '&single=true';
-    return fetchCached(url, { method: 'GET' })
+    var fetcher = fresh ? fetchFresh : fetchCached;
+    return fetcher(url, { method: 'GET' })
       .then(function (r) { return r.text(); })
       .then(function (t) { return sortRecords(csvToRecords(t)); });
   }
 
   // ---------- 讀取 ----------
-  function listType(type) {
+  function listType(type, fresh) {
     if (MODE === 'gas') {
-      return fetchCached(GAS + '?action=list&type=' + encodeURIComponent(type))
+      var fetcher = fresh ? fetchFresh : fetchCached;
+      return fetcher(GAS + '?action=list&type=' + encodeURIComponent(type))
         .then(function (r) { return r.json(); });
     }
     if (MODE === 'published') {
-      return fetchPublished(type).then(function (d) { return { ok: true, data: d, mode: 'published' }; });
+      return fetchPublished(type, fresh).then(function (d) { return { ok: true, data: d, mode: 'published' }; });
     }
     return Promise.resolve({ ok: true, data: sortRecords(DEMO_DATA[type]), mode: 'demo' });
   }
 
-  function listAll() {
+  function listAll(fresh) {
     if (MODE === 'gas') {
-      return fetchCached(GAS + '?action=all').then(function (r) { return r.json(); });
+      var fetcher = fresh ? fetchFresh : fetchCached;
+      return fetcher(GAS + '?action=all').then(function (r) { return r.json(); });
     }
     if (MODE === 'published') {
-      return Promise.all(TYPES.map(fetchPublished)).then(function (arr) {
+      return Promise.all(TYPES.map(function (type) { return fetchPublished(type, fresh); })).then(function (arr) {
         var out = {}; TYPES.forEach(function (t, i) { out[t] = arr[i]; });
         return { ok: true, data: out, mode: 'published' };
       }).catch(function (e) { return { ok: false, error: String(e) }; });
@@ -151,6 +154,28 @@
     });
   }
 
+  function localStatsFromData(data) {
+    data = data || seedAll();
+    return {
+      podcast: (data.podcast || []).length,
+      news: (data.news || []).length,
+      newsletter: (data.newsletter || []).length,
+      dharma: (data.dharma || []).length,
+      calendar: (data.calendar || []).length
+    };
+  }
+
+  function recalculateStats(token) {
+    if (MODE === 'gas') {
+      return post({ action: 'recalculateStats', token: token });
+    }
+    return listAll(true).then(function (res) {
+      return res && res.ok
+        ? { ok: true, stats: localStatsFromData(res.data), data: res.data, mode: res.mode }
+        : res;
+    });
+  }
+
   window.API = {
     mode: MODE,
     canWrite: function () { return MODE === 'gas'; },
@@ -168,6 +193,7 @@
     resolveCover: resolveCover,
     login: function (password, account) { return post({ action: 'login', account: account, password: password }); },
     validateToken: function (token) { return post({ action: 'validateToken', token: token }); },
+    recalculateStats: recalculateStats,
     create: function (type, record, token, options) {
       options = options || {};
       return post({ action: 'create', type: type, record: record, token: token, notifyMembers: !!options.notifyMembers });

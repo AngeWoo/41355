@@ -163,6 +163,40 @@
     el.textContent = msg; el.className = 'alert ' + (type || 'err');
     if (!msg) el.className = 'alert';
   }
+  function statsSummary(stats) {
+    stats = stats || {};
+    return [
+      ['PODCAST', stats.podcast],
+      ['最新消息', stats.news],
+      ['親苑時報', stats.newsletter],
+      ['瑞聲法語', stats.dharma],
+      ['近期活動', stats.calendar]
+    ].map(function (row) {
+      return row[0] + ' ' + (Number(row[1]) || 0) + '+';
+    }).join('、');
+  }
+  function refreshStats(manual) {
+    if (!API.recalculateStats) {
+      if (manual) toast('目前版本不支援重新計算統計。', true);
+      return Promise.resolve(false);
+    }
+    var btn = $('#recalcStatsBtn');
+    if (manual && btn) { btn.disabled = true; btn.textContent = '計算中…'; }
+    return API.recalculateStats(token).then(function (res) {
+      if (manual && btn) { btn.disabled = false; btn.textContent = '重新計算統計'; }
+      if (res && res.ok) {
+        if (manual) toast('統計已重新計算：' + statsSummary(res.stats));
+        return true;
+      }
+      if (res && isAuthExpiredError(res.error || '')) handleAuthExpired(res.error);
+      else if (manual) toast((res && res.error) || '重新計算失敗', true);
+      return false;
+    }).catch(function () {
+      if (manual && btn) { btn.disabled = false; btn.textContent = '重新計算統計'; }
+      if (manual) toast('重新計算失敗，請檢查連線。', true);
+      return false;
+    });
+  }
   function setPasswordVisible(input, visible, btn) {
     if (!input) return;
     input.type = visible ? 'text' : 'password';
@@ -237,6 +271,11 @@
     clearStoredToken();
     showLogin();
   });
+
+  var recalcStatsBtn = $('#recalcStatsBtn');
+  if (recalcStatsBtn) {
+    recalcStatsBtn.addEventListener('click', function () { refreshStats(true); });
+  }
 
   // ---------- 分頁 ----------
   function buildTabs() {
@@ -412,6 +451,7 @@
           toast(wasEditing ? '已更新' : '已新增');
         }
         loadType(current);
+        if (!wasEditing) refreshStats(false);
       } else {
         alertBox($('#modalAlert'), res.error || '儲存失敗', 'err');
         if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1500);
@@ -424,7 +464,7 @@
     if (!confirm('確定刪除「' + (c.title(r) || '此筆') + '」？此動作無法復原。')) return;
     if (API.isReadOnly()) { toast(API.mode === 'published' ? '唯讀模式：請在 Google 試算表刪除' : '展示模式無法刪除', true); return; }
     API.remove(type, id, token).then(function (res) {
-      if (res.ok) { toast('已刪除'); loadType(type); }
+      if (res.ok) { toast('已刪除'); loadType(type); refreshStats(false); }
       else {
         toast(res.error || '刪除失敗', true);
         if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1200);

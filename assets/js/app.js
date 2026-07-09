@@ -764,7 +764,7 @@
       renderFallback();
       return;
     }
-    API.all().then(function (res) {
+    API.all(true).then(function (res) {
       if (!res || !res.ok) {
         console.error(res && res.error);
         renderFallback();
@@ -816,6 +816,7 @@
     var fn = animate && !shouldReduceMotion() ? setStat : setStatNow;
     fn('statPodcast', (d.podcast || []).length);
     fn('statNews', (d.news || []).length);
+    fn('statNewsletter', (d.newsletter || []).length);
     fn('statDharma', (d.dharma || []).length);
     fn('statCal', (d.calendar || []).length);
   }
