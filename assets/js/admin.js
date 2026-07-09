@@ -1,7 +1,8 @@
 ﻿/* 後台維護邏輯：登入 → 分頁 → CRUD */
 (function () {
   var $ = function (s, r) { return (r || document).querySelector(s); };
-  var TOKEN_KEY = 'shinnyo_admin_token';
+  var TOKEN_KEY = 'shinnyo_admin_token_v2';
+  var LEGACY_TOKEN_KEY = 'shinnyo_admin_token';
 
   // 各內容類型的欄位定義（須與 GAS 的 SCHEMA 對應）
   var COLLECTIONS = [
@@ -214,6 +215,8 @@
     token = '';
     sessionStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(LEGACY_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
   }
   function showLogin() { $('#loginView').style.display = 'grid'; $('#adminShell').classList.remove('active'); }
   function showAdmin() {
