@@ -203,6 +203,7 @@
       return post({ action: 'update', type: type, record: record, token: token, notifyMembers: !!options.notifyMembers });
     },
     remove: function (type, id, token) { return post({ action: 'delete', type: type, id: id, token: token }); },
+    reorder: function (type, ids, token) { return post({ action: 'reorder', type: type, ids: ids, token: token }); },
     changePassword: function (oldP, newP, token) { return post({ action: 'changePassword', oldPassword: oldP, newPassword: newP, token: token }); }
     ,
     memberRegister: function (record) { return post({ action: 'memberRegister', record: record }); },

@@ -153,6 +153,7 @@
   var current = COLLECTIONS[0].type;
   var editing = null;    // 正在編輯的紀錄（null = 新增）
   var seedingTools = false;
+  var savingSort = {};
 
   // ---------- 提示 ----------
   var toastEl = $('#toast'), toastT;
@@ -163,6 +164,9 @@
   function alertBox(el, msg, type) {
     el.textContent = msg; el.className = 'alert ' + (type || 'err');
     if (!msg) el.className = 'alert';
+  }
+  function refreshPageSoon(delay) {
+    setTimeout(function () { window.location.reload(); }, delay || 450);
   }
   function statsSummary(stats) {
     stats = stats || {};
@@ -218,8 +222,13 @@
     sessionStorage.removeItem(LEGACY_TOKEN_KEY);
     localStorage.removeItem(LEGACY_TOKEN_KEY);
   }
-  function showLogin() { $('#loginView').style.display = 'grid'; $('#adminShell').classList.remove('active'); }
+  function showLogin() {
+    document.body.classList.remove('admin-auth-pending');
+    $('#loginView').style.display = 'grid';
+    $('#adminShell').classList.remove('active');
+  }
   function showAdmin() {
+    document.body.classList.remove('admin-auth-pending');
     $('#loginView').style.display = 'none'; $('#adminShell').classList.add('active');
     $('#modePill').textContent = API.modeLabel();
     if (API.isReadOnly()) document.body.classList.add('readonly-mode');
@@ -370,11 +379,13 @@
     var c = byType(type), list = cache[type] || [], el = $('#list-' + type);
     $('#badge-' + type).textContent = list.length;
     if (!list.length) { el.innerHTML = '<div class="empty">尚無資料，點右上角「新增」建立第一筆。</div>'; return; }
-    el.innerHTML = list.map(function (r) {
-      return '<div class="rec"><div class="rec-main"><h4>' + esc(c.title(r) || '(無標題)') + '</h4>' +
+    el.innerHTML = list.map(function (r, idx) {
+      var sortable = !API.isReadOnly() && list.length > 1;
+      return '<div class="rec" data-id="' + esc(r.id) + '"' + (sortable ? ' draggable="true"' : '') + '><span class="rec-order" title="排序號">' + esc(idx + 1) + '</span><div class="rec-main"><h4>' + esc(c.title(r) || '(無標題)') + '</h4>' +
         '<div class="sub">' + esc(c.sub(r) || '') + '</div></div>' +
         '<div class="rec-actions">' +
         '<button class="icon-btn" data-edit="' + esc(r.id) + '" title="編輯"><svg viewBox="0 0 24 24"><path d="M4 20h4L18 10l-4-4L4 16z"/><path d="M13 5l4 4"/></svg></button>' +
+        '<button class="icon-btn" data-copy="' + esc(r.id) + '" title="複製"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg></button>' +
         '<button class="icon-btn danger" data-del="' + esc(r.id) + '" title="刪除"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/></svg></button>' +
         '</div></div>';
     }).join('');
@@ -384,8 +395,147 @@
     el.querySelectorAll('[data-del]').forEach(function (b) {
       b.addEventListener('click', function () { removeRecord(type, b.dataset.del); });
     });
+    el.querySelectorAll('[data-copy]').forEach(function (b) {
+      b.addEventListener('click', function () { copyRecord(type, b.dataset.copy); });
+    });
+    setupDragSort(type, el);
   }
   function find(type, id) { return (cache[type] || []).filter(function (r) { return String(r.id) === String(id); })[0]; }
+
+  function copyTitle(value) {
+    var s = String(value || '').trim();
+    if (!s) return '副本';
+    return /副本$/.test(s) ? s : s + ' 副本';
+  }
+
+  function copyRecord(type, id) {
+    var c = byType(type), src = find(type, id);
+    if (!src) { toast('找不到要複製的資料。', true); return; }
+    if (API.isReadOnly()) { toast(API.mode === 'published' ? '唯讀模式無法複製' : '展示模式無法複製', true); return; }
+    var rec = {};
+    c.fields.forEach(function (f) {
+      if (src[f.k] !== undefined) rec[f.k] = src[f.k];
+    });
+    if (rec.title !== undefined) rec.title = copyTitle(rec.title);
+    else if (rec.name !== undefined) rec.name = copyTitle(rec.name);
+    else if (rec.issue !== undefined) rec.issue = copyTitle(rec.issue);
+    else if (rec.ep !== undefined) rec.ep = copyTitle(rec.ep);
+    if (rec.order !== undefined) rec.order = (cache[type] || []).length + 1;
+
+    var btn = Array.prototype.filter.call(document.querySelectorAll('[data-copy]'), function (el) {
+      return el.getAttribute('data-copy') === String(id);
+    })[0];
+    if (btn) btn.disabled = true;
+    API.create(type, rec, token).then(function (res) {
+      if (btn) btn.disabled = false;
+      if (res.ok) {
+        toast('已複製');
+        refreshPageSoon();
+      } else {
+        toast(res.error || '複製失敗', true);
+        if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1200);
+      }
+    }).catch(function () {
+      if (btn) btn.disabled = false;
+      toast('複製失敗，請檢查連線。', true);
+    });
+  }
+
+  function updateVisibleOrderNumbers(el) {
+    Array.prototype.forEach.call(el.querySelectorAll('.rec'), function (rec, idx) {
+      var badge = rec.querySelector('.rec-order');
+      if (badge) badge.textContent = idx + 1;
+    });
+  }
+
+  function dragAfterElement(el, y) {
+    var rows = Array.prototype.slice.call(el.querySelectorAll('.rec:not(.dragging)'));
+    return rows.reduce(function (closest, child) {
+      var box = child.getBoundingClientRect();
+      var offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+      return closest;
+    }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+  }
+
+  function applyCacheOrder(type, ids) {
+    var byId = {};
+    (cache[type] || []).forEach(function (row) { byId[String(row.id)] = row; });
+    cache[type] = ids.map(function (id, idx) {
+      var row = byId[String(id)];
+      if (row) row.order = idx + 1;
+      return row;
+    }).filter(Boolean);
+  }
+
+  function saveDragOrder(type, el) {
+    if (API.isReadOnly() || !API.reorder || savingSort[type]) return;
+    var ids = Array.prototype.map.call(el.querySelectorAll('.rec[data-id]'), function (rec) {
+      return rec.getAttribute('data-id');
+    }).filter(Boolean);
+    if (ids.length < 2) return;
+    savingSort[type] = true;
+    el.classList.add('sorting-saving');
+    applyCacheOrder(type, ids);
+    API.reorder(type, ids, token).then(function (res) {
+      savingSort[type] = false;
+      el.classList.remove('sorting-saving');
+      if (res && res.ok) {
+        toast('排序已更新');
+        return;
+      }
+      if (res && isAuthExpiredError(res.error || '')) handleAuthExpired(res.error);
+      else {
+        toast((res && res.error) || '排序儲存失敗，已重新載入。', true);
+        loadType(type);
+      }
+    }).catch(function () {
+      savingSort[type] = false;
+      el.classList.remove('sorting-saving');
+      toast('排序儲存失敗，已重新載入。', true);
+      loadType(type);
+    });
+  }
+
+  function setupDragSort(type, el) {
+    if (API.isReadOnly()) return;
+    var dragging = null;
+    el.querySelectorAll('.rec[draggable="true"]').forEach(function (rec) {
+      rec.addEventListener('dragstart', function (e) {
+        if (e.target.closest && e.target.closest('button, a, input, textarea, select')) {
+          e.preventDefault();
+          return;
+        }
+        dragging = rec;
+        rec.classList.add('dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', rec.getAttribute('data-id') || '');
+        }
+      });
+      rec.addEventListener('dragend', function () {
+        if (dragging) dragging.classList.remove('dragging');
+        dragging = null;
+        el.classList.remove('drag-active');
+        updateVisibleOrderNumbers(el);
+      });
+    });
+    el.ondragover = function (e) {
+      if (!dragging) return;
+      e.preventDefault();
+      el.classList.add('drag-active');
+      var after = dragAfterElement(el, e.clientY);
+      if (after == null) el.appendChild(dragging);
+      else el.insertBefore(dragging, after);
+      updateVisibleOrderNumbers(el);
+    };
+    el.ondrop = function (e) {
+      if (!dragging) return;
+      e.preventDefault();
+      updateVisibleOrderNumbers(el);
+      saveDragOrder(type, el);
+    };
+  }
 
   // ---------- 編輯彈窗 ----------
   function canNotifyMembers(c) {
@@ -453,8 +603,8 @@
         } else {
           toast(wasEditing ? '已更新' : '已新增');
         }
-        loadType(current);
-        if (!wasEditing) refreshStats(false);
+        if (wasEditing) loadType(current);
+        else refreshPageSoon();
       } else {
         alertBox($('#modalAlert'), res.error || '儲存失敗', 'err');
         if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1500);
@@ -467,7 +617,7 @@
     if (!confirm('確定刪除「' + (c.title(r) || '此筆') + '」？此動作無法復原。')) return;
     if (API.isReadOnly()) { toast(API.mode === 'published' ? '唯讀模式：請在 Google 試算表刪除' : '展示模式無法刪除', true); return; }
     API.remove(type, id, token).then(function (res) {
-      if (res.ok) { toast('已刪除'); loadType(type); refreshStats(false); }
+      if (res.ok) { toast('已刪除'); refreshPageSoon(); }
       else {
         toast(res.error || '刪除失敗', true);
         if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1200);
