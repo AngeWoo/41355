@@ -21,6 +21,8 @@
 var ADMIN_PASSWORD_DEFAULT = 'shinnyo2026'; // 第一次 setup() 後請從後台或這裡修改
 var ADMIN_ACCOUNT_DEFAULT = 'admin';
 var TOKEN_TTL_SECONDS = 60 * 60 * 6;        // token 有效 6 小時
+var TOKEN_STORE_KEY = 'ADMIN_TOKENS';
+var TOKEN_STORE_LIMIT = 20;
 var DATA_CACHE_SECONDS = 60 * 5;            // 前台公開資料快取 5 分鐘
 var OFFICIAL_LIVE_PAGE = 'https://www.shinnyo-en.org.tw/at2026/index2026.html';
 var MEMBER_NOTIFY_EMAIL = 'angewu@hotmail.com';
@@ -189,6 +191,9 @@ function doPost(e) {
 
     if (action === 'login') {
       return handleLogin(body);
+    }
+    if (action === 'validateToken') {
+      return json({ ok: verifyToken(body.token), ttl: TOKEN_TTL_SECONDS });
     }
     if (action === 'memberRegister') {
       return handleMemberRegister(body);
@@ -450,13 +455,61 @@ function handleLogin(body) {
     return json({ ok: false, error: '帳號或密碼錯誤。' });
   }
   var token = Utilities.getUuid().replace(/-/g, '');
-  CacheService.getScriptCache().put('tok_' + token, '1', TOKEN_TTL_SECONDS);
+  saveAdminToken(token);
   return json({ ok: true, token: token, ttl: TOKEN_TTL_SECONDS });
+}
+
+function getAdminTokenStore() {
+  try {
+    return JSON.parse(PROP.getProperty(TOKEN_STORE_KEY) || '{}');
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveAdminTokenStore(store) {
+  PROP.setProperty(TOKEN_STORE_KEY, JSON.stringify(store || {}));
+}
+
+function cleanupAdminTokenStore(store, now) {
+  Object.keys(store).forEach(function (hash) {
+    if (!store[hash] || Number(store[hash].expiresAt || 0) <= now) {
+      delete store[hash];
+    }
+  });
+  var keys = Object.keys(store);
+  if (keys.length > TOKEN_STORE_LIMIT) {
+    keys.sort(function (a, b) {
+      return Number(store[a].expiresAt || 0) - Number(store[b].expiresAt || 0);
+    });
+    keys.slice(0, keys.length - TOKEN_STORE_LIMIT).forEach(function (hash) {
+      delete store[hash];
+    });
+  }
+  return store;
+}
+
+function saveAdminToken(token) {
+  var now = Date.now();
+  var store = cleanupAdminTokenStore(getAdminTokenStore(), now);
+  store[sha256(token)] = { expiresAt: now + TOKEN_TTL_SECONDS * 1000 };
+  saveAdminTokenStore(store);
 }
 
 function verifyToken(token) {
   if (!token) return false;
-  return CacheService.getScriptCache().get('tok_' + token) === '1';
+  var now = Date.now();
+  var store = cleanupAdminTokenStore(getAdminTokenStore(), now);
+  var hash = sha256(token);
+  var row = store[hash];
+  if (!row || Number(row.expiresAt || 0) <= now) {
+    saveAdminTokenStore(store);
+    return false;
+  }
+  row.expiresAt = now + TOKEN_TTL_SECONDS * 1000;
+  store[hash] = row;
+  saveAdminTokenStore(store);
+  return true;
 }
 
 function handleChangePassword(body) {
