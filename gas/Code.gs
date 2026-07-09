@@ -20,9 +20,7 @@
 // ====================== 設定 ======================
 var ADMIN_PASSWORD_DEFAULT = 'shinnyo2026'; // 第一次 setup() 後請從後台或這裡修改
 var ADMIN_ACCOUNT_DEFAULT = 'admin';
-var TOKEN_TTL_SECONDS = 60 * 60 * 6;        // token 有效 6 小時
-var TOKEN_STORE_KEY = 'ADMIN_TOKENS';
-var TOKEN_STORE_LIMIT = 20;
+var TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;  // token 有效 30 天
 var DATA_CACHE_SECONDS = 60 * 5;            // 前台公開資料快取 5 分鐘
 var OFFICIAL_LIVE_PAGE = 'https://www.shinnyo-en.org.tw/at2026/index2026.html';
 var MEMBER_NOTIFY_EMAIL = 'angewu@hotmail.com';
@@ -456,6 +454,40 @@ function checkPassword(pwd) {
   return hash && sha256(salt + ':' + pwd) === hash;
 }
 
+function base64UrlEncode(value) {
+  var bytes = typeof value === 'string'
+    ? Utilities.newBlob(value).getBytes()
+    : value;
+  return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/g, '');
+}
+
+function base64UrlDecodeText(value) {
+  var s = String(value || '');
+  while (s.length % 4) s += '=';
+  return Utilities.newBlob(Utilities.base64DecodeWebSafe(s)).getDataAsString('UTF-8');
+}
+
+function adminTokenSecret() {
+  return [
+    PROP.getProperty('ADMIN_SALT') || '',
+    PROP.getProperty('ADMIN_PWD_HASH') || '',
+    PROP.getProperty('ADMIN_ACCOUNT') || ADMIN_ACCOUNT_DEFAULT
+  ].join(':');
+}
+
+function signAdminTokenPayload(payload) {
+  return base64UrlEncode(Utilities.computeHmacSha256Signature(payload, adminTokenSecret()));
+}
+
+function createAdminToken() {
+  var payload = base64UrlEncode(JSON.stringify({
+    v: 2,
+    exp: Date.now() + TOKEN_TTL_SECONDS * 1000,
+    nonce: Utilities.getUuid()
+  }));
+  return payload + '.' + signAdminTokenPayload(payload);
+}
+
 function handleLogin(body) {
   var account = PROP.getProperty('ADMIN_ACCOUNT') || ADMIN_ACCOUNT_DEFAULT;
   if (body.account && String(body.account).trim() !== account) {
@@ -466,62 +498,21 @@ function handleLogin(body) {
     Utilities.sleep(600); // 簡單防爆破
     return json({ ok: false, error: '帳號或密碼錯誤。' });
   }
-  var token = Utilities.getUuid().replace(/-/g, '');
-  saveAdminToken(token);
+  var token = createAdminToken();
   return json({ ok: true, token: token, ttl: TOKEN_TTL_SECONDS });
-}
-
-function getAdminTokenStore() {
-  try {
-    return JSON.parse(PROP.getProperty(TOKEN_STORE_KEY) || '{}');
-  } catch (e) {
-    return {};
-  }
-}
-
-function saveAdminTokenStore(store) {
-  PROP.setProperty(TOKEN_STORE_KEY, JSON.stringify(store || {}));
-}
-
-function cleanupAdminTokenStore(store, now) {
-  Object.keys(store).forEach(function (hash) {
-    if (!store[hash] || Number(store[hash].expiresAt || 0) <= now) {
-      delete store[hash];
-    }
-  });
-  var keys = Object.keys(store);
-  if (keys.length > TOKEN_STORE_LIMIT) {
-    keys.sort(function (a, b) {
-      return Number(store[a].expiresAt || 0) - Number(store[b].expiresAt || 0);
-    });
-    keys.slice(0, keys.length - TOKEN_STORE_LIMIT).forEach(function (hash) {
-      delete store[hash];
-    });
-  }
-  return store;
-}
-
-function saveAdminToken(token) {
-  var now = Date.now();
-  var store = cleanupAdminTokenStore(getAdminTokenStore(), now);
-  store[sha256(token)] = { expiresAt: now + TOKEN_TTL_SECONDS * 1000 };
-  saveAdminTokenStore(store);
 }
 
 function verifyToken(token) {
   if (!token) return false;
-  var now = Date.now();
-  var store = cleanupAdminTokenStore(getAdminTokenStore(), now);
-  var hash = sha256(token);
-  var row = store[hash];
-  if (!row || Number(row.expiresAt || 0) <= now) {
-    saveAdminTokenStore(store);
+  var parts = String(token).split('.');
+  if (parts.length !== 2) return false;
+  if (signAdminTokenPayload(parts[0]) !== parts[1]) return false;
+  try {
+    var payload = JSON.parse(base64UrlDecodeText(parts[0]));
+    return Number(payload.exp || 0) > Date.now();
+  } catch (e) {
     return false;
   }
-  row.expiresAt = now + TOKEN_TTL_SECONDS * 1000;
-  store[hash] = row;
-  saveAdminTokenStore(store);
-  return true;
 }
 
 function handleChangePassword(body) {
