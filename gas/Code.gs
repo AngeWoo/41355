@@ -3,11 +3,14 @@
  * ----------------------------------------------------------------
  * 部署方式：
  *   1. 到 https://script.google.com 建立新專案，貼上本檔內容。
- *   2. 第一次執行 setup() 函式（會自動建立試算表與分頁、寫入初始密碼）。
+ *   2. 第一次執行 setup() 函式（會自動建立試算表與分頁、寫入初始密碼，
+ *      並安裝「每 CACHE_WARM_INTERVAL_HOURS 小時預熱快取」的時間驅動觸發器，
+ *      執行時會跳出授權視窗，需手動同意）。
  *   3. 部署 → 新增部署作業 → 類型「網頁應用程式」
  *        - 執行身分：我 (your account)
  *        - 具有存取權的使用者：任何人
  *   4. 複製 /exec 網址，貼到前端 assets/js/config.js 的 GAS_URL。
+ *   5. 若要重設或確認排程觸發器，可單獨執行 setupCacheWarmTrigger()。
  *
  * 安全性：
  *   - 讀取 (list) 為公開。
@@ -21,7 +24,8 @@
 var ADMIN_PASSWORD_DEFAULT = 'shinnyo2026'; // 第一次 setup() 後請從後台或這裡修改
 var ADMIN_ACCOUNT_DEFAULT = 'admin';
 var TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;  // token 有效 30 天
-var DATA_CACHE_SECONDS = 60 * 5;            // 前台公開資料快取 5 分鐘
+var DATA_CACHE_SECONDS = 60 * 60 * 2;       // 前台公開資料快取 2 小時（與 CACHE_WARM_INTERVAL_HOURS 排程對齊，新增/修改/刪除仍會立即清快取）
+var CACHE_WARM_INTERVAL_HOURS = 2;          // 快取預熱觸發器執行間隔
 var OFFICIAL_LIVE_PAGE = 'https://www.shinnyo-en.org.tw/at2026/index2026.html';
 var MEMBER_NOTIFY_EMAIL = 'angewu@hotmail.com';
 var PROP = PropertiesService.getScriptProperties();
@@ -80,7 +84,36 @@ function setup() {
     PROP.setProperty('ADMIN_ACCOUNT', ADMIN_ACCOUNT_DEFAULT);
   }
   seedSampleData();
+  setupCacheWarmTrigger();
   return '安裝完成，試算表：' + ss.getUrl();
+}
+
+// 將所有內容類型重新讀取一次並寫回 CacheService，讓 action=list / action=all
+// 的回應不用等快取過期後再現讀試算表。由 setupCacheWarmTrigger() 排程呼叫，
+// 也可在編輯器手動執行一次立即預熱。
+function warmDataCache() {
+  var cache = CacheService.getScriptCache();
+  Object.keys(SCHEMA).forEach(function (type) {
+    var rows = listRecords(type);
+    var payload = JSON.stringify(rows);
+    if (payload.length < 95000) {
+      cache.put(dataCacheKey(type), payload, DATA_CACHE_SECONDS);
+    }
+  });
+}
+
+// 安裝／重設「每 CACHE_WARM_INTERVAL_HOURS 小時預熱快取」的時間驅動觸發器。
+// 需在 Apps Script 編輯器手動執行一次（觸發器建立需要使用者授權，setup() 已內含此呼叫）。
+function setupCacheWarmTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'warmDataCache') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('warmDataCache')
+    .timeBased()
+    .everyHours(CACHE_WARM_INTERVAL_HOURS)
+    .create();
+  warmDataCache();
+  return '已設定每 ' + CACHE_WARM_INTERVAL_HOURS + ' 小時自動預熱快取的觸發器。';
 }
 
 function authorizeMailPermission() {
