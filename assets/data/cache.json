@@ -1,20 +1,20 @@
 {
   "ok": true,
   "mode": "local-json",
-  "savedAt": "2026-07-09T17:19:48.765Z",
+  "savedAt": "2026-07-09T19:28:54.262Z",
   "source": "gas",
   "data": {
     "news": [
       {
         "id": "an-1",
         "title": "親苑時報 2026年7月號已更新",
-        "date": "2026-07-03T16:00:00.000Z",
+        "date": "2026-07-09T16:00:00.000Z",
         "body": "最新一期親苑時報已上線，歡迎點閱。",
         "link": "https://meee.ing/18d09c",
         "pinned": true,
         "order": 1,
         "createdAt": "2026-06-27T11:28:24.144Z",
-        "updatedAt": "2026-07-05T14:20:35.064Z"
+        "updatedAt": "2026-07-09T17:32:38.023Z"
       },
       {
         "id": "d1201571-b4e2-4487-bcec-58a8414a36fd",
@@ -2429,7 +2429,7 @@
         "createdAt": "2026-07-05T14:10:00.020Z",
         "updatedAt": "2026-07-08T10:38:48.113Z",
         "dharmaName": "黃琦芳",
-        "order": ""
+        "order": 1
       },
       {
         "id": "cc454d19-11b9-4c7e-b05c-6406fddffca5",
@@ -2439,7 +2439,7 @@
         "createdAt": "2026-07-07T13:24:37.607Z",
         "updatedAt": "2026-07-08T10:38:55.235Z",
         "dharmaName": "黃琦芳",
-        "order": ""
+        "order": 2
       },
       {
         "id": "c1539938-1acb-47a1-b901-d7cf99c817cd",
@@ -2449,16 +2449,16 @@
         "createdAt": "2026-07-07T14:19:09.915Z",
         "updatedAt": "2026-07-08T10:39:01.941Z",
         "dharmaName": "黃琦芳",
-        "order": ""
+        "order": 3
       },
       {
         "id": "52db26f0-e082-40b6-b92a-99d254f50630",
-        "name": "陳",
+        "name": "陳晴芸",
         "email": "ethel894@gmail.com",
         "mobile": "0981961436",
         "createdAt": "2026-07-09T15:02:18.433Z",
-        "updatedAt": "2026-07-09T15:02:18.433Z",
-        "dharmaName": "晴芸",
+        "updatedAt": "2026-07-09T18:24:16.216Z",
+        "dharmaName": "黃琦芳",
         "order": 4
       }
     ]
