@@ -41,7 +41,7 @@
     return !isNaN(d.getTime()) ? d : null;
   }
   function recordDateValues(it, fields) {
-    fields = fields || ['createdAt', 'updatedAt', 'date', 'issue'];
+    fields = fields || ['date', 'issue'];
     return fields.map(function (field) { return it && it[field]; });
   }
   function isRecentRecord(it, fields) {
@@ -401,12 +401,12 @@
   var GAP = 22;
   var allData = {};
   var SECTIONS = [
-    { type: 'news', gridId: 'newsGrid', minW: 330, item: newsItem, empty: '目前沒有最新消息' },
-    { type: 'podcast', gridId: 'podcastGrid', minW: 300, item: podcastItem, empty: '目前沒有 Podcast' },
-    { type: 'calendar', gridId: 'calendarGrid', minW: 320, item: calItem, empty: '目前沒有行事曆' },
-    { type: 'headquarters', gridId: 'headquartersGrid', minW: 320, item: headquartersItem, empty: '目前沒有總部會聯絡事項', latestMode: 'first' },
-    { type: 'newsletter', gridId: 'newsletterGrid', minW: 210, item: newsletterItem, empty: '目前沒有親苑時報' },
-    { type: 'dharma', gridId: 'dharmaGrid', minW: 300, item: dharmaItem, empty: '目前沒有瑞聲法語' },
+    { type: 'news', gridId: 'newsGrid', minW: 330, item: newsItem, empty: '目前沒有最新消息', latestFields: ['date'] },
+    { type: 'podcast', gridId: 'podcastGrid', minW: 300, item: podcastItem, empty: '目前沒有 Podcast', latestFields: ['date'] },
+    { type: 'calendar', gridId: 'calendarGrid', minW: 320, item: calItem, empty: '目前沒有行事曆', latestFields: ['date'] },
+    { type: 'headquarters', gridId: 'headquartersGrid', minW: 320, item: headquartersItem, empty: '目前沒有總部會聯絡事項', latestFields: ['date'] },
+    { type: 'newsletter', gridId: 'newsletterGrid', minW: 210, item: newsletterItem, empty: '目前沒有親苑時報', latestFields: ['date', 'issue'] },
+    { type: 'dharma', gridId: 'dharmaGrid', minW: 300, item: dharmaItem, empty: '目前沒有瑞聲法語', latestFields: ['date'] },
     { type: 'tools', gridId: 'toolsGrid', minW: 260, maxCols: 5, item: toolItem, empty: '目前沒有互動程式', latestFields: ['date'] }
   ];
   var store = {};
@@ -627,9 +627,9 @@
     pageItems = pageItems.map(function (it) {
       var copy = Object.assign({}, it);
       var key = copy.id || [copy.title, copy.date, copy.issue, copy.ep].join('|');
-      copy._latest = s.cfg.latestMode === 'first'
-        ? (latestId && key === latestId)
-        : (hasAnyDate ? isRecentRecord(copy, s.cfg.latestFields) : (latestId && key === latestId));
+      copy._latest = hasAnyDate
+        ? isRecentRecord(copy, s.cfg.latestFields)
+        : !!(latestId && key === latestId);
       return copy;
     });
   // Internal section.

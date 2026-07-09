@@ -18,7 +18,7 @@
         { k: 'order', label: '排序（數字越小越前）', type: 'number' }
       ],
       title: function (r) { return r.title; },
-      sub: function (r) { return r.date + (truthy(r.pinned) ? ' · 置頂' : ''); }
+      sub: function (r) { return simpleDate(r.date) + (truthy(r.pinned) ? ' · 置頂' : ''); }
     },
     {
       type: 'podcast', label: 'Podcast',
@@ -34,7 +34,7 @@
         { k: 'order', label: '排序', type: 'number' }
       ],
       title: function (r) { return (r.ep ? r.ep + '｜' : '') + r.title; },
-      sub: function (r) { return [r.guest, r.date].filter(Boolean).join(' · '); }
+      sub: function (r) { return [r.guest, simpleDate(r.date)].filter(Boolean).join(' · '); }
     },
     {
       type: 'calendar', label: '行事曆',
@@ -49,7 +49,7 @@
         { k: 'order', label: '排序', type: 'number' }
       ],
       title: function (r) { return r.title; },
-      sub: function (r) { return [r.date, r.location, r.tag].filter(Boolean).join(' · '); }
+      sub: function (r) { return [simpleDate(r.date), r.location, r.tag].filter(Boolean).join(' · '); }
     },
     {
       type: 'headquarters', label: '總部會聯絡事項',
@@ -63,7 +63,7 @@
         { k: 'order', label: '排序', type: 'number' }
       ],
       title: function (r) { return r.title; },
-      sub: function (r) { return [r.date, r.category].filter(Boolean).join(' · '); }
+      sub: function (r) { return [simpleDate(r.date), r.category].filter(Boolean).join(' · '); }
     },
     {
       type: 'newsletter', label: '親苑時報',
@@ -77,7 +77,7 @@
         { k: 'order', label: '排序', type: 'number' }
       ],
       title: function (r) { return r.title; },
-      sub: function (r) { return [r.issue, r.date].filter(Boolean).join(' · '); }
+      sub: function (r) { return [r.issue, simpleDate(r.date)].filter(Boolean).join(' · '); }
     },
     {
       type: 'dharma', label: '瑞聲法語',
@@ -92,7 +92,7 @@
         { k: 'order', label: '排序', type: 'number' }
       ],
       title: function (r) { return r.title; },
-      sub: function (r) { return [r.category, r.date].filter(Boolean).join(' · '); }
+      sub: function (r) { return [r.category, simpleDate(r.date)].filter(Boolean).join(' · '); }
     },
     {
       type: 'tools', label: '互動程式',
@@ -106,7 +106,7 @@
         { k: 'order', label: '排序', type: 'number' }
       ],
       title: function (r) { return r.title; },
-      sub: function (r) { return [r.date, r.desc, r.link].filter(Boolean).join(' · '); }
+      sub: function (r) { return [simpleDate(r.date), r.desc, r.link].filter(Boolean).join(' · '); }
     },
     {
       type: 'talks', label: '真如開講',
@@ -138,6 +138,7 @@
   function truthy(v) { var s = String(v).toLowerCase(); return s === 'true' || s === '1' || s === 'yes' || v === true; }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function byType(t) { return COLLECTIONS.filter(function (c) { return c.type === t; })[0]; }
+  function simpleDate(v) { return dateValue(v); }
   function dateValue(v) {
     var s = String(v == null ? '' : v).trim();
     if (!s) return '';
