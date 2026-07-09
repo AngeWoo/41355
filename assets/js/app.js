@@ -793,7 +793,9 @@
         renderFallback();
         return null;
       }
-      return API.all(true);
+      // 不強制 fresh=1：走 GAS 已預熱的 CacheService 快取（warmDataCache 每 2 小時
+      // 預熱一次，新增/修改/刪除會立即清快取），比每次都重讀整份試算表快很多。
+      return API.all(false);
     }).then(function (res) {
       if (!res) return;
       if (!res || !res.ok) {
