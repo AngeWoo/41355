@@ -3,6 +3,7 @@
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var TOKEN_KEY = 'shinnyo_admin_token_v2';
   var LEGACY_TOKEN_KEY = 'shinnyo_admin_token';
+  var FRONT_DATA_CACHE_KEY = 'shinnyo_front_data_cache_v1';
 
   // 各內容類型的欄位定義（須與 GAS 的 SCHEMA 對應）
   var COLLECTIONS = [
@@ -169,6 +170,84 @@
   function refreshPageSoon(delay) {
     setTimeout(function () { window.location.reload(); }, delay || 450);
   }
+  function localCachePayload(data, mode) {
+    return {
+      ok: true,
+      mode: 'local-json',
+      savedAt: new Date().toISOString(),
+      source: mode || API.mode || 'gas',
+      data: data || {}
+    };
+  }
+  function writeFrontLocalStorageCache(data, mode) {
+    try {
+      localStorage.setItem(FRONT_DATA_CACHE_KEY, JSON.stringify({
+        savedAt: Date.now(),
+        mode: mode || 'local-json',
+        data: data || {}
+      }));
+    } catch (e) {}
+  }
+  function downloadCacheJson(text) {
+    var blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'cache.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+  function saveCacheJsonFile(text) {
+    if (!window.showSaveFilePicker) {
+      downloadCacheJson(text);
+      return Promise.resolve('download');
+    }
+    return window.showSaveFilePicker({
+      suggestedName: 'cache.json',
+      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+    }).then(function (handle) {
+      return handle.createWritable();
+    }).then(function (writable) {
+      return writable.write(text).then(function () {
+        return writable.close();
+      });
+    }).then(function () {
+      return 'written';
+    });
+  }
+  function syncLocalCache(manual) {
+    if (!API.all) {
+      if (manual) toast('目前版本不支援同步本機 JSON。', true);
+      return Promise.resolve(false);
+    }
+    var btn = $('#syncLocalCacheBtn');
+    if (manual && btn) { btn.disabled = true; btn.textContent = '同步中…'; }
+    return API.all(true).then(function (res) {
+      if (!res || !res.ok || !res.data) throw new Error((res && res.error) || '資料讀取失敗');
+      var payload = localCachePayload(res.data, res.mode);
+      var text = JSON.stringify(payload, null, 2);
+      writeFrontLocalStorageCache(res.data, payload.mode);
+      return saveCacheJsonFile(text);
+    }).then(function (mode) {
+      if (manual && btn) { btn.disabled = false; btn.textContent = '同步本機JSON'; }
+      if (manual) {
+        toast(mode === 'written'
+          ? '本機 JSON 快取已同步。'
+          : '已下載 cache.json；此瀏覽器不支援直接寫入本機檔。');
+      }
+      return true;
+    }).catch(function (err) {
+      if (manual && btn) { btn.disabled = false; btn.textContent = '同步本機JSON'; }
+      if (err && err.name === 'AbortError') {
+        if (manual) toast('已取消同步本機 JSON。', true);
+      } else if (manual) {
+        toast((err && err.message) || '同步本機 JSON 失敗。', true);
+      }
+      return false;
+    });
+  }
   function statsSummary(stats) {
     stats = stats || {};
     return [
@@ -321,6 +400,10 @@
     showLogin();
   });
 
+  var syncLocalCacheBtn = $('#syncLocalCacheBtn');
+  if (syncLocalCacheBtn) {
+    syncLocalCacheBtn.addEventListener('click', function () { syncLocalCache(true); });
+  }
   var recalcStatsBtn = $('#recalcStatsBtn');
   if (recalcStatsBtn) {
     recalcStatsBtn.addEventListener('click', function () { refreshStats(true); });

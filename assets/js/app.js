@@ -729,6 +729,23 @@
     }
   }
 
+  function readLocalJsonCache() {
+    return fetch('assets/data/cache.json?_ts=' + encodeURIComponent(Date.now()), { cache: 'no-cache' })
+      .then(function (r) {
+        if (!r.ok) return null;
+        return r.json();
+      })
+      .then(function (payload) {
+        if (!payload || !payload.data) return null;
+        return {
+          savedAt: payload.savedAt || Date.now(),
+          mode: payload.mode || 'local-json',
+          data: payload.data
+        };
+      })
+      .catch(function () { return null; });
+  }
+
   function writeCachedFrontData(data, mode) {
     try {
       localStorage.setItem(DATA_CACHE_KEY, JSON.stringify({
@@ -760,11 +777,25 @@
       showModeBanner('<b>快取資料</b>：背景同步 Google 試算表中');
     }
 
-    if (!API.all) {
-      renderFallback();
-      return;
-    }
-    API.all(true).then(function (res) {
+    readLocalJsonCache().then(function (localJson) {
+      if (localJson) {
+        var localSignature = dataSignature(localJson.data);
+        if (!didRender || localSignature !== renderedSignature) {
+          didRender = true;
+          renderedSignature = localSignature;
+          renderData(localJson.data, false);
+          writeCachedFrontData(localJson.data, localJson.mode);
+        }
+        showModeBanner('<b>本機 JSON 快取</b>：背景同步 Google 試算表中');
+      }
+
+      if (!API.all) {
+        renderFallback();
+        return null;
+      }
+      return API.all(true);
+    }).then(function (res) {
+      if (!res) return;
       if (!res || !res.ok) {
         console.error(res && res.error);
         renderFallback();
