@@ -176,12 +176,27 @@
   });
 
   // ---------- 登入 ----------
+  function clearStoredToken() {
+    token = '';
+    sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+  }
   function showLogin() { $('#loginView').style.display = 'grid'; $('#adminShell').classList.remove('active'); }
   function showAdmin() {
     $('#loginView').style.display = 'none'; $('#adminShell').classList.add('active');
     $('#modePill').textContent = API.modeLabel();
     if (API.isReadOnly()) document.body.classList.add('readonly-mode');
     buildTabs(); selectTab(current); loadAll();
+  }
+  function isAuthExpiredError(error) {
+    return /未授權|逾時/.test(error || '');
+  }
+  function handleAuthExpired(message) {
+    clearStoredToken();
+    closeEditor();
+    closePwdModal();
+    showLogin();
+    alertBox($('#loginAlert'), message || '登入已過期，請重新登入。', 'err');
   }
 
   $('#loginForm').addEventListener('submit', function (e) {
@@ -219,9 +234,7 @@
   });
 
   $('#logoutBtn').addEventListener('click', function () {
-    token = '';
-    sessionStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(TOKEN_KEY);
+    clearStoredToken();
     showLogin();
   });
 
@@ -401,7 +414,7 @@
         loadType(current);
       } else {
         alertBox($('#modalAlert'), res.error || '儲存失敗', 'err');
-        if (/未授權|逾時/.test(res.error || '')) setTimeout(function () { $('#logoutBtn').click(); }, 1500);
+        if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1500);
       }
     }).catch(function () { btn.disabled = false; btn.textContent = '儲存'; alertBox($('#modalAlert'), '連線失敗', 'err'); });
   });
@@ -412,7 +425,10 @@
     if (API.isReadOnly()) { toast(API.mode === 'published' ? '唯讀模式：請在 Google 試算表刪除' : '展示模式無法刪除', true); return; }
     API.remove(type, id, token).then(function (res) {
       if (res.ok) { toast('已刪除'); loadType(type); }
-      else { toast(res.error || '刪除失敗', true); }
+      else {
+        toast(res.error || '刪除失敗', true);
+        if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1200);
+      }
     });
   }
 
@@ -438,12 +454,26 @@
     if (API.isReadOnly()) { alertBox($('#pwdAlert'), '唯讀模式無法修改密碼。', 'err'); return; }
     API.changePassword($('#oldPwd').value, $('#newPwd').value, token).then(function (res) {
       if (res.ok) { alertBox($('#pwdAlert'), '密碼已更新。', 'ok'); setTimeout(closePwdModal, 1200); }
-      else alertBox($('#pwdAlert'), res.error || '更新失敗', 'err');
+      else {
+        alertBox($('#pwdAlert'), res.error || '更新失敗', 'err');
+        if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1200);
+      }
     });
   });
 
   // ---------- 啟動 ----------
-  if (token) { showAdmin(); } else { showLogin(); }
+  if (token && !API.isReadOnly()) {
+    API.validateToken(token).then(function (res) {
+      if (res.ok) showAdmin();
+      else handleAuthExpired('登入已過期，請重新登入。');
+    }).catch(function () {
+      handleAuthExpired('無法驗證登入狀態，請重新登入。');
+    });
+  } else if (token) {
+    showAdmin();
+  } else {
+    showLogin();
+  }
 })();
 
 

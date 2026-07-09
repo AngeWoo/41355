@@ -167,6 +167,7 @@
     officialLive: officialLive,
     resolveCover: resolveCover,
     login: function (password, account) { return post({ action: 'login', account: account, password: password }); },
+    validateToken: function (token) { return post({ action: 'validateToken', token: token }); },
     create: function (type, record, token, options) {
       options = options || {};
       return post({ action: 'create', type: type, record: record, token: token, notifyMembers: !!options.notifyMembers });
