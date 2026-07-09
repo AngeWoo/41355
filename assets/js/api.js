@@ -34,7 +34,7 @@
   }
 
   function clearFrontDataCache(action) {
-    if (['create', 'update', 'delete', 'reorder', 'recalculateStats'].indexOf(action) === -1) return;
+    if (['create', 'update', 'delete', 'reorder', 'recalculateStats', 'recalculateLatest'].indexOf(action) === -1) return;
     try { localStorage.removeItem('shinnyo_front_data_cache_v1'); } catch (e) {}
   }
 
@@ -176,6 +176,13 @@
     });
   }
 
+  function recalculateLatest(token) {
+    if (MODE === 'gas') {
+      return post({ action: 'recalculateLatest', token: token });
+    }
+    return Promise.resolve({ ok: true, latest: {} });
+  }
+
   window.API = {
     mode: MODE,
     canWrite: function () { return MODE === 'gas'; },
@@ -194,6 +201,7 @@
     login: function (password, account) { return post({ action: 'login', account: account, password: password }); },
     validateToken: function (token) { return post({ action: 'validateToken', token: token }); },
     recalculateStats: recalculateStats,
+    recalculateLatest: recalculateLatest,
     create: function (type, record, token, options) {
       options = options || {};
       return post({ action: 'create', type: type, record: record, token: token, notifyMembers: !!options.notifyMembers });

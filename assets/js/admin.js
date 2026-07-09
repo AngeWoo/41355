@@ -181,6 +181,42 @@
       return row[0] + ' ' + (Number(row[1]) || 0) + '+';
     }).join('、');
   }
+  function latestSummary(latest) {
+    latest = latest || {};
+    return [
+      ['最新消息', latest.news],
+      ['PODCAST', latest.podcast],
+      ['行事曆', latest.calendar],
+      ['聯絡事項', latest.headquarters],
+      ['親苑時報', latest.newsletter],
+      ['瑞聲法語', latest.dharma],
+      ['互動程式', latest.tools]
+    ].map(function (row) {
+      return row[0] + ' ' + (Number(row[1]) || 0);
+    }).join('、');
+  }
+  function refreshLatest(manual) {
+    if (!API.recalculateLatest) {
+      if (manual) toast('目前版本不支援重新計算最新上架。', true);
+      return Promise.resolve(false);
+    }
+    var btn = $('#recalcLatestBtn');
+    if (manual && btn) { btn.disabled = true; btn.textContent = '計算中…'; }
+    return API.recalculateLatest(token).then(function (res) {
+      if (manual && btn) { btn.disabled = false; btn.textContent = '重新計算最新上架'; }
+      if (res && res.ok) {
+        if (manual) toast('最新上架已重新計算：' + latestSummary(res.latest));
+        return true;
+      }
+      if (res && isAuthExpiredError(res.error || '')) handleAuthExpired(res.error);
+      else if (manual) toast((res && res.error) || '重新計算最新上架失敗', true);
+      return false;
+    }).catch(function () {
+      if (manual && btn) { btn.disabled = false; btn.textContent = '重新計算最新上架'; }
+      if (manual) toast('重新計算最新上架失敗，請檢查連線。', true);
+      return false;
+    });
+  }
   function refreshStats(manual) {
     if (!API.recalculateStats) {
       if (manual) toast('目前版本不支援重新計算統計。', true);
@@ -288,6 +324,10 @@
   var recalcStatsBtn = $('#recalcStatsBtn');
   if (recalcStatsBtn) {
     recalcStatsBtn.addEventListener('click', function () { refreshStats(true); });
+  }
+  var recalcLatestBtn = $('#recalcLatestBtn');
+  if (recalcLatestBtn) {
+    recalcLatestBtn.addEventListener('click', function () { refreshLatest(true); });
   }
 
   // ---------- 分頁 ----------
