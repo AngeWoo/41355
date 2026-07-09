@@ -1869,7 +1869,7 @@ html.talk-open body {
   .hero-feature::after { display: none; }
   .stats {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 8px;
     margin: 30px auto 0;
     width: min(100%, 520px);
