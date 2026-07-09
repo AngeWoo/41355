@@ -63,7 +63,7 @@ var SCHEMA = {
   },
   members: {
     sheet: '會員',
-    headers: ['id', 'name', 'dharmaName', 'email', 'mobile', 'createdAt', 'updatedAt']
+    headers: ['id', 'name', 'dharmaName', 'email', 'mobile', 'order', 'createdAt', 'updatedAt']
   }
 };
 
