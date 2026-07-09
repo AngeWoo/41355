@@ -1012,11 +1012,12 @@
   var nav = document.getElementById('nav');
   function updateNavActive() {
     nav.classList.toggle('scrolled', window.scrollY > 30);
-    var secs = document.querySelectorAll('main section.block, header.hero');
+    var secs = document.querySelectorAll('main section.block, header.hero, #news');
     var cur = '';
     var pos = window.scrollY + 130;
     secs.forEach(function (s) { if (pos >= s.offsetTop) cur = s.id; });
     if (!cur || cur === 'top') cur = 'home';
+    if (cur === 'home' && !document.querySelector('.nav-links a[href="#home"]')) cur = 'news';
     document.querySelectorAll('.nav-links a').forEach(function (a) {
       var isActive = a.getAttribute('href') === '#' + cur;
       a.classList.toggle('active', isActive);
