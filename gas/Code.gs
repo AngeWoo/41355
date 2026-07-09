@@ -201,7 +201,7 @@ function doPost(e) {
     }
 
     // 以下動作需驗證 token
-    var mutating = ['create', 'update', 'delete', 'reorder', 'changePassword', 'recalculateStats'];
+    var mutating = ['create', 'update', 'delete', 'reorder', 'changePassword', 'recalculateStats', 'recalculateLatest'];
     if (mutating.indexOf(action) !== -1) {
       if (!verifyToken(body.token)) {
         return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
@@ -223,6 +223,7 @@ function doPost(e) {
       case 'reorder':        return jsonWithFreshCache({ ok: true, data: reorder(body.type, body.ids) });
       case 'changePassword': return handleChangePassword(body);
       case 'recalculateStats': return json({ ok: true, stats: recalculateStats() });
+      case 'recalculateLatest': return json({ ok: true, latest: recalculateLatest() });
       default:               return json({ ok: false, error: '未知的 action: ' + action });
     }
   } catch (err) {
@@ -275,6 +276,47 @@ function recalculateStats() {
     dharma: listRecords('dharma').length,
     calendar: listRecords('calendar').length
   };
+}
+
+function latestDateFields(type) {
+  if (type === 'newsletter') return ['date', 'issue'];
+  return ['date'];
+}
+
+function parseLatestDate(value) {
+  var s = String(value || '').trim();
+  if (!s) return null;
+  var m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  m = s.match(/^(\d{4})[-/](\d{1,2})$/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, 1);
+  m = s.match(/^(\d{1,2})[-/](\d{1,2})$/);
+  if (m) return new Date(new Date().getFullYear(), Number(m[1]) - 1, Number(m[2]));
+  var d = new Date(s);
+  return !isNaN(d.getTime()) ? d : null;
+}
+
+function isLatestRecord(row, type) {
+  var fields = latestDateFields(type);
+  var now = Date.now();
+  return fields.some(function (field) {
+    var d = parseLatestDate(row && row[field]);
+    if (!d) return false;
+    var age = now - d.getTime();
+    return age >= 0 && age <= 7 * 24 * 60 * 60 * 1000;
+  });
+}
+
+function recalculateLatest() {
+  clearDataCache();
+  var types = ['news', 'podcast', 'calendar', 'headquarters', 'newsletter', 'dharma', 'tools'];
+  var out = {};
+  types.forEach(function (type) {
+    out[type] = listRecords(type).filter(function (row) {
+      return isLatestRecord(row, type);
+    }).length;
+  });
+  return out;
 }
 
 function resolveCoverInfo(url) {
