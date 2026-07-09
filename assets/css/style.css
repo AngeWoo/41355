@@ -1179,6 +1179,7 @@ html.talk-open body {
   font-size: .88rem;
 }
 .talk-item {
+  position: relative;
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 12px;
@@ -1187,6 +1188,11 @@ html.talk-open body {
   border: 1px solid rgba(255,255,255,.14);
   border-radius: 14px;
   background: rgba(255,255,255,.055);
+}
+.talk-item .line-card-share {
+  top: 10px;
+  right: 10px;
+  bottom: auto;
 }
 .talk-icon {
   width: 44px;
