@@ -1010,6 +1010,19 @@
 
   // Internal section.
   var nav = document.getElementById('nav');
+  var brandHome = document.querySelector('.nav .brand');
+  if (brandHome) {
+    brandHome.addEventListener('click', function (e) {
+      var target = new URL('index.html', window.location.href);
+      if (window.location.origin === target.origin &&
+          window.location.pathname.replace(/\/$/, '/index.html') === target.pathname &&
+          window.location.search === target.search) {
+        e.preventDefault();
+        history.replaceState(null, '', target.href);
+        window.location.reload();
+      }
+    });
+  }
   function updateNavActive() {
     nav.classList.toggle('scrolled', window.scrollY > 30);
     var secs = document.querySelectorAll('main section.block, header.hero, #news');
