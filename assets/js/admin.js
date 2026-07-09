@@ -199,17 +199,12 @@
     a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
-  function saveCacheJsonFile(text) {
-    if (!window.showSaveFilePicker) {
+  function saveCacheJsonFile(text, handle) {
+    if (!handle) {
       downloadCacheJson(text);
       return Promise.resolve('download');
     }
-    return window.showSaveFilePicker({
-      suggestedName: 'cache.json',
-      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
-    }).then(function (handle) {
-      return handle.createWritable();
-    }).then(function (writable) {
+    return handle.createWritable().then(function (writable) {
       return writable.write(text).then(function () {
         return writable.close();
       });
@@ -217,18 +212,83 @@
       return 'written';
     });
   }
+
+  // ---------- 本機檔案控制代碼持久化（IndexedDB）----------
+  // 第一次同步時選好的檔案位置存起來，之後同步（含計時器自動觸發）
+  // 只要權限還在，就能直接覆寫同一個檔案，不用每次都跳「另存新檔」視窗。
+  var CACHE_HANDLE_DB = 'shinnyo_cache_handle_db';
+  var CACHE_HANDLE_STORE = 'handles';
+  var CACHE_HANDLE_KEY = 'cacheJsonHandle';
+
+  function openHandleDb() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open(CACHE_HANDLE_DB, 1);
+      req.onupgradeneeded = function () { req.result.createObjectStore(CACHE_HANDLE_STORE); };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+  function getStoredHandle() {
+    if (!window.indexedDB) return Promise.resolve(null);
+    return openHandleDb().then(function (db) {
+      return new Promise(function (resolve) {
+        var tx = db.transaction(CACHE_HANDLE_STORE, 'readonly');
+        var req = tx.objectStore(CACHE_HANDLE_STORE).get(CACHE_HANDLE_KEY);
+        req.onsuccess = function () { resolve(req.result || null); };
+        req.onerror = function () { resolve(null); };
+      });
+    }).catch(function () { return null; });
+  }
+  function storeHandle(handle) {
+    if (!window.indexedDB) return Promise.resolve(false);
+    return openHandleDb().then(function (db) {
+      return new Promise(function (resolve) {
+        var tx = db.transaction(CACHE_HANDLE_STORE, 'readwrite');
+        tx.objectStore(CACHE_HANDLE_STORE).put(handle, CACHE_HANDLE_KEY);
+        tx.oncomplete = function () { resolve(true); };
+        tx.onerror = function () { resolve(false); };
+      });
+    }).catch(function () { return false; });
+  }
+
+  // 取得一個可直接寫入的檔案控制代碼：優先重用先前存好的，權限失效時
+  // manual（有使用者手勢）才能重新要求權限／跳新的選檔視窗；計時器自動
+  // 觸發（manual=false）沒有手勢，權限不足就直接放棄，交給呼叫端下載。
+  function resolveWritableHandle(manual) {
+    if (!window.showSaveFilePicker) return Promise.resolve(null);
+    return getStoredHandle().then(function (handle) {
+      if (handle) {
+        return handle.queryPermission({ mode: 'readwrite' }).then(function (state) {
+          if (state === 'granted') return handle;
+          if (!manual) return null;
+          return handle.requestPermission({ mode: 'readwrite' }).then(function (newState) {
+            return newState === 'granted' ? handle : null;
+          });
+        }).catch(function () { return null; });
+      }
+      if (!manual) return null;
+      return window.showSaveFilePicker({
+        suggestedName: 'cache.json',
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+      }).then(function (newHandle) {
+        return storeHandle(newHandle).then(function () { return newHandle; });
+      });
+    });
+  }
+
   var AUTO_SYNC_INTERVAL_MS = 2 * 60 * 60 * 1000; // 每 2 小時
   var autoSyncTimer = null;
   function autoSyncLocalCache() {
     if (!API.all) return Promise.resolve(false);
-    return API.all(true).then(function (res) {
-      if (!res || !res.ok || !res.data) throw new Error((res && res.error) || '資料讀取失敗');
-      var payload = localCachePayload(res.data, res.mode);
-      var text = JSON.stringify(payload, null, 2);
-      writeFrontLocalStorageCache(res.data, payload.mode);
-      downloadCacheJson(text); // 計時器觸發，非使用者手動點擊，無法叫用 showSaveFilePicker，一律走下載
-      return true;
-    }).catch(function () { return false; });
+    return resolveWritableHandle(false).then(function (handle) {
+      return API.all(true).then(function (res) {
+        if (!res || !res.ok || !res.data) throw new Error((res && res.error) || '資料讀取失敗');
+        var payload = localCachePayload(res.data, res.mode);
+        var text = JSON.stringify(payload, null, 2);
+        writeFrontLocalStorageCache(res.data, payload.mode);
+        return saveCacheJsonFile(text, handle); // 已有授權的檔案代碼→直接覆寫；否則下載
+      });
+    }).then(function () { return true; }).catch(function () { return false; });
   }
   function startAutoSyncLocalCache() {
     if (autoSyncTimer) return;
@@ -241,12 +301,16 @@
     }
     var btn = $('#syncLocalCacheBtn');
     if (manual && btn) { btn.disabled = true; btn.textContent = '同步中…'; }
-    return API.all(true).then(function (res) {
-      if (!res || !res.ok || !res.data) throw new Error((res && res.error) || '資料讀取失敗');
-      var payload = localCachePayload(res.data, res.mode);
-      var text = JSON.stringify(payload, null, 2);
-      writeFrontLocalStorageCache(res.data, payload.mode);
-      return saveCacheJsonFile(text);
+    // 檔案控制代碼的取得（重用已存的，或跳新的另存新檔視窗）必須在使用者手勢的
+    // 有效期內完成；GAS 的 action=all 可能較慢，所以先拿代碼，才打 API、寫檔。
+    return resolveWritableHandle(manual).then(function (handle) {
+      return API.all(true).then(function (res) {
+        if (!res || !res.ok || !res.data) throw new Error((res && res.error) || '資料讀取失敗');
+        var payload = localCachePayload(res.data, res.mode);
+        var text = JSON.stringify(payload, null, 2);
+        writeFrontLocalStorageCache(res.data, payload.mode);
+        return saveCacheJsonFile(text, handle);
+      });
     }).then(function (mode) {
       if (manual && btn) { btn.disabled = false; btn.textContent = '同步本機JSON'; }
       if (manual) {
