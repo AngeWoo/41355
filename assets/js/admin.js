@@ -217,6 +217,23 @@
       return 'written';
     });
   }
+  var AUTO_SYNC_INTERVAL_MS = 2 * 60 * 60 * 1000; // 每 2 小時
+  var autoSyncTimer = null;
+  function autoSyncLocalCache() {
+    if (!API.all) return Promise.resolve(false);
+    return API.all(true).then(function (res) {
+      if (!res || !res.ok || !res.data) throw new Error((res && res.error) || '資料讀取失敗');
+      var payload = localCachePayload(res.data, res.mode);
+      var text = JSON.stringify(payload, null, 2);
+      writeFrontLocalStorageCache(res.data, payload.mode);
+      downloadCacheJson(text); // 計時器觸發，非使用者手動點擊，無法叫用 showSaveFilePicker，一律走下載
+      return true;
+    }).catch(function () { return false; });
+  }
+  function startAutoSyncLocalCache() {
+    if (autoSyncTimer) return;
+    autoSyncTimer = setInterval(autoSyncLocalCache, AUTO_SYNC_INTERVAL_MS);
+  }
   function syncLocalCache(manual) {
     if (!API.all) {
       if (manual) toast('目前版本不支援同步本機 JSON。', true);
@@ -349,6 +366,7 @@
     $('#modePill').textContent = API.modeLabel();
     if (API.isReadOnly()) document.body.classList.add('readonly-mode');
     buildTabs(); selectTab(current); loadAll();
+    startAutoSyncLocalCache();
   }
   function isAuthExpiredError(error) {
     return /未授權|逾時/.test(error || '');
