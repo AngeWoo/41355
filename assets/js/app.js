@@ -1452,6 +1452,13 @@
             saveMember(res.data);
             setMemberStatus('登入成功，歡迎 ' + res.data.name + '。', 'ok');
             loadMemberDirectory();
+            setTimeout(function () {
+              closeMemberPopover();
+              if (location.hash) {
+                try { history.replaceState(null, document.title, location.pathname + location.search); } catch (e) {}
+              }
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 700);
           } else {
             setMemberStatus(res.error || '登入失敗。', 'err');
           }
