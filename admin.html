@@ -6,7 +6,7 @@
   <title>後台維護｜真如苑資料網站</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css?v=58" />
-  <link rel="stylesheet" href="assets/css/admin.css?v=24" />
+  <link rel="stylesheet" href="assets/css/admin.css?v=25" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body class="admin-body admin-auth-pending">
@@ -62,6 +62,11 @@
     </div>
 
     <div class="container admin-layout">
+      <button type="button" class="mobile-tab-toggle" id="mobileTabToggle" aria-controls="tabs" aria-expanded="false">
+        <span class="mobile-tab-hamburger" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="mobile-tab-label">分類選單</span>
+        <span class="mobile-tab-current" id="mobileTabCurrent">最新消息</span>
+      </button>
       <aside class="side" id="tabs"></aside>
       <main id="panels"></main>
     </div>
@@ -117,6 +122,6 @@
   <script src="assets/js/config.js?v=5"></script>
   <script src="assets/js/seed-data.js?v=12"></script>
   <script src="assets/js/api.js?v=25"></script>
-  <script src="assets/js/admin.js?v=47"></script>
+  <script src="assets/js/admin.js?v=48"></script>
 </body>
 </html>
