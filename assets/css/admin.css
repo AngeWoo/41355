@@ -301,8 +301,9 @@ html.admin-modal-open body {
   .mobile-tab-toggle.is-open .mobile-tab-hamburger i:nth-child(1) { transform: translateY(6px) rotate(45deg); }
   .mobile-tab-toggle.is-open .mobile-tab-hamburger i:nth-child(2) { opacity: 0; }
   .mobile-tab-toggle.is-open .mobile-tab-hamburger i:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
-  .mobile-tab-label { font-size: .84rem; color: var(--text-soft); }
-  .mobile-tab-current { min-width: 0; margin-left: auto; color: var(--gold-300); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-tab-label,
+  .mobile-tab-current { color: var(--gold-300); font-size: 1rem; font-weight: 700; }
+  .mobile-tab-current { min-width: 0; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .side {
     position: absolute;
     top: 76px;
