@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css?v=95" />
+  <link rel="stylesheet" href="assets/css/style.css?v=96" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -124,6 +124,10 @@
         <span id="memberCurrentName"></span>
         <button type="button" id="memberLogout">登出</button>
       </div>
+      <section class="member-directory" id="memberDirectory" hidden aria-live="polite">
+        <div class="member-directory-head"><b id="memberDirectoryTitle">會員資料</b><span id="memberDirectoryCount"></span></div>
+        <div class="member-directory-list" id="memberDirectoryList"></div>
+      </section>
       <p class="member-status" id="memberStatus">輸入手機即可登入。</p>
       <div class="member-tabs">
         <button type="button" class="active" data-member-tab="login">登入</button>
@@ -339,7 +343,7 @@
 
   <script src="assets/js/config.js?v=5"></script>
   <script src="assets/js/seed-data.js?v=12"></script>
-  <script src="assets/js/api.js?v=24"></script>
+  <script src="assets/js/api.js?v=26"></script>
   <script>
     window.openLiveVideoFallback = function () {
       if (window.refreshOfficialLive) window.refreshOfficialLive(true);
@@ -355,6 +359,6 @@
       document.documentElement.classList.remove('modal-open');
     };
   </script>
-  <script src="assets/js/app.js?v=96"></script>
+  <script src="assets/js/app.js?v=98"></script>
 </body>
 </html>
