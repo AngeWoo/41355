@@ -13,7 +13,7 @@
  *   5. 若要重設或確認排程觸發器，可單獨執行 setupCacheWarmTrigger()。
  *
  * 安全性：
- *   - 讀取 (list) 為公開。
+ *   - 一般內容讀取 (list) 為公開；會員資料需透過會員登入或後台管理員驗證。
  *   - 新增/修改/刪除/排序 需先 login 取得 token。
  *   - 密碼以 SHA-256 雜湊存於 Script Properties，不存明碼。
  *
@@ -191,14 +191,16 @@ function doGet(e) {
     var action = params.action || 'list';
     var fresh = params.fresh === '1' || params.nocache === '1';
     if (action === 'list') {
+      if (params.type === 'members') return json({ ok: false, error: '會員資料需登入後讀取。' });
       var rows = fresh ? listRecords(params.type) : cachedListRecords(params.type);
-      return json({ ok: true, data: params.type === 'members' ? adminMemberRows(rows) : rows });
+      return json({ ok: true, data: rows });
     }
     if (action === 'all') {
       var out = {};
       Object.keys(SCHEMA).forEach(function (t) {
+        if (t === 'members') { out[t] = []; return; }
         var rows = fresh ? listRecords(t) : cachedListRecords(t);
-        out[t] = t === 'members' ? adminMemberRows(rows) : rows;
+        out[t] = rows;
       });
       return json({ ok: true, data: out });
     }
@@ -237,28 +239,19 @@ function doPost(e) {
     if (action === 'memberLogin') {
       return handleMemberLogin(body);
     }
+    if (action === 'memberDirectory') {
+      return handleMemberDirectory(body);
+    }
+    if (action === 'adminMemberList') {
+      if (!verifyToken(body.token)) return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
+      return json({ ok: true, data: listRecords('members'), scope: 'all' });
+    }
 
     // 以下動作需驗證 token
     var mutating = ['create', 'update', 'delete', 'reorder', 'changePassword', 'recalculateStats', 'recalculateLatest'];
     if (mutating.indexOf(action) !== -1) {
       if (!verifyToken(body.token)) {
         return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
-      }
-    }
-
-    if (body.type === 'members') {
-      if (action === 'create' || action === 'delete' || action === 'reorder') {
-        return json({ ok: false, error: '後台會員功能只保留指定手機資料，不能新增、刪除或排序。' });
-      }
-      if (action === 'update') {
-        var existingMember = listRecords('members').filter(function (row) {
-          return String(row.id) === String(body.record && body.record.id);
-        })[0];
-        if (!existingMember || !adminMemberRows([existingMember]).length) {
-          return json({ ok: false, error: '只能更新指定手機的會員資料。' });
-        }
-        body.record = body.record || {};
-        body.record.mobile = ADMIN_MEMBER_MOBILE;
       }
     }
 
@@ -656,11 +649,16 @@ function normalizeMobile(mobile) {
   return value;
 }
 
-function adminMemberRows(rows) {
-  var allowed = normalizeMobile(ADMIN_MEMBER_MOBILE);
-  return (rows || []).filter(function (row) {
-    return normalizeMobile(row && row.mobile) === allowed;
-  });
+function isMemberDirectoryAdmin(mobile) {
+  return normalizeMobile(mobile) === normalizeMobile(ADMIN_MEMBER_MOBILE);
+}
+
+function memberDirectoryRow(row) {
+  return {
+    id: row.id || '',
+    name: row.name || '',
+    dharmaName: row.dharmaName || ''
+  };
 }
 
 function mobileLookupKey(mobile) {
@@ -790,6 +788,14 @@ function handleMemberLogin(body) {
     return json({ ok: false, error: '找不到此手機會員：' + mobile + '。請確認後台會員資料的手機欄位。' });
   }
   return json({ ok: true, data: publicMember(member) });
+}
+
+function handleMemberDirectory(body) {
+  var member = findMemberByMobile(body.mobile);
+  if (!member) return json({ ok: false, error: '找不到此手機會員，請重新登入。' });
+  var canViewAll = isMemberDirectoryAdmin(member.mobile);
+  var rows = canViewAll ? listRecords('members') : [member];
+  return json({ ok: true, scope: canViewAll ? 'all' : 'self', data: rows.map(memberDirectoryRow) });
 }
 
 function memberEmails() {
@@ -2921,5 +2927,3 @@ function whichDatabase() {
   Logger.log('筆數：' + counts);
   return url + '  |  ' + counts;
 }
-
-
