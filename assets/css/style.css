@@ -1249,7 +1249,9 @@ html.talk-open body {
   position: relative;
   z-index: 1;
   width: min(430px, 100%);
+  max-height: calc(100dvh - 36px);
   padding: 26px;
+  overflow-y: auto;
   border: 1px solid rgba(255,255,255,.22);
   border-radius: 18px;
   background:
@@ -1311,6 +1313,36 @@ html.talk-open body {
   border-color: rgba(212,175,104,.58);
   color: var(--gold-300);
 }
+.member-directory {
+  display: grid;
+  gap: 9px;
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid rgba(212,175,104,.25);
+  border-radius: 12px;
+  background: rgba(9,17,32,.26);
+}
+.member-directory[hidden] { display: none; }
+.member-directory-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--gold-300);
+}
+.member-directory-head span { color: var(--text-dim); font-size: .8rem; }
+.member-directory-list { display: grid; gap: 7px; max-height: 230px; overflow-y: auto; }
+.member-directory-card {
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+}
+.member-directory-card b { color: var(--text); font-size: .95rem; }
+.member-directory-card span { color: var(--text-soft); font-size: .82rem; }
+.member-directory-empty { color: var(--text-dim); font-size: .86rem; line-height: 1.5; }
 .member-status { margin: 0 0 14px; color: var(--text-soft); line-height: 1.55; font-weight: 600; }
 .member-status.ok { color: #b6e6c7; }
 .member-status.err { color: #f0b9b9; }
