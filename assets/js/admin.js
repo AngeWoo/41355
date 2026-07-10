@@ -197,23 +197,23 @@
   }
   function refreshLatest(manual) {
     if (!API.recalculateLatest) {
-      if (manual) toast('目前版本不支援重新計算最新上架。', true);
+      if (manual) toast('目前版本不支援計算最新上架。', true);
       return Promise.resolve(false);
     }
     var btn = $('#recalcLatestBtn');
     if (manual && btn) { btn.disabled = true; btn.textContent = '計算中…'; }
     return API.recalculateLatest(token).then(function (res) {
-      if (manual && btn) { btn.disabled = false; btn.textContent = '重新計算最新上架'; }
+      if (manual && btn) { btn.disabled = false; btn.textContent = '計算最新上架'; }
       if (res && res.ok) {
         if (manual) toast('最新上架已重新計算：' + latestSummary(res.latest));
         return true;
       }
       if (res && isAuthExpiredError(res.error || '')) handleAuthExpired(res.error);
-      else if (manual) toast((res && res.error) || '重新計算最新上架失敗', true);
+      else if (manual) toast((res && res.error) || '計算最新上架失敗', true);
       return false;
     }).catch(function () {
-      if (manual && btn) { btn.disabled = false; btn.textContent = '重新計算最新上架'; }
-      if (manual) toast('重新計算最新上架失敗，請檢查連線。', true);
+      if (manual && btn) { btn.disabled = false; btn.textContent = '計算最新上架'; }
+      if (manual) toast('計算最新上架失敗，請檢查連線。', true);
       return false;
     });
   }
@@ -709,6 +709,5 @@
     showLogin();
   }
 })();
-
 
 

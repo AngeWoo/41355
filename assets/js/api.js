@@ -189,7 +189,7 @@
     isReadOnly: function () { return MODE !== 'gas'; },
     isDemo: function () { return MODE === 'demo'; },
     modeLabel: function () {
-      return MODE === 'gas' ? '已連線（可讀寫）'
+      return MODE === 'gas' ? '已連線'
         : MODE === 'published' ? '唯讀模式（讀取已發布試算表）'
         : '展示模式（內建資料）';
     },
