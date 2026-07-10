@@ -28,6 +28,7 @@ var DATA_CACHE_SECONDS = 60 * 60 * 2;       // 前台公開資料快取 2 小時
 var CACHE_WARM_INTERVAL_HOURS = 2;          // 快取預熱觸發器執行間隔
 var OFFICIAL_LIVE_PAGE = 'https://www.shinnyo-en.org.tw/at2026/index2026.html';
 var MEMBER_NOTIFY_EMAIL = 'angewu@hotmail.com';
+var ADMIN_MEMBER_MOBILE = '0935251820';
 var PROP = PropertiesService.getScriptProperties();
 
 // 每個內容類型對應的分頁與預設欄位（標頭）。
@@ -190,11 +191,15 @@ function doGet(e) {
     var action = params.action || 'list';
     var fresh = params.fresh === '1' || params.nocache === '1';
     if (action === 'list') {
-      return json({ ok: true, data: fresh ? listRecords(params.type) : cachedListRecords(params.type) });
+      var rows = fresh ? listRecords(params.type) : cachedListRecords(params.type);
+      return json({ ok: true, data: params.type === 'members' ? adminMemberRows(rows) : rows });
     }
     if (action === 'all') {
       var out = {};
-      Object.keys(SCHEMA).forEach(function (t) { out[t] = fresh ? listRecords(t) : cachedListRecords(t); });
+      Object.keys(SCHEMA).forEach(function (t) {
+        var rows = fresh ? listRecords(t) : cachedListRecords(t);
+        out[t] = t === 'members' ? adminMemberRows(rows) : rows;
+      });
       return json({ ok: true, data: out });
     }
     if (action === 'resolveCover') {
@@ -238,6 +243,22 @@ function doPost(e) {
     if (mutating.indexOf(action) !== -1) {
       if (!verifyToken(body.token)) {
         return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
+      }
+    }
+
+    if (body.type === 'members') {
+      if (action === 'create' || action === 'delete' || action === 'reorder') {
+        return json({ ok: false, error: '後台會員功能只保留指定手機資料，不能新增、刪除或排序。' });
+      }
+      if (action === 'update') {
+        var existingMember = listRecords('members').filter(function (row) {
+          return String(row.id) === String(body.record && body.record.id);
+        })[0];
+        if (!existingMember || !adminMemberRows([existingMember]).length) {
+          return json({ ok: false, error: '只能更新指定手機的會員資料。' });
+        }
+        body.record = body.record || {};
+        body.record.mobile = ADMIN_MEMBER_MOBILE;
       }
     }
 
@@ -633,6 +654,13 @@ function normalizeMobile(mobile) {
   value = value.replace(/^\+?886(9\d{8})$/, '0$1');
   if (/^9\d{8}$/.test(value)) value = '0' + value;
   return value;
+}
+
+function adminMemberRows(rows) {
+  var allowed = normalizeMobile(ADMIN_MEMBER_MOBILE);
+  return (rows || []).filter(function (row) {
+    return normalizeMobile(row && row.mobile) === allowed;
+  });
 }
 
 function mobileLookupKey(mobile) {
@@ -2893,6 +2921,5 @@ function whichDatabase() {
   Logger.log('筆數：' + counts);
   return url + '  |  ' + counts;
 }
-
 
 
