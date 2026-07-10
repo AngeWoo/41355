@@ -256,11 +256,14 @@ html.admin-modal-open body {
     width: 100%;
     margin-left: 0;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
   .topbar .right .pill {
-    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
     text-align: center;
     padding: 7px 10px;
   }
@@ -317,8 +320,6 @@ html.admin-modal-open body {
 }
 
 @media (max-width: 360px) {
-  .topbar .right { grid-template-columns: 1fr; }
-  .topbar .right .pill { grid-column: auto; }
   .rec { padding: 12px; }
 }
 
