@@ -1,5 +1,5 @@
 ﻿/* 後台維護介面 — 沿用主站莊嚴禪意主題 */
-.admin-body { padding-top: 0; }
+.admin-body { padding-top: 0; overflow-x: hidden; }
 .admin-auth-pending .login-wrap,
 .admin-auth-pending .admin-shell {
   display: none !important;
@@ -243,16 +243,82 @@ html.admin-modal-open body {
 .toast.err { border-color: rgba(200,80,80,.6); color: #7f1d1d; }
 
 @media (max-width: 760px) {
-  .admin-layout { grid-template-columns: 1fr; }
+  .topbar .container {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .topbar .brand { min-height: 34px; }
+  .topbar .right {
+    width: 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .topbar .right .pill {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 7px 10px;
+  }
+  .topbar .right .btn {
+    width: 100%;
+    min-height: 42px;
+    justify-content: center;
+    padding: 9px 8px;
+    font-size: .8rem;
+    line-height: 1.25;
+    white-space: normal;
+  }
+
+  .admin-layout { grid-template-columns: 1fr; gap: 14px; padding-top: 14px; padding-bottom: 48px; }
   .side {
-    position: static; display: flex; flex-wrap: nowrap; justify-content: center; gap: 7px; overflow-x: auto; overflow-y: hidden;
-    padding-bottom: 7px; max-width: 100%; scrollbar-width: thin; -webkit-overflow-scrolling: touch;
+    position: static; display: flex; flex-wrap: nowrap; justify-content: flex-start; gap: 7px; overflow-x: auto; overflow-y: hidden;
+    margin-inline: -12px; padding: 0 12px 8px; max-width: none; scrollbar-width: thin; -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
   }
   .side .tab {
     flex: 0 0 auto; width: auto; min-width: max-content; margin-bottom: 0; white-space: nowrap;
-    padding: 10px 12px; font-size: clamp(.78rem, 3.2vw, .9rem);
+    min-height: 42px; padding: 10px 12px; font-size: clamp(.78rem, 3.2vw, .9rem); scroll-snap-align: start;
   }
   .side .tab .badge { display: none; }
+  .panel-head { gap: 10px; margin-bottom: 14px; }
+  .panel-head h2 { font-size: 1.3rem; }
+  .panel-head .btn { width: 100%; margin-left: 0; justify-content: center; min-height: 42px; }
+
+  .rec { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 9px 10px; padding: 14px; }
+  .rec-order { min-width: 34px; height: 34px; padding-inline: 7px; }
+  .rec .rec-main h4 { white-space: normal; overflow: visible; text-overflow: clip; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.4; }
+  .rec .rec-actions { grid-column: 2; justify-content: flex-start; gap: 8px; }
+  .rec .rec-actions .icon-btn { width: 40px; height: 40px; }
+  .empty { padding: 34px 18px; }
+
+  .modal-mask { padding: 12px; place-items: center; }
+  .modal { max-height: calc(100dvh - 24px); padding: 26px 16px 16px; border-radius: 16px; }
+  .modal h3 { padding-right: 32px; margin-bottom: 16px; }
+  .modal-close { top: 10px; right: 10px; width: 40px; height: 40px; }
+  .modal-actions { gap: 9px; margin-top: 18px; }
+  .modal-actions .btn { min-height: 44px; }
+  .toast { width: calc(100% - 24px); text-align: center; bottom: max(12px, env(safe-area-inset-bottom)); padding-inline: 14px; }
   .row2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .login-wrap { padding: 16px 12px; }
+  .login-card { padding: 32px 18px 26px; }
+  .field input, .field textarea, .field select { font-size: 16px; }
+  .remember-row { align-items: flex-start; line-height: 1.45; }
+  .remember-row input { flex: 0 0 auto; margin-top: 2px; }
+  .modal-actions { flex-direction: column; }
+  .modal-actions .btn { width: 100%; }
+}
+
+@media (max-width: 360px) {
+  .topbar .right { grid-template-columns: 1fr; }
+  .topbar .right .pill { grid-column: auto; }
+  .rec { padding: 12px; }
 }
 
