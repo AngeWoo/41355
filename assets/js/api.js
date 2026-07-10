@@ -217,6 +217,8 @@
     memberRegister: function (record) { return post({ action: 'memberRegister', record: record }); },
     memberLogin: function (mobile, legacyMobile) {
       return post({ action: 'memberLogin', mobile: legacyMobile || mobile });
-    }
+    },
+    memberDirectory: function (mobile) { return post({ action: 'memberDirectory', mobile: mobile }); },
+    adminMemberList: function (token) { return post({ action: 'adminMemberList', token: token }); }
   };
 })();

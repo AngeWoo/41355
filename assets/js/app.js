@@ -1223,6 +1223,10 @@
     var memberCurrentName = document.getElementById('memberCurrentName');
     var memberLogout = document.getElementById('memberLogout');
     var memberStatus = document.getElementById('memberStatus');
+    var memberDirectory = document.getElementById('memberDirectory');
+    var memberDirectoryTitle = document.getElementById('memberDirectoryTitle');
+    var memberDirectoryCount = document.getElementById('memberDirectoryCount');
+    var memberDirectoryList = document.getElementById('memberDirectoryList');
     var memberTabs = document.querySelector('.member-tabs');
     var memberLoginForm = document.getElementById('memberLoginForm');
     var memberRegisterForm = document.getElementById('memberRegisterForm');
@@ -1254,6 +1258,7 @@
     function clearMember() {
       localStorage.removeItem(MEMBER_KEY);
       clearTimeout(memberCloseTimer);
+      clearMemberDirectory();
       syncMemberUi();
       setMemberStatus('已登出，請重新輸入手機。', '');
       if (memberLoginMobile) memberLoginMobile.focus();
@@ -1275,6 +1280,46 @@
       memberCurrent.hidden = !(m && m.name);
       memberCurrentName.textContent = m && m.name ? '目前登入：' + m.name : '';
     }
+    function clearMemberDirectory() {
+      if (memberDirectory) memberDirectory.hidden = true;
+      if (memberDirectoryList) memberDirectoryList.innerHTML = '';
+      if (memberDirectoryCount) memberDirectoryCount.textContent = '';
+    }
+    function renderMemberDirectory(res) {
+      if (!memberDirectory || !memberDirectoryList) return;
+      var rows = Array.isArray(res && res.data) ? res.data : [];
+      var all = res && res.scope === 'all';
+      memberDirectory.hidden = false;
+      if (memberDirectoryTitle) memberDirectoryTitle.textContent = all ? '全部會員' : '我的會員資料';
+      if (memberDirectoryCount) memberDirectoryCount.textContent = all ? rows.length + ' 位' : '';
+      memberDirectoryList.innerHTML = rows.length
+        ? rows.map(function (row) {
+          return '<article class="member-directory-card"><b>' + esc(row.name || '未命名會員') + '</b>' +
+            (row.dharmaName ? '<span>' + esc(row.dharmaName) + '</span>' : '') + '</article>';
+        }).join('')
+        : '<div class="member-directory-empty">目前沒有可顯示的會員資料。</div>';
+    }
+    function loadMemberDirectory() {
+      var member = currentMember();
+      if (!member || !member.mobile || !API.memberDirectory) { clearMemberDirectory(); return; }
+      var mobile = member.mobile;
+      if (memberDirectory) memberDirectory.hidden = false;
+      if (memberDirectoryTitle) memberDirectoryTitle.textContent = '會員資料';
+      if (memberDirectoryCount) memberDirectoryCount.textContent = '讀取中…';
+      if (memberDirectoryList) memberDirectoryList.innerHTML = '<div class="member-directory-empty">讀取會員資料中…</div>';
+      API.memberDirectory(mobile).then(function (res) {
+        var active = currentMember();
+        if (!active || active.mobile !== mobile) return;
+        if (res && res.ok) renderMemberDirectory(res);
+        else {
+          if (memberDirectoryCount) memberDirectoryCount.textContent = '';
+          if (memberDirectoryList) memberDirectoryList.innerHTML = '<div class="member-directory-empty">' + esc((res && res.error) || '會員資料讀取失敗。') + '</div>';
+        }
+      }).catch(function () {
+        if (memberDirectoryCount) memberDirectoryCount.textContent = '';
+        if (memberDirectoryList) memberDirectoryList.innerHTML = '<div class="member-directory-empty">會員資料讀取失敗，請稍後再試。</div>';
+      });
+    }
     function selectMemberTab(tab) {
       document.querySelectorAll('[data-member-tab]').forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-member-tab') === tab);
@@ -1292,6 +1337,7 @@
         if (memberLoginForm) memberLoginForm.classList.remove('active');
         if (memberRegisterForm) memberRegisterForm.classList.remove('active');
       } else {
+        clearMemberDirectory();
         if (memberTabs) memberTabs.hidden = false;
         selectMemberTab('login');
       }
@@ -1310,6 +1356,7 @@
       syncMemberUi();
       if (!m && tab === 'register') selectMemberTab('register');
       setMemberStatus(m ? '您已登入會員：' + m.name : (msg || '請先註冊或登入會員後觀看內容。'), m ? 'ok' : '');
+      if (m) loadMemberDirectory();
       if (!m) {
         var focusTarget = tab === 'register' ? document.getElementById('memberName') : memberLoginMobile;
         if (focusTarget) setTimeout(function () { focusTarget.focus(); }, 80);
@@ -1404,7 +1451,7 @@
           if (res.ok) {
             saveMember(res.data);
             setMemberStatus('登入成功，歡迎 ' + res.data.name + '。', 'ok');
-            closeMemberPopoverSoon();
+            loadMemberDirectory();
           } else {
             setMemberStatus(res.error || '登入失敗。', 'err');
           }
@@ -1458,7 +1505,7 @@
             setMemberStatus(failedMail.length
               ? '註冊完成，但郵件通知失敗，詳細錯誤已寫入瀏覽器 console。'
               : '註冊完成，已登入會員。', failedMail.length ? 'err' : 'ok');
-            if (!failedMail.length) closeMemberPopoverSoon();
+            if (!failedMail.length) loadMemberDirectory();
           } else {
             setMemberStatus(res.error || '註冊失敗。', 'err');
           }
