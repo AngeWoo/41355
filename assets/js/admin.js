@@ -3,6 +3,7 @@
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var TOKEN_KEY = 'shinnyo_admin_token_v2';
   var LEGACY_TOKEN_KEY = 'shinnyo_admin_token';
+  var ADMIN_MEMBER_MOBILE = '0935251820';
 
   // 各內容類型的欄位定義（須與 GAS 的 SCHEMA 對應）
   var COLLECTIONS = [
@@ -138,6 +139,13 @@
   function truthy(v) { var s = String(v).toLowerCase(); return s === 'true' || s === '1' || s === 'yes' || v === true; }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function byType(t) { return COLLECTIONS.filter(function (c) { return c.type === t; })[0]; }
+  function normalizeMemberMobile(value) {
+    var digits = String(value == null ? '' : value).replace(/[^\d]/g, '');
+    if (/^8869\d{8}$/.test(digits)) digits = '0' + digits.slice(3);
+    if (/^9\d{8}$/.test(digits)) digits = '0' + digits;
+    return digits;
+  }
+  function isAllowedAdminMember(record) { return normalizeMemberMobile(record && record.mobile) === ADMIN_MEMBER_MOBILE; }
   function simpleDate(v) { return dateValue(v); }
   function dateValue(v) {
     var s = String(v == null ? '' : v).trim();
@@ -363,7 +371,7 @@
     $('#panels').innerHTML = COLLECTIONS.map(function (c) {
       return '<section class="panel" data-type="' + c.type + '">' +
         '<div class="panel-head"><h2>' + esc(c.label) + '</h2>' +
-        '<button class="btn btn-gold btn-sm" data-add="' + c.type + '">＋ 新增</button></div>' +
+        (c.type === 'members' ? '' : '<button class="btn btn-gold btn-sm" data-add="' + c.type + '">＋ 新增</button>') + '</div>' +
         '<div class="rec-list" id="list-' + c.type + '"><div class="empty">載入中…</div></div></section>';
     }).join('');
     $('#tabs').querySelectorAll('.tab').forEach(function (t) {
@@ -426,7 +434,7 @@
         }
         toast(res.error || '讀取失敗', true); return;
       }
-      cache[type] = res.data || [];
+      cache[type] = type === 'members' ? (res.data || []).filter(isAllowedAdminMember) : (res.data || []);
       if (type === 'tools' && !cache[type].length && !API.isReadOnly()) {
         seedDefaultTools().then(function (ok) {
           if (ok) loadType(type);
@@ -444,15 +452,18 @@
   function renderList(type) {
     var c = byType(type), list = cache[type] || [], el = $('#list-' + type);
     $('#badge-' + type).textContent = list.length;
-    if (!list.length) { el.innerHTML = '<div class="empty">尚無資料，點右上角「新增」建立第一筆。</div>'; return; }
+    if (!list.length) {
+      el.innerHTML = '<div class="empty">' + (type === 'members' ? '目前沒有手機 0935251820 的會員資料。' : '尚無資料，點右上角「新增」建立第一筆。') + '</div>';
+      return;
+    }
     el.innerHTML = list.map(function (r, idx) {
       var sortable = !API.isReadOnly() && list.length > 1;
       return '<div class="rec" data-id="' + esc(r.id) + '"' + (sortable ? ' draggable="true"' : '') + '><span class="rec-order" title="排序號">' + esc(idx + 1) + '</span><div class="rec-main"><h4>' + esc(c.title(r) || '(無標題)') + '</h4>' +
         '<div class="sub">' + esc(c.sub(r) || '') + '</div></div>' +
         '<div class="rec-actions">' +
         '<button class="icon-btn" data-edit="' + esc(r.id) + '" title="編輯"><svg viewBox="0 0 24 24"><path d="M4 20h4L18 10l-4-4L4 16z"/><path d="M13 5l4 4"/></svg></button>' +
-        '<button class="icon-btn" data-copy="' + esc(r.id) + '" title="複製"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg></button>' +
-        '<button class="icon-btn danger" data-del="' + esc(r.id) + '" title="刪除"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/></svg></button>' +
+        (type === 'members' ? '' : '<button class="icon-btn" data-copy="' + esc(r.id) + '" title="複製"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg></button>' +
+        '<button class="icon-btn danger" data-del="' + esc(r.id) + '" title="刪除"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/></svg></button>') +
         '</div></div>';
     }).join('');
     el.querySelectorAll('[data-edit]').forEach(function (b) {
@@ -631,6 +642,10 @@
       ? '<label class="notify-members-toggle"><input type="checkbox" id="notifyMembers" />' +
         '<span><b>發信通知所有會員</b><small>本次儲存後，若有連結網址，寄送新上架通知到會員 Email。</small></span></label>'
       : '');
+    if (type === 'members') {
+      var mobileField = $('#f_mobile');
+      if (mobileField) { mobileField.value = ADMIN_MEMBER_MOBILE; mobileField.readOnly = true; }
+    }
     $('#modalMask').classList.add('open');
     document.documentElement.classList.add('admin-modal-open');
   }
@@ -652,6 +667,7 @@
       var el = $('#f_' + f.k);
       if (el) rec[f.k] = f.type === 'url' ? el.value.trim() : el.value;
     });
+    if (current === 'members') rec.mobile = ADMIN_MEMBER_MOBILE;
     var notifyMembers = !!($('#notifyMembers') && $('#notifyMembers').checked);
     if (API.isReadOnly()) { toast(API.mode === 'published' ? '唯讀模式：請在 Google 試算表編輯' : '展示模式無法儲存', true); return; }
     var btn = $('#saveBtn'); btn.disabled = true; btn.textContent = '儲存中…';
@@ -679,6 +695,7 @@
   });
 
   function removeRecord(type, id) {
+    if (type === 'members') { toast('指定會員資料不可刪除。', true); return; }
     var c = byType(type), r = find(type, id);
     if (!confirm('確定刪除「' + (c.title(r) || '此筆') + '」？此動作無法復原。')) return;
     if (API.isReadOnly()) { toast(API.mode === 'published' ? '唯讀模式：請在 Google 試算表刪除' : '展示模式無法刪除', true); return; }
@@ -734,4 +751,5 @@
     showLogin();
   }
 })();
+
 
