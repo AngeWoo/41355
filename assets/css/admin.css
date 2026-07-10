@@ -320,9 +320,10 @@ html.admin-modal-open body {
   }
   .side.mobile-open { display: grid; gap: 3px; }
   .side .tab {
-    width: 100%; min-height: 44px; margin-bottom: 0; padding: 10px 12px; font-size: clamp(.84rem, 3.5vw, .96rem); white-space: normal;
+    width: 100%; min-height: 50px; margin-bottom: 0; padding: 12px; gap: 12px; font-size: clamp(1rem, 4.4vw, 1.12rem); white-space: normal;
   }
-  .side .tab .badge { display: block; }
+  .side .tab svg { width: 20px; height: 20px; }
+  .side .tab .badge { display: block; font-size: .86rem; }
   .panel-head { gap: 10px; margin-bottom: 14px; }
   .panel-head h2 { font-size: 1.3rem; }
   .panel-head .btn { width: 100%; margin-left: 0; justify-content: center; min-height: 42px; }
