@@ -331,6 +331,29 @@
   }
 
   // ---------- 分頁 ----------
+  var mobileTabToggle = $('#mobileTabToggle');
+  function setMobileTabMenu(open) {
+    var tabs = $('#tabs');
+    if (!tabs || !mobileTabToggle) return;
+    tabs.classList.toggle('mobile-open', !!open);
+    mobileTabToggle.classList.toggle('is-open', !!open);
+    mobileTabToggle.setAttribute('aria-expanded', String(!!open));
+  }
+  if (mobileTabToggle) {
+    mobileTabToggle.addEventListener('click', function () {
+      setMobileTabMenu(!$('#tabs').classList.contains('mobile-open'));
+    });
+    document.addEventListener('click', function (e) {
+      if (window.innerWidth > 760 || $('#tabs').contains(e.target) || mobileTabToggle.contains(e.target)) return;
+      setMobileTabMenu(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') setMobileTabMenu(false);
+    });
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 760) setMobileTabMenu(false);
+    });
+  }
   function buildTabs() {
     $('#tabs').innerHTML = COLLECTIONS.map(function (c) {
       return '<button class="tab" data-type="' + c.type + '">' +
@@ -344,7 +367,7 @@
         '<div class="rec-list" id="list-' + c.type + '"><div class="empty">載入中…</div></div></section>';
     }).join('');
     $('#tabs').querySelectorAll('.tab').forEach(function (t) {
-      t.addEventListener('click', function () { selectTab(t.dataset.type); });
+      t.addEventListener('click', function () { selectTab(t.dataset.type); setMobileTabMenu(false); });
     });
     $('#panels').querySelectorAll('[data-add]').forEach(function (b) {
       b.addEventListener('click', function () { openEditor(b.dataset.add, null); });
@@ -354,6 +377,8 @@
     current = type;
     $('#tabs').querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('active', t.dataset.type === type); });
     $('#panels').querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('active', p.dataset.type === type); });
+    var currentLabel = $('#mobileTabCurrent'), collection = byType(type);
+    if (currentLabel && collection) currentLabel.textContent = collection.label;
   }
 
   // ---------- 載入與渲染 ----------
@@ -709,5 +734,4 @@
     showLogin();
   }
 })();
-
 
