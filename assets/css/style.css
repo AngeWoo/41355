@@ -1347,6 +1347,7 @@ html.talk-open body {
 .member-status.ok { color: #b6e6c7; }
 .member-status.err { color: #f0b9b9; }
 .member-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.member-tabs[hidden] { display: none; }
 .member-tabs button {
   height: 44px;
   border: 1px solid rgba(255,255,255,.14);
