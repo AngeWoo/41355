@@ -28,6 +28,17 @@
 .field input.date-picker {
   cursor: pointer;
   color-scheme: dark;
+  /* 行動版 WebKit 會用原生尺寸渲染日期欄位，導致比其他欄位寬；強制與一般欄位同寬 */
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+}
+.field input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
 }
 .field input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
@@ -104,6 +115,35 @@
 .side .tab.active { color: var(--gold-300); background: rgba(212,175,104,.1); border-color: var(--line); }
 .side .tab .badge { margin-left: auto; font-size: .72rem; color: var(--text-dim); }
 .side .tab.active .badge { color: var(--gold-400); }
+/* 分類選單：前 7 顆與前台主選單同色（紅橙黃綠藍靛紫），真如開講＝金、會員＝銀 */
+.side .tab:nth-child(1) { --c: 255, 64, 64; }   /* 紅 最新消息 */
+.side .tab:nth-child(2) { --c: 255, 154, 46; }  /* 橙 Podcast */
+.side .tab:nth-child(3) { --c: 255, 225, 77; }  /* 黃 行事曆 */
+.side .tab:nth-child(4) { --c: 62, 212, 104; }  /* 綠 聯絡事項 */
+.side .tab:nth-child(5) { --c: 59, 155, 255; }  /* 藍 親苑時報 */
+.side .tab:nth-child(6) { --c: 91, 91, 214; }   /* 靛 瑞聲法語 */
+.side .tab:nth-child(7) { --c: 180, 94, 240; }  /* 紫 互動程式 */
+.side .tab:nth-child(8) { --c: 212, 175, 104; } /* 金 真如開講 */
+.side .tab:nth-child(9) { --c: 176, 196, 222; } /* 銀 會員 */
+.side .tab {
+  color: #fff;
+  background: rgba(var(--c), .20);
+  border-color: rgba(var(--c), .45);
+}
+.side .tab:hover {
+  color: #fff;
+  background: rgba(var(--c), .34);
+  border-color: rgba(var(--c), .80);
+  box-shadow: 0 0 12px rgba(var(--c), .55);
+}
+.side .tab.active {
+  color: #fff;
+  background: rgba(var(--c), .40);
+  border-color: rgba(var(--c), .95);
+  box-shadow: 0 0 14px rgba(var(--c), .80), 0 0 28px rgba(var(--c), .35);
+}
+.side .tab .badge { color: rgba(255,255,255,.72); }
+.side .tab.active .badge { color: #fff; }
 
 .panel { display: none; }
 .panel.active { display: block; }
