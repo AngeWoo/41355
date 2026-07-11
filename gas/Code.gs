@@ -21,7 +21,6 @@
  */
 
 // ====================== 設定 ======================
-var ADMIN_PASSWORD_DEFAULT = 'shinnyo2026'; // 第一次 setup() 後請從後台或這裡修改
 var ADMIN_ACCOUNT_DEFAULT = 'admin';
 var TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;  // token 有效 30 天
 var MEMBER_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 會員 token 有效 30 天
@@ -76,18 +75,21 @@ var SCHEMA = {
 // ====================== 安裝 ======================
 function setup() {
   var ss = getSpreadsheet();
+  var initialPassword = '';
   Object.keys(SCHEMA).forEach(function (type) {
     ensureSheet(ss, SCHEMA[type]);
   });
   if (!PROP.getProperty('ADMIN_PWD_HASH')) {
-    setAdminPassword(ADMIN_PASSWORD_DEFAULT);
+    initialPassword = generateTemporaryAdminPassword();
+    setAdminPassword(initialPassword);
   }
   if (!PROP.getProperty('ADMIN_ACCOUNT')) {
     PROP.setProperty('ADMIN_ACCOUNT', ADMIN_ACCOUNT_DEFAULT);
   }
   seedSampleData();
   setupCacheWarmTrigger();
-  return '安裝完成，試算表：' + ss.getUrl();
+  return '安裝完成，試算表：' + ss.getUrl() +
+    (initialPassword ? '\n後台暫時密碼：' + initialPassword + '\n請登入後立即修改。' : '');
 }
 
 // 將所有內容類型重新讀取一次並寫回 CacheService，讓 action=list / action=all
@@ -186,6 +188,16 @@ function applyTextColumns(sh, names) {
 }
 
 // ====================== HTTP 入口 ======================
+function withWriteLock(work) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('系統忙碌中，請稍後再試。');
+  try {
+    return work();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function doGet(e) {
   try {
     var params = (e && e.parameter) || {};
@@ -266,18 +278,24 @@ function doPost(e) {
 
     switch (action) {
       case 'create': {
-        var created = createRecord(body.type, body.record);
-        created = normalizeRecordOrder(body.type, created.id, created.order) || created;
+        var created = withWriteLock(function () {
+          var record = createRecord(body.type, body.record);
+          record = normalizeRecordOrder(body.type, record.id, record.order) || record;
+          return record;
+        });
         return jsonWithFreshCache({ ok: true, data: created, memberNotify: notifyMembersForRecord(body.type, created, body.notifyMembers) });
       }
       case 'update': {
-        var updated = updateRecord(body.type, body.record);
-        updated = normalizeRecordOrder(body.type, updated.id, updated.order) || updated;
+        var updated = withWriteLock(function () {
+          var record = updateRecord(body.type, body.record);
+          record = normalizeRecordOrder(body.type, record.id, record.order) || record;
+          return record;
+        });
         return jsonWithFreshCache({ ok: true, data: updated, memberNotify: notifyMembersForRecord(body.type, updated, body.notifyMembers) });
       }
-      case 'delete':         return jsonWithFreshCache({ ok: true, data: deleteRecord(body.type, body.id) });
-      case 'reorder':        return jsonWithFreshCache({ ok: true, data: reorder(body.type, body.ids) });
-      case 'changePassword': return handleChangePassword(body);
+      case 'delete':         return withWriteLock(function () { return jsonWithFreshCache({ ok: true, data: deleteRecord(body.type, body.id) }); });
+      case 'reorder':        return withWriteLock(function () { return jsonWithFreshCache({ ok: true, data: reorder(body.type, body.ids) }); });
+      case 'changePassword': return withWriteLock(function () { return handleChangePassword(body); });
       case 'recalculateStats': return json({ ok: true, stats: recalculateStats() });
       case 'recalculateLatest': return json({ ok: true, latest: recalculateLatest() });
       default:               return json({ ok: false, error: '未知的 action: ' + action });
@@ -437,7 +455,7 @@ function extractDriveFileId(value) {
 }
 
 function driveThumbnailUrl(fileId) {
-  return fileId ? 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(fileId) + '&sz=w700' : '';
+  return fileId ? 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(fileId) + '=w480' : '';
 }
 
 function pickMetaRefreshUrl(text) {
@@ -541,9 +559,14 @@ function setAdminPassword(pwd) {
   PROP.setProperty('ADMIN_PWD_HASH', sha256(salt + ':' + pwd));
 }
 
+function generateTemporaryAdminPassword() {
+  return 'A!' + Utilities.getUuid().replace(/-/g, '').slice(0, 14);
+}
+
 function resetAdminPassword() {
-  setAdminPassword(ADMIN_PASSWORD_DEFAULT);
-  return '後台密碼已重設為：' + ADMIN_PASSWORD_DEFAULT;
+  var temporaryPassword = generateTemporaryAdminPassword();
+  setAdminPassword(temporaryPassword);
+  return '後台密碼已重設為：' + temporaryPassword + '\n請登入後立即修改。';
 }
 
 function checkPassword(pwd) {
@@ -654,21 +677,16 @@ function handleChangePassword(body) {
   if (!checkPassword(body.oldPassword || '')) {
     return json({ ok: false, error: '舊密碼錯誤。' });
   }
-  if (!body.newPassword || body.newPassword.length < 6) {
-    return json({ ok: false, error: '新密碼至少 6 碼。' });
+  if (!body.newPassword || body.newPassword.length < 8) {
+    return json({ ok: false, error: '新密碼至少 8 碼。' });
   }
   setAdminPassword(body.newPassword);
-  return json({ ok: true, msg: '密碼已更新。' });
-}
-
-function publicMember(row) {
-  return {
-    id: row.id || '',
-    name: row.name || '',
-    dharmaName: row.dharmaName || '',
-    email: row.email || '',
-    mobile: normalizeMobile(row.mobile)
-  };
+  return json({
+    ok: true,
+    msg: '密碼已更新。',
+    token: createAdminToken(),
+    ttl: TOKEN_TTL_SECONDS
+  });
 }
 
 function memberSessionData(row) {
@@ -832,11 +850,16 @@ function handleMemberRegister(body) {
   var mobile = normalizeMobile(record.mobile);
   if (!name) return json({ ok: false, error: '請輸入姓名。' });
   if (!dharmaName) return json({ ok: false, error: '請輸入經名。' });
-  if (!email) return json({ ok: false, error: '請輸入 email。' });
-  if (!mobile) return json({ ok: false, error: '請輸入手機。' });
-  if (findMemberByEmail(email)) return json({ ok: false, error: '此 email 已註冊。' });
-  if (findMemberByMobile(mobile)) return json({ ok: false, error: '此手機已註冊。' });
-  var created = createRecord('members', { name: name, dharmaName: dharmaName, email: email, mobile: mobile });
+  if (name.length > 50 || dharmaName.length > 50) return json({ ok: false, error: '姓名與經名不可超過 50 字。' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok: false, error: '請輸入有效的 Email。' });
+  if (!/^09\d{8}$/.test(mobile)) return json({ ok: false, error: '請輸入有效的台灣手機號碼。' });
+  var registration = withWriteLock(function () {
+    if (findMemberByEmail(email)) return { error: '此 Email 已註冊。' };
+    if (findMemberByMobile(mobile)) return { error: '此手機已註冊。' };
+    return { data: createRecord('members', { name: name, dharmaName: dharmaName, email: email, mobile: mobile }) };
+  });
+  if (registration.error) return json({ ok: false, error: registration.error });
+  var created = registration.data;
   var mail = notifyMemberRegistered(created);
   return jsonWithFreshCache({
     ok: true,
@@ -849,10 +872,14 @@ function handleMemberRegister(body) {
 
 function handleMemberLogin(body) {
   var mobile = normalizeMobile(body.mobile);
+  if (!/^09\d{8}$/.test(mobile)) {
+    Utilities.sleep(400);
+    return json({ ok: false, error: '手機號碼或會員資料不符。' });
+  }
   var member = findMemberByMobile(mobile);
   if (!member) {
     Utilities.sleep(400);
-    return json({ ok: false, error: '找不到此手機會員：' + mobile + '。請確認後台會員資料的手機欄位。' });
+    return json({ ok: false, error: '手機號碼或會員資料不符。' });
   }
   return json({
     ok: true,
