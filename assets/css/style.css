@@ -130,6 +130,26 @@ img { max-width: 100%; display: block; }
 .nav .nav-links a:hover, .nav .nav-links a:focus-visible, .nav .nav-links a.active {
   color: #fff; background: rgba(255,255,255,.36); border-color: rgba(255,255,255,.75); box-shadow: none;
 }
+/* 主選單 7 顆按鈕：紅橙黃綠藍靛紫（與 hero 彩虹光圈同色系） */
+.nav .nav-links a:nth-child(1) { --c: 255, 64, 64; }   /* 紅 */
+.nav .nav-links a:nth-child(2) { --c: 255, 154, 46; }  /* 橙 */
+.nav .nav-links a:nth-child(3) { --c: 255, 225, 77; }  /* 黃 */
+.nav .nav-links a:nth-child(4) { --c: 62, 212, 104; }  /* 綠 */
+.nav .nav-links a:nth-child(5) { --c: 59, 155, 255; }  /* 藍 */
+.nav .nav-links a:nth-child(6) { --c: 91, 91, 214; }   /* 靛 */
+.nav .nav-links a:nth-child(7) { --c: 180, 94, 240; }  /* 紫 */
+.nav .nav-links a:nth-child(-n+7) {
+  background: rgba(var(--c), .30);
+  border-color: rgba(var(--c), .62);
+}
+.nav .nav-links a:nth-child(-n+7):hover,
+.nav .nav-links a:nth-child(-n+7):focus-visible,
+.nav .nav-links a:nth-child(-n+7).active {
+  color: #fff;
+  background: rgba(var(--c), .48);
+  border-color: rgba(var(--c), .95);
+  box-shadow: 0 0 14px rgba(var(--c), .85), 0 0 30px rgba(var(--c), .40);
+}
 .nav .nav-cta { background: rgba(0,0,0,.30) !important; border-color: rgba(255,255,255,.65) !important; }
 .member-nav-btn {
   border: 1px solid rgba(255,255,255,.36);
@@ -1077,7 +1097,7 @@ footer.site .foot-brand small { color: #fff !important; }
 }
 .foot-bottom {
   display: flex; justify-content: center; align-items: center; gap: 6px 20px;
-  flex-wrap: wrap; margin-top: 0; font-size: .82rem; color: #fff; font-weight: 600;
+  flex-wrap: wrap; margin-top: 0; font-size: 1rem; color: #fff; font-weight: 600;
 }
 
 /* demo 提示 */
