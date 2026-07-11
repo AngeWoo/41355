@@ -3,6 +3,8 @@
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var TOKEN_KEY = 'shinnyo_admin_token_v2';
   var LEGACY_TOKEN_KEY = 'shinnyo_admin_token';
+  var ACCOUNT_KEY = 'shinnyo_admin_account_v1';
+  var REMEMBER_KEY = 'shinnyo_admin_remember_v1';
 
   // 各內容類型的欄位定義（須與 GAS 的 SCHEMA 對應）
   var COLLECTIONS = [
@@ -150,6 +152,8 @@
   }
 
   var token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || '';
+  var savedAccount = localStorage.getItem(ACCOUNT_KEY) || '';
+  var rememberLogin = localStorage.getItem(REMEMBER_KEY) !== '0';
   var cache = {};        // type -> records
   var current = COLLECTIONS[0].type;
   var editing = null;    // 正在編輯的紀錄（null = 新增）
@@ -263,6 +267,8 @@
     document.body.classList.remove('admin-auth-pending');
     $('#loginView').style.display = 'grid';
     $('#adminShell').classList.remove('active');
+    if ($('#adminAccount') && savedAccount) $('#adminAccount').value = savedAccount;
+    if ($('#rememberLogin')) $('#rememberLogin').checked = rememberLogin;
   }
   function showAdmin() {
     document.body.classList.remove('admin-auth-pending');
@@ -281,19 +287,36 @@
     showLogin();
     alertBox($('#loginAlert'), message || '登入已過期，請重新登入。', 'err');
   }
+  function saveLoginPreference(account) {
+    localStorage.setItem(REMEMBER_KEY, rememberLogin ? '1' : '0');
+    if (rememberLogin && account) {
+      savedAccount = account;
+      localStorage.setItem(ACCOUNT_KEY, account);
+    } else {
+      savedAccount = '';
+      localStorage.removeItem(ACCOUNT_KEY);
+    }
+  }
 
   $('#loginForm').addEventListener('submit', function (e) {
     e.preventDefault();
     var account = $('#adminAccount') ? $('#adminAccount').value.trim() : 'admin';
     var pwd = $('#pwd').value;
+    rememberLogin = !$('#rememberLogin') || $('#rememberLogin').checked;
     if (API.isReadOnly()) {
       var note = API.mode === 'published'
         ? '目前為唯讀模式（讀取已發布的 Google 試算表）。可瀏覽資料，但需在 Google 試算表內編輯；如要在後台直接增刪改，請部署 GAS 並設定 GAS_URL。'
         : '尚未設定資料來源，僅能預覽介面（無法儲存）。';
       alertBox($('#loginAlert'), note, 'ok');
       token = 'readonly-token';
-      if ($('#rememberLogin') && $('#rememberLogin').checked) localStorage.setItem(TOKEN_KEY, token);
-      else sessionStorage.setItem(TOKEN_KEY, token);
+      saveLoginPreference(account);
+      if (rememberLogin) {
+        localStorage.setItem(TOKEN_KEY, token);
+        sessionStorage.removeItem(TOKEN_KEY);
+      } else {
+        sessionStorage.setItem(TOKEN_KEY, token);
+        localStorage.removeItem(TOKEN_KEY);
+      }
       setTimeout(showAdmin, 800); return;
     }
     var btn = $('#loginBtn'); btn.textContent = '登入中…'; btn.disabled = true;
@@ -301,7 +324,8 @@
       btn.textContent = '登入'; btn.disabled = false;
       if (res.ok && res.token) {
         token = res.token;
-        if ($('#rememberLogin') && $('#rememberLogin').checked) {
+        saveLoginPreference(account);
+        if (rememberLogin) {
           localStorage.setItem(TOKEN_KEY, token);
           sessionStorage.removeItem(TOKEN_KEY);
         } else {
@@ -727,7 +751,8 @@
       if (res.ok) showAdmin();
       else handleAuthExpired('登入已過期，請重新登入。');
     }).catch(function () {
-      handleAuthExpired('無法驗證登入狀態，請重新登入。');
+      showLogin();
+      alertBox($('#loginAlert'), '目前無法連線驗證，已保留登入狀態；請稍後重新整理。', 'err');
     });
   } else if (token) {
     showAdmin();
@@ -735,4 +760,3 @@
     showLogin();
   }
 })();
-
