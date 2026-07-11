@@ -201,6 +201,7 @@ html.admin-modal-open body {
 }
 @keyframes pop { from { opacity: 0; transform: translateY(16px) scale(.98); } }
 .modal h3 { font-family: var(--serif); font-size: 1.3rem; margin-bottom: 20px; }
+.password-modal { max-width: 420px; }
 .modal-actions { display: flex; gap: 12px; margin-top: 22px; }
 .modal-actions .btn { flex: 1; justify-content: center; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
