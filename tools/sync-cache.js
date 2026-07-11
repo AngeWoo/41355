@@ -29,6 +29,7 @@ async function main() {
   if (!result || !result.ok || !result.data) {
     throw new Error(`GAS returned an invalid payload: ${JSON.stringify(result).slice(0, 500)}`);
   }
+  delete result.data.members;
 
   const payload = {
     ok: true,
