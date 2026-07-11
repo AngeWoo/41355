@@ -4,9 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>後台維護｜真如苑資料網站</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css?v=58" />
-  <link rel="stylesheet" href="assets/css/admin.css?v=27" />
+  <meta name="theme-color" content="#0d1728" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <link rel="stylesheet" href="assets/css/style.css?v=99" />
+  <link rel="stylesheet" href="assets/css/admin.css?v=29" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body class="admin-body admin-auth-pending">
@@ -19,14 +21,14 @@
       <svg class="mark" viewBox="0 0 100 100"><circle cx="50" cy="50" r="36" fill="none" stroke="#d4af68" stroke-width="6" stroke-linecap="round" stroke-dasharray="205 50" transform="rotate(120 50 50)"/><path d="M50 34c-7 8-7 16 0 24 7-8 7-16 0-24z" fill="#e7cd8f"/></svg>
       <h1>後台維護登入</h1>
       <p>真如苑資料網站 · 管理介面</p>
-      <div class="alert" id="loginAlert"></div>
+      <div class="alert" id="loginAlert" role="alert" aria-live="polite"></div>
       <form id="loginForm">
         <div class="field">
-          <label>管理帳號</label>
+          <label for="adminAccount">管理帳號</label>
           <input type="text" id="adminAccount" placeholder="請輸入帳號" autocomplete="username" value="admin" required />
         </div>
         <div class="field">
-          <label>管理密碼</label>
+          <label for="pwd">管理密碼</label>
           <div class="password-row">
             <input type="password" id="pwd" placeholder="請輸入密碼" autocomplete="current-password" required />
             <button type="button" class="password-toggle" data-toggle-password="pwd">顯示</button>
@@ -73,11 +75,11 @@
   </div>
 
   <!-- 編輯彈窗 -->
-  <div class="modal-mask" id="modalMask">
-    <div class="card modal" id="modal">
+  <div class="modal-mask" id="modalMask" aria-hidden="true">
+    <div class="card modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <button type="button" class="modal-close" id="modalClose" aria-label="關閉編輯視窗">×</button>
       <h3 id="modalTitle">編輯</h3>
-      <div class="alert" id="modalAlert"></div>
+      <div class="alert" id="modalAlert" role="alert" aria-live="polite"></div>
       <form id="recordForm"><div id="formFields"></div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" id="cancelBtn">取消</button>
@@ -88,26 +90,33 @@
   </div>
 
   <!-- 修改密碼彈窗 -->
-  <div class="modal-mask" id="pwdMask">
-    <div class="card modal" style="max-width:420px;">
+  <div class="modal-mask" id="pwdMask" aria-hidden="true">
+    <div class="card modal password-modal" role="dialog" aria-modal="true" aria-labelledby="pwdDialogTitle">
       <button type="button" class="modal-close" id="pwdClose" aria-label="關閉修改密碼視窗">×</button>
-      <h3>修改管理密碼</h3>
-      <div class="alert" id="pwdAlert"></div>
+      <h3 id="pwdDialogTitle">修改管理密碼</h3>
+      <div class="alert" id="pwdAlert" role="alert" aria-live="polite"></div>
       <form id="pwdForm">
         <div class="field">
-          <label>舊密碼</label>
+          <label for="oldPwd">舊密碼</label>
           <div class="password-row">
             <input type="password" id="oldPwd" autocomplete="current-password" required />
             <button type="button" class="password-toggle" data-toggle-password="oldPwd">顯示</button>
           </div>
         </div>
         <div class="field">
-          <label>新密碼（至少 6 碼）</label>
+          <label for="newPwd">新密碼（至少 8 碼）</label>
           <div class="password-row">
-            <input type="password" id="newPwd" autocomplete="new-password" minlength="6" required />
+            <input type="password" id="newPwd" autocomplete="new-password" minlength="8" required />
             <button type="button" class="password-toggle" data-toggle-password="newPwd">顯示</button>
           </div>
           <div class="hint">系統只會儲存加密後的密碼，無法反查目前密碼。</div>
+        </div>
+        <div class="field">
+          <label for="confirmPwd">確認新密碼</label>
+          <div class="password-row">
+            <input type="password" id="confirmPwd" autocomplete="new-password" minlength="8" required />
+            <button type="button" class="password-toggle" data-toggle-password="confirmPwd">顯示</button>
+          </div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" id="pwdCancel">取消</button>
@@ -117,11 +126,11 @@
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="assets/js/config.js?v=5"></script>
   <script src="assets/js/seed-data.js?v=12"></script>
-  <script src="assets/js/api.js?v=26"></script>
-  <script src="assets/js/admin.js?v=51"></script>
+  <script src="assets/js/api.js?v=29"></script>
+  <script src="assets/js/admin.js?v=53"></script>
 </body>
 </html>

@@ -5,27 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>真如苑資料網站｜非官方資訊彙整</title>
   <meta name="description" content="真如苑非官方資料彙整網站，收錄親苑時報、Shinnyo Podcast、行事曆、瑞聲法語等資源。" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css?v=97" />
+  <meta name="theme-color" content="#0d1728" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <link rel="stylesheet" href="assets/css/style.css?v=99" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body>
+  <a class="skip-link" href="#mainContent">跳至主要內容</a>
   <div class="bg-aura"></div>
   <div class="bg-grain"></div>
 
   <!-- 導覽列 -->
-  <nav class="nav" id="nav">
+  <nav class="nav" id="nav" aria-label="主要導覽">
     <div class="container nav-inner">
       <a class="brand" href="index.html">
-        <img class="mark" src="assets/img/slogo.png" alt="" aria-hidden="true" />
+        <img class="mark" src="assets/img/slogo.png" width="42" height="42" alt="" aria-hidden="true" decoding="async" />
         <span><b>真如苑資料網站</b><small>SHINNYO ARCHIVE</small></span>
       </a>
-      <button type="button" class="talk-nav-btn" id="talkFloatBtn" aria-label="開啟真如開講">
+      <button type="button" class="talk-nav-btn" id="talkFloatBtn" aria-label="真如話語：開啟真如開講">
         <span>真如</span><span>話語</span>
       </button>
-      <button class="hamburger" id="hamburger" aria-label="選單">
+      <button type="button" class="hamburger" id="hamburger" aria-label="開啟導覽選單" aria-controls="navLinks" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
       <div class="nav-links" id="navLinks">
@@ -94,7 +95,7 @@
   </header>
 
   <div class="search-popover" id="searchPopover" aria-live="polite" hidden>
-    <div class="search-panel">
+    <div class="search-panel" role="dialog" aria-modal="true" aria-label="搜尋結果">
       <div class="search-panel-head">
         <b>搜尋結果</b>
         <button type="button" id="searchClose" aria-label="關閉搜尋結果">×</button>
@@ -104,10 +105,10 @@
   </div>
 
   <div class="talk-popover" id="talkPopover" hidden>
-    <div class="talk-backdrop" data-talk-close></div>
-    <section class="talk-panel" role="dialog" aria-modal="true" aria-label="真如開講">
+    <div class="talk-backdrop" data-talk-close aria-hidden="true"></div>
+    <section class="talk-panel" role="dialog" aria-modal="true" aria-labelledby="talkDialogTitle">
       <div class="talk-head">
-        <b>真如開講</b>
+        <b id="talkDialogTitle">真如開講</b>
         <button type="button" id="talkClose" aria-label="關閉真如開講">×</button>
       </div>
       <div class="talk-list" id="talkList"></div>
@@ -116,10 +117,10 @@
   </div>
 
   <div class="member-popover" id="memberPopover" hidden>
-    <div class="member-backdrop"></div>
-    <section class="member-panel" role="dialog" aria-modal="true" aria-label="會員登入與註冊">
+    <div class="member-backdrop" aria-hidden="true"></div>
+    <section class="member-panel" role="dialog" aria-modal="true" aria-labelledby="memberDialogTitle">
       <button type="button" class="member-close" id="memberClose" aria-label="關閉會員視窗">×</button>
-      <h2>會員登入</h2>
+      <h2 id="memberDialogTitle">會員登入</h2>
       <div class="member-current" id="memberCurrent" hidden>
         <span id="memberCurrentName"></span>
         <button type="button" id="memberLogout">登出</button>
@@ -128,27 +129,27 @@
         <div class="member-directory-head"><b id="memberDirectoryTitle">會員資料</b><span id="memberDirectoryCount"></span></div>
         <div class="member-directory-list" id="memberDirectoryList"></div>
       </section>
-      <p class="member-status" id="memberStatus">輸入手機即可登入。</p>
+      <p class="member-status" id="memberStatus" role="status" aria-live="polite">輸入手機即可登入。</p>
       <div class="member-tabs">
         <button type="button" class="active" data-member-tab="login">登入</button>
         <button type="button" data-member-tab="register">註冊</button>
       </div>
       <form class="member-form active" id="memberLoginForm">
-        <label>手機<input type="tel" id="memberLoginMobile" autocomplete="tel" inputmode="tel" placeholder="例：0968711059" required /></label>
+        <label>手機<input type="tel" id="memberLoginMobile" autocomplete="tel" inputmode="tel" maxlength="10" pattern="09[0-9]{8}" placeholder="例：0968711059" required /></label>
         <div class="member-hint">請輸入註冊時填寫的手機號碼。</div>
         <button type="submit" class="btn btn-gold member-submit">會員登入</button>
       </form>
       <form class="member-form" id="memberRegisterForm">
-        <label>姓名<input type="text" id="memberName" autocomplete="name" placeholder="請輸入姓名" required /></label>
-        <label>經名<input type="text" id="memberDharmaName" autocomplete="off" placeholder="請輸入經名" required /></label>
-        <label>Email<input type="email" id="memberEmail" autocomplete="email" placeholder="name@example.com" required /></label>
-        <label>手機<input type="tel" id="memberMobile" autocomplete="tel" inputmode="tel" placeholder="例：0968711059" required /></label>
+        <label>姓名<input type="text" id="memberName" autocomplete="name" maxlength="50" placeholder="請輸入姓名" required /></label>
+        <label>經名<input type="text" id="memberDharmaName" autocomplete="off" maxlength="50" placeholder="請輸入經名" required /></label>
+        <label>Email<input type="email" id="memberEmail" autocomplete="email" maxlength="120" placeholder="name@example.com" required /></label>
+        <label>手機<input type="tel" id="memberMobile" autocomplete="tel" inputmode="tel" maxlength="10" pattern="09[0-9]{8}" placeholder="例：0968711059" required /></label>
         <button type="submit" class="btn btn-gold member-submit">註冊會員</button>
       </form>
     </section>
   </div>
 
-  <main>
+  <main id="mainContent" tabindex="-1">
     <!-- 首頁四大區 -->
     <section class="block" id="home">
       <div class="container">
@@ -157,7 +158,7 @@
           <h2>四大資料園地</h2>
           <p>一站彙整核心資源，隨時掌握真如苑的法音與動態。</p>
         </div>
-        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));" id="featureGrid">
+        <div class="grid feature-grid" id="featureGrid">
           <a href="#podcast" class="card feature reveal">
             <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
             <h3>Shinnyo Podcast</h3>
@@ -297,7 +298,7 @@
     </button>
   </div>
 
-  <button type="button" class="live-video-tab" id="liveVideoOpen" aria-label="開啟即時影片" onclick="window.openLiveVideoFallback && window.openLiveVideoFallback()">
+  <button type="button" class="live-video-tab" id="liveVideoOpen" aria-label="開啟即時影片">
     <span class="live-play" aria-hidden="true">
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
     </span>
@@ -305,9 +306,9 @@
   </button>
 
   <div class="live-video-modal" id="liveVideoModal" hidden>
-    <div class="live-video-backdrop" data-live-close onclick="window.closeLiveVideoFallback && window.closeLiveVideoFallback()"></div>
+    <div class="live-video-backdrop" data-live-close></div>
     <section class="live-video-panel" role="dialog" aria-modal="true" aria-label="即時影片播放">
-      <button type="button" class="live-video-close" id="liveVideoClose" aria-label="關閉影片" onclick="window.closeLiveVideoFallback && window.closeLiveVideoFallback()">
+      <button type="button" class="live-video-close" id="liveVideoClose" aria-label="關閉影片">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
       <div class="live-video-frame live-video-launch">
@@ -335,7 +336,7 @@
   <footer class="site">
     <div class="container">
       <div class="foot-bottom">
-        <span>c <span id="year"></span> 真如苑資料網站（非官方）</span>
+        <span>© <span id="year"></span> 真如苑資料網站（非官方）</span>
         <span>經號:41355所有</span>
       </div>
     </div>
@@ -343,22 +344,7 @@
 
   <script src="assets/js/config.js?v=5"></script>
   <script src="assets/js/seed-data.js?v=12"></script>
-  <script src="assets/js/api.js?v=27"></script>
-  <script>
-    window.openLiveVideoFallback = function () {
-      if (window.refreshOfficialLive) window.refreshOfficialLive(true);
-      var modal = document.getElementById('liveVideoModal');
-      if (!modal) return;
-      modal.hidden = false;
-      document.documentElement.classList.add('modal-open');
-    };
-    window.closeLiveVideoFallback = function () {
-      var modal = document.getElementById('liveVideoModal');
-      if (!modal) return;
-      modal.hidden = true;
-      document.documentElement.classList.remove('modal-open');
-    };
-  </script>
-  <script src="assets/js/app.js?v=100"></script>
+  <script src="assets/js/api.js?v=29"></script>
+  <script src="assets/js/app.js?v=102"></script>
 </body>
 </html>
