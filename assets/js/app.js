@@ -1580,18 +1580,20 @@
     localStorage.removeItem(LEGACY_MEMBER_KEY);
     var storedMember = currentMember();
     if (storedMember && storedMember.token && API.validateMemberToken) {
+      var pendingMemberToken = storedMember.token;
+      memberAuthReady = true; // 先信任本機已保存的 session，避免暫時性連線問題把使用者鎖在門外
       syncMemberUi();
-      API.validateMemberToken(storedMember.token).then(function (res) {
+      API.validateMemberToken(pendingMemberToken).then(function (res) {
+        var active = currentMember();
+        if (!active || active.token !== pendingMemberToken) return; // 驗證期間使用者已登出或切換帳號
         if (res && res.ok && res.data) {
-          saveMember(res.data, storedMember.token);
-        } else {
+          saveMember(res.data, pendingMemberToken);
+        } else if (res && res.ok === false) {
           clearMember();
           setMemberStatus('會員登入已過期，請重新登入。', 'err');
         }
       }).catch(function () {
-        memberAuthReady = false;
-        syncMemberUi();
-        setMemberStatus('目前無法驗證會員登入，已保留登入狀態；請稍後重新整理。', 'err');
+        // 純網路／逾時失敗，不代表 token 失效，維持現有登入狀態即可
       });
     } else {
       if (storedMember) localStorage.removeItem(MEMBER_KEY);

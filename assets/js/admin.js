@@ -795,8 +795,8 @@
       if (res.ok) showAdmin();
       else handleAuthExpired('登入已過期，請重新登入。');
     }).catch(function () {
-      showLogin();
-      alertBox($('#loginAlert'), '目前無法連線驗證，已保留登入狀態；請稍後重新整理。', 'err');
+      // 純網路／逾時失敗，不代表 token 失效，維持現有登入狀態，不強制跳回登入畫面
+      showAdmin();
     });
   } else if (token) {
     showAdmin();
