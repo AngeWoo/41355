@@ -1509,8 +1509,7 @@
           if (res.ok && res.token) {
             saveMember(res.data, res.token);
             setMemberStatus('登入成功，歡迎 ' + res.data.name + '。', 'ok');
-            loadMemberDirectory();
-            setTimeout(finishMemberEntry, 700);
+            finishMemberEntry();
           } else {
             setMemberStatus(res.error || '登入失敗。', 'err');
           }
@@ -1565,8 +1564,7 @@
               ? '註冊完成，但郵件通知失敗，詳細錯誤已寫入瀏覽器 console。'
               : '註冊完成，已登入會員。', failedMail.length ? 'err' : 'ok');
             if (!failedMail.length) {
-              loadMemberDirectory();
-              setTimeout(finishMemberEntry, 700);
+              finishMemberEntry();
             }
           } else {
             setMemberStatus(res.error || '註冊失敗。', 'err');
