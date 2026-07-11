@@ -13,7 +13,7 @@
 
   var MODE = GAS ? 'gas' : (PUB ? 'published' : 'demo');
 
-  var TYPES = ['news', 'podcast', 'calendar', 'headquarters', 'newsletter', 'dharma', 'tools', 'talks', 'members'];
+  var TYPES = ['news', 'podcast', 'calendar', 'headquarters', 'newsletter', 'dharma', 'tools', 'talks'];
   var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], headquarters: [], newsletter: [], dharma: [], tools: [], talks: [], members: [] };
 
   function requestUrl(url, fresh) {
@@ -218,7 +218,8 @@
     memberLogin: function (mobile, legacyMobile) {
       return post({ action: 'memberLogin', mobile: legacyMobile || mobile });
     },
-    memberDirectory: function (mobile) { return post({ action: 'memberDirectory', mobile: mobile }); },
+    validateMemberToken: function (token) { return post({ action: 'validateMemberToken', token: token }); },
+    memberDirectory: function (token) { return post({ action: 'memberDirectory', token: token }); },
     adminMemberList: function (token) { return post({ action: 'adminMemberList', token: token }); }
   };
 })();

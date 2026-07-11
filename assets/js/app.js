@@ -687,8 +687,14 @@
   });
 
   // Internal section.
-  function normalizeData(d) {
+  function stripPrivateCollections(d) {
     d = d || {};
+    if (Object.prototype.hasOwnProperty.call(d, 'members')) delete d.members;
+    return d;
+  }
+
+  function normalizeData(d) {
+    d = stripPrivateCollections(d);
     if (!d.tools || !d.tools.length) d.tools = (window.SEED_DATA && window.SEED_DATA.tools) || [];
     if (!d.talks || !d.talks.length) d.talks = (window.SEED_DATA && window.SEED_DATA.talks) || [];
     return d;
@@ -722,6 +728,10 @@
     try {
       var cached = JSON.parse(localStorage.getItem(DATA_CACHE_KEY) || 'null');
       if (!cached || !cached.data || !cached.savedAt) return null;
+      if (Object.prototype.hasOwnProperty.call(cached.data, 'members')) {
+        delete cached.data.members;
+        localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(cached));
+      }
       if (Date.now() - Number(cached.savedAt) > DATA_CACHE_MAX_AGE) return null;
       return cached;
     } catch (e) {
@@ -740,7 +750,7 @@
         return {
           savedAt: payload.savedAt || Date.now(),
           mode: payload.mode || 'local-json',
-          data: payload.data
+          data: stripPrivateCollections(payload.data)
         };
       })
       .catch(function () { return null; });
@@ -751,7 +761,7 @@
       localStorage.setItem(DATA_CACHE_KEY, JSON.stringify({
         savedAt: Date.now(),
         mode: mode || '',
-        data: data || {}
+        data: stripPrivateCollections(data)
       }));
     } catch (e) {}
   }
@@ -1215,7 +1225,9 @@
   }
 
   function setupMemberAuth() {
-    var MEMBER_KEY = 'shinnyo_member';
+    var MEMBER_KEY = 'shinnyo_member_v2';
+    var LEGACY_MEMBER_KEY = 'shinnyo_member';
+    var memberAuthReady = false;
     var memberOpen = document.getElementById('memberOpen');
     var memberPopover = document.getElementById('memberPopover');
     var memberClose = document.getElementById('memberClose');
@@ -1246,17 +1258,28 @@
     }
     function isMemberLoggedIn() {
       var m = currentMember();
-      return !!(m && m.name);
+      return !!(memberAuthReady && m && m.token && m.name);
     }
     function syncMemberGate() {
       document.documentElement.classList.toggle('member-locked', !isMemberLoggedIn());
     }
-    function saveMember(member) {
-      localStorage.setItem(MEMBER_KEY, JSON.stringify(member || {}));
+    function saveMember(member, token) {
+      var session = member && token ? {
+        id: member.id || '',
+        name: member.name || '',
+        dharmaName: member.dharmaName || '',
+        token: token
+      } : null;
+      if (session) localStorage.setItem(MEMBER_KEY, JSON.stringify(session));
+      else localStorage.removeItem(MEMBER_KEY);
+      localStorage.removeItem(LEGACY_MEMBER_KEY);
+      memberAuthReady = !!session;
       syncMemberUi();
     }
     function clearMember() {
       localStorage.removeItem(MEMBER_KEY);
+      localStorage.removeItem(LEGACY_MEMBER_KEY);
+      memberAuthReady = true;
       clearTimeout(memberCloseTimer);
       clearMemberDirectory();
       syncMemberUi();
@@ -1266,19 +1289,21 @@
     function updateMemberButton() {
       if (!memberOpen) return;
       var m = currentMember();
-      memberOpen.textContent = m && m.name ? '會員：' + m.name : '會員登入';
-      memberOpen.classList.toggle('is-logged-in', !!(m && m.name));
-      memberOpen.setAttribute('aria-pressed', m && m.name ? 'true' : 'false');
+      var loggedIn = isMemberLoggedIn();
+      memberOpen.textContent = loggedIn ? '會員：' + m.name : '會員登入';
+      memberOpen.classList.toggle('is-logged-in', loggedIn);
+      memberOpen.setAttribute('aria-pressed', loggedIn ? 'true' : 'false');
       if (ham) {
-        ham.classList.toggle('member-logged-in', !!(m && m.name));
-        ham.setAttribute('data-member-state', m && m.name ? '會員登入' : '會員未登入');
+        ham.classList.toggle('member-logged-in', loggedIn);
+        ham.setAttribute('data-member-state', loggedIn ? '會員登入' : '會員未登入');
       }
     }
     function updateMemberCurrent() {
       if (!memberCurrent || !memberCurrentName) return;
       var m = currentMember();
-      memberCurrent.hidden = !(m && m.name);
-      memberCurrentName.textContent = m && m.name ? '目前登入：' + m.name : '';
+      var loggedIn = isMemberLoggedIn();
+      memberCurrent.hidden = !loggedIn;
+      memberCurrentName.textContent = loggedIn ? '目前登入：' + m.name : '';
     }
     function clearMemberDirectory() {
       if (memberDirectory) memberDirectory.hidden = true;
@@ -1301,17 +1326,18 @@
     }
     function loadMemberDirectory() {
       var member = currentMember();
-      if (!member || !member.mobile || !API.memberDirectory) { clearMemberDirectory(); return; }
-      var mobile = member.mobile;
+      if (!isMemberLoggedIn() || !member || !member.token || !API.memberDirectory) { clearMemberDirectory(); return; }
+      var activeToken = member.token;
       if (memberDirectory) memberDirectory.hidden = false;
       if (memberDirectoryTitle) memberDirectoryTitle.textContent = '會員資料';
       if (memberDirectoryCount) memberDirectoryCount.textContent = '讀取中…';
       if (memberDirectoryList) memberDirectoryList.innerHTML = '<div class="member-directory-empty">讀取會員資料中…</div>';
-      API.memberDirectory(mobile).then(function (res) {
+      API.memberDirectory(activeToken).then(function (res) {
         var active = currentMember();
-        if (!active || active.mobile !== mobile) return;
+        if (!active || active.token !== activeToken) return;
         if (res && res.ok) renderMemberDirectory(res);
         else {
+          if (res && /登入已過期|未授權/.test(res.error || '')) clearMember();
           if (memberDirectoryCount) memberDirectoryCount.textContent = '';
           if (memberDirectoryList) memberDirectoryList.innerHTML = '<div class="member-directory-empty">' + esc((res && res.error) || '會員資料讀取失敗。') + '</div>';
         }
@@ -1329,11 +1355,12 @@
     }
     function syncMemberUi() {
       var m = currentMember();
+      var loggedIn = isMemberLoggedIn();
       updateMemberButton();
       updateMemberCurrent();
       syncMemberGate();
-      if (memberTabs) memberTabs.hidden = !!(m && m.name);
-      if (m && m.name) {
+      if (memberTabs) memberTabs.hidden = loggedIn;
+      if (loggedIn) {
         if (memberLoginForm) memberLoginForm.classList.remove('active');
         if (memberRegisterForm) memberRegisterForm.classList.remove('active');
       } else {
@@ -1352,12 +1379,13 @@
       if (!memberPopover) return;
       clearTimeout(memberCloseTimer);
       var m = currentMember();
+      var loggedIn = isMemberLoggedIn();
       memberPopover.hidden = false;
       syncMemberUi();
-      if (!m && tab === 'register') selectMemberTab('register');
-      setMemberStatus(m ? '您已登入會員：' + m.name : (msg || '請先註冊或登入會員後觀看內容。'), m ? 'ok' : '');
-      if (m) loadMemberDirectory();
-      if (!m) {
+      if (!loggedIn && tab === 'register') selectMemberTab('register');
+      setMemberStatus(loggedIn ? '您已登入會員：' + m.name : (msg || '請先註冊或登入會員後觀看內容。'), loggedIn ? 'ok' : '');
+      if (loggedIn) loadMemberDirectory();
+      if (!loggedIn) {
         var focusTarget = tab === 'register' ? document.getElementById('memberName') : memberLoginMobile;
         if (focusTarget) setTimeout(function () { focusTarget.focus(); }, 80);
       }
@@ -1448,8 +1476,8 @@
         setMemberStatus('登入中...', '');
         API.memberLogin(loginMobile).then(function (res) {
           if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = '會員登入'; }
-          if (res.ok) {
-            saveMember(res.data);
+          if (res.ok && res.token) {
+            saveMember(res.data, res.token);
             setMemberStatus('登入成功，歡迎 ' + res.data.name + '。', 'ok');
             loadMemberDirectory();
             setTimeout(function () {
@@ -1494,8 +1522,8 @@
         setMemberStatus('註冊中...', '');
         API.memberRegister(record).then(function (res) {
           if (registerBtn) { registerBtn.disabled = false; registerBtn.textContent = '完成註冊'; }
-          if (res.ok) {
-            saveMember(res.data);
+          if (res.ok && res.token) {
+            saveMember(res.data, res.token);
             var failedMail = (res.mail || []).filter(function (m) { return !m.ok; });
             var mailError = failedMail.map(function (m) { return (m.label || 'mail') + ': ' + (m.error || 'unknown'); }).join('；');
             if (res.mail && res.mail.length) {
@@ -1522,7 +1550,27 @@
         });
       });
     }
-    syncMemberUi();
+    localStorage.removeItem(LEGACY_MEMBER_KEY);
+    var storedMember = currentMember();
+    if (storedMember && storedMember.token && API.validateMemberToken) {
+      syncMemberUi();
+      API.validateMemberToken(storedMember.token).then(function (res) {
+        if (res && res.ok && res.data) {
+          saveMember(res.data, storedMember.token);
+        } else {
+          clearMember();
+          setMemberStatus('會員登入已過期，請重新登入。', 'err');
+        }
+      }).catch(function () {
+        memberAuthReady = false;
+        syncMemberUi();
+        setMemberStatus('目前無法驗證會員登入，已保留登入狀態；請稍後重新整理。', 'err');
+      });
+    } else {
+      if (storedMember) localStorage.removeItem(MEMBER_KEY);
+      memberAuthReady = true;
+      syncMemberUi();
+    }
   }
 
   observeReveal();
