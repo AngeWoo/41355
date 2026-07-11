@@ -1,35 +1,31 @@
 ﻿/* Frontend interactions, data rendering, pagination, search, and modal controls. */
 (function () {
-  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-
-  function forceTopOnFreshLoad() {
-    if (location.hash) {
-      try {
-        history.replaceState(null, document.title, location.pathname + location.search);
-      } catch (e) {}
-    }
-    window.scrollTo(0, 0);
-    requestAnimationFrame(function () { window.scrollTo(0, 0); });
-  }
-  forceTopOnFreshLoad();
-  window.addEventListener('pageshow', forceTopOnFreshLoad);
-  window.addEventListener('load', forceTopOnFreshLoad);
-  window.addEventListener('beforeunload', function () { window.scrollTo(0, 0); });
-
   var CFG = window.SITE_CONFIG || {};
   var $ = function (s, r) { return (r || document).querySelector(s); };
 
-  document.getElementById('year').textContent = '2026';
+  document.getElementById('year').textContent = String(new Date().getFullYear());
   var off = document.getElementById('officialLink');
-  if (off && CFG.OFFICIAL_LINK) off.href = CFG.OFFICIAL_LINK;
+  if (off && CFG.OFFICIAL_LINK) off.href = safeLinkUrl(CFG.OFFICIAL_LINK) || '#';
 
   // Internal section.
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
-  function truthy(v) { var s = String(v).toLowerCase(); return s === 'true' || s === '1' || s === 'yes' || v === true; }
-  function linkAttr(url) { return url ? ' href="' + esc(url) + '"' : ' href="javascript:void(0)"'; }
+  function safeLinkUrl(value) {
+    var raw = String(value || '').trim();
+    if (!raw) return '';
+    try {
+      var parsed = new URL(raw, location.href);
+      return /^(https?:|mailto:|tel:)$/.test(parsed.protocol) ? raw : '';
+    } catch (e) {
+      return '';
+    }
+  }
+  function linkAttr(url) {
+    var safe = safeLinkUrl(url);
+    return safe ? ' href="' + esc(safe) + '"' : ' aria-disabled="true"';
+  }
   function parseRecordDate(value) {
     var s = String(value || '').trim();
     if (!s) return null;
@@ -213,7 +209,7 @@
   function driveThumb(url) {
     var s = String(url || '');
     var m = s.match(/drive\.google\.com\/file\/d\/([^/]+)/) || s.match(/[?&]id=([^&]+)/);
-    return m ? 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(m[1]) + '&sz=w700' : '';
+    return m ? 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(m[1]) + '=w480' : '';
   }
   function uniqueUrls(urls) {
     var seen = {};
@@ -222,7 +218,15 @@
       if (!url || seen[url]) return false;
       seen[url] = true;
       return true;
-    });
+    }).map(function (url) {
+      var driveId = (url.match(/drive\.google\.com\/thumbnail\?id=([^&]+)/) || [])[1];
+      if (driveId) {
+        try { driveId = decodeURIComponent(driveId); } catch (e) {}
+        return 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(driveId) + '=w480';
+      }
+      if (/^https:\/\/lh3\.googleusercontent\.com\//.test(url)) return url.replace(/=[ws]\d+$/, '=w480');
+      return url;
+    }).filter(function (url, index, all) { return all.indexOf(url) === index; });
   }
   function issueKey(it) {
     if (!it) return '';
@@ -232,8 +236,8 @@
     return m ? m[1] + '-' + pad(m[2]) : '';
   }
   var KNOWN_NEWSLETTER_COVERS = {
-    '2026-07': 'https://drive.google.com/thumbnail?id=152-UzlgrDZC0VqUT3OHrILskwzemWeJQ&sz=w700',
-    'https://meee.ing/18d09c': 'https://drive.google.com/thumbnail?id=152-UzlgrDZC0VqUT3OHrILskwzemWeJQ&sz=w700'
+    '2026-07': 'https://lh3.googleusercontent.com/d/152-UzlgrDZC0VqUT3OHrILskwzemWeJQ=w480',
+    'https://meee.ing/18d09c': 'https://lh3.googleusercontent.com/d/152-UzlgrDZC0VqUT3OHrILskwzemWeJQ=w480'
   };
   function knownNewsletterCover(it) {
     if (!it) return '';
@@ -243,7 +247,7 @@
     urls = uniqueUrls(urls);
     if (!urls.length) return '';
     var rest = urls.slice(1);
-    return '<img src="' + esc(urls[0]) + '" alt="' + esc(title || '') + '" loading="lazy" referrerpolicy="no-referrer" data-cover-srcs="' + esc(JSON.stringify(rest)) + '" onerror="window.__tryNextCover&&window.__tryNextCover(this)" />';
+    return '<img src="' + esc(urls[0]) + '" alt="' + esc(title || '') + '" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-cover-image data-cover-srcs="' + esc(JSON.stringify(rest)) + '" />';
   }
   window.__tryNextCover = function (img) {
     if (!img) return;
@@ -259,6 +263,10 @@
     if (cover) cover.classList.add('no-thumb');
     img.remove();
   };
+  document.addEventListener('error', function (e) {
+    var img = e.target;
+    if (img && img.matches && img.matches('img[data-cover-image]')) window.__tryNextCover(img);
+  }, true);
   function newsletterCover(it) {
     var issueStr = fmtDate(it.issue || it.date);
     var seed = seedCover('newsletter', it);
@@ -319,7 +327,7 @@
     var url = cardShareUrl('news', it);
     return '<div class="card reveal stack">' + newBadge(it) + lineShareButton('news', it, url) +
       '<div class="item-date">' + esc(fmtDate(it.date)) + '</div>' +
-      '<h4>' + esc(it.title) + '</h4>' +
+      '<h3>' + esc(it.title) + '</h3>' +
       (it.body ? '<p class="muted small">' + esc(it.body) + '</p>' : '') + more + '</div>';
   }
   function podcastItem(it) {
@@ -327,19 +335,10 @@
     var url = cardShareUrl('podcast', it);
     return '<a class="card pod cafe-card reveal"' + linkAttr(it.link) + '>' + newBadge(it) + lineShareButton('podcast', it, url) +
       '<span class="ep">' + esc(it.ep || 'EP') + '</span>' +
-      '<h4>' + esc(it.title) + '</h4>' +
+      '<h3>' + esc(it.title) + '</h3>' +
       '<div class="meta">' + meta + '</div>' +
       '<p class="muted small">' + esc(it.desc) + '</p>' +
       '<span class="play"><span class="pbtn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>開啟收聽</span></a>';
-  }
-  function calItem(it) {
-    var open = it.link ? '<a class="card reveal stack" style="text-decoration:none"' + linkAttr(it.link) + '>' : '<div class="card reveal stack">';
-    var close = it.link ? '</a>' : '</div>';
-    var meta = '<div class="item-date">' + esc(fmtDate(it.date)) + (it.tag ? ' <span class="tag">' + esc(it.tag) + '</span>' : '') + '</div>';
-    return open + newBadge(it) + meta + '<h4>' + esc(it.title) + '</h4>' +
-      (it.location ? '<div class="where"><span>?? ' + esc(it.location) + '</span></div>' : '') +
-      (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
-      (it.link ? '<span class="more-link">查看連結 →</span>' : '') + close;
   }
   function calItem(it) {
     var url = fallbackLink('calendar', it);
@@ -347,7 +346,7 @@
     var close = url ? '</a>' : '</div>';
     var meta = '<div class="item-date">' + esc(fmtDate(it.date)) + (it.tag ? ' <span class="tag">' + esc(it.tag) + '</span>' : '') + '</div>';
     var shareUrl = cardShareUrl('calendar', it);
-    return open + newBadge(it) + lineShareButton('calendar', it, shareUrl) + meta + '<h4>' + esc(it.title) + '</h4>' +
+    return open + newBadge(it) + lineShareButton('calendar', it, shareUrl) + meta + '<h3>' + esc(it.title) + '</h3>' +
       (it.location ? '<div class="where"><span>' + esc(it.location) + '</span></div>' : '') +
       (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
       (url ? '<span class="more-link">查看連結 →</span>' : '') + close;
@@ -358,7 +357,7 @@
     var close = url ? '</a>' : '</div>';
     var meta = '<div class="item-date">' + esc(fmtDate(it.date)) + (it.category ? ' <span class="tag">' + esc(it.category) + '</span>' : '') + '</div>';
     var shareUrl = cardShareUrl('headquarters', it);
-    return open + newBadge(it) + lineShareButton('headquarters', it, shareUrl) + meta + '<h4>' + esc(it.title) + '</h4>' +
+    return open + newBadge(it) + lineShareButton('headquarters', it, shareUrl) + meta + '<h3>' + esc(it.title) + '</h3>' +
       (it.body ? '<p class="muted small">' + esc(it.body) + '</p>' : '') +
       (url ? '<span class="more-link">查看連結 →</span>' : '') + close;
   }
@@ -367,7 +366,7 @@
     var url = cardShareUrl('newsletter', it);
     return '<a class="card paper reveal"' + linkAttr(it.link) + '>' + newBadge(it) + lineShareButton('newsletter', it, url) +
       '<div class="cover">' + newsletterCover(it) + '</div>' +
-      '<h4>' + esc(it.title) + '</h4>' +
+      '<h3>' + esc(it.title) + '</h3>' +
       '<div class="issue">' + esc(issueStr) + '</div></a>';
   }
   function dharmaItem(it) {
@@ -381,7 +380,7 @@
     return '<div class="card dharma-item reveal">' + newBadge(it) + lineShareButton('dharma', it, url) +
       '<div class="dharma-cover cover">' + coverMarkup('dharma', it, it.category || '瑞聲法語') + '</div>' +
       '<span class="cat">' + esc(it.category || '瑞聲法語') + '</span>' +
-      '<h4>' + esc(it.title) + '</h4>' +
+      '<h3>' + esc(it.title) + '</h3>' +
       (content ? '<p>' + esc(content) + '</p>' : '') +
       full +
       (dstr ? '<div class="date">' + dstr + '</div>' : '') + '</div>';
@@ -392,7 +391,7 @@
     return '<a class="card tool-card reveal"' + linkAttr(it.link) + '>' + newBadge(it) + lineShareButton('tools', it, url) +
       '<span class="tool-mark">' + esc(it.icon || '工具') + '</span>' +
       (date ? '<div class="item-date">' + esc(date) + '</div>' : '') +
-      '<h4>' + esc(it.title) + '</h4>' +
+      '<h3>' + esc(it.title) + '</h3>' +
       (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
       '<span class="more-link">開啟程式 →</span></a>';
   }
@@ -412,7 +411,6 @@
   var store = {};
   var searchReady = false;
   var statTimers = {};
-  var apiReady = false;
   var talkPage = 0;
   var talksReady = false;
   var talksLoading = false;
@@ -444,8 +442,7 @@
           label: def.label,
           href: it.link || def.href,
           title: it.title || it.ep || def.label,
-          body: it.body || it.desc || it.content || it.location || fmtDate(it.date || it.issue) || '',
-          external: !!it.link
+          body: it.body || it.desc || it.content || it.location || fmtDate(it.date || it.issue) || ''
         });
       });
     });
@@ -463,7 +460,7 @@
       return;
     }
     out.innerHTML = rows.map(function (r) {
-      return '<a class="search-result" href="' + esc(r.href) + '">' +
+      return '<a class="search-result"' + linkAttr(r.href) + '>' +
         '<span class="type">' + esc(r.label) + '</span>' +
         '<b>' + esc(r.title) + '</b>' +
         (r.body ? '<p>' + esc(String(r.body).slice(0, 96)) + '</p>' : '') +
@@ -477,6 +474,10 @@
     var pop = document.getElementById('searchPopover');
     var close = document.getElementById('searchClose');
     if (!form || !input || !pop) return;
+    function closeSearch() {
+      pop.hidden = true;
+      input.focus();
+    }
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       renderSearch(input.value);
@@ -485,13 +486,13 @@
       if (input.value.trim().length >= 2) renderSearch(input.value);
       else pop.hidden = true;
     });
-    if (close) close.addEventListener('click', function () { pop.hidden = true; input.focus(); });
+    if (close) close.addEventListener('click', closeSearch);
     pop.addEventListener('click', function (e) {
-      if (e.target === pop) pop.hidden = true;
+      if (e.target === pop) closeSearch();
       if (e.target.closest && e.target.closest('.search-result')) pop.hidden = true;
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') pop.hidden = true;
+      if (e.key === 'Escape' && !pop.hidden) closeSearch();
     });
   }
 
@@ -778,8 +779,6 @@
       renderData(seedData, true);
       showModeBanner('<b>展示模式</b>：目前顯示內建資料');
     }
-    refreshTalks();
-
     if (cachedData) {
       didRender = true;
       renderedSignature = dataSignature(cachedData.data);
@@ -787,7 +786,7 @@
       showModeBanner('<b>快取資料</b>：背景同步 Google 試算表中');
     }
 
-    readLocalJsonCache().then(function (localJson) {
+    (cachedData ? Promise.resolve(null) : readLocalJsonCache()).then(function (localJson) {
       if (localJson) {
         var localSignature = dataSignature(localJson.data);
         if (!didRender || localSignature !== renderedSignature) {
@@ -816,7 +815,6 @@
       writeCachedFrontData(res.data, res.mode);
       var incomingSignature = dataSignature(res.data);
       didRender = true;
-      apiReady = true;
       talksReady = true;
       if (incomingSignature !== renderedSignature) {
         renderedSignature = incomingSignature;
@@ -891,6 +889,7 @@
     var pop = document.getElementById('talkPopover');
     var close = document.getElementById('talkClose');
     if (!pop) return;
+    if (pop.hidden) talkReturnFocus = document.activeElement;
     renderTalkListAudio();
     if (!talksReady) refreshTalks();
     pop.hidden = false;
@@ -996,40 +995,29 @@
     var pop = document.getElementById('talkPopover');
     if (pop) pop.hidden = true;
     document.documentElement.classList.remove('talk-open');
+    if (talkReturnFocus && document.contains(talkReturnFocus)) talkReturnFocus.focus();
+    talkReturnFocus = null;
   }
 
   function showModeBanner() {
     bindTalkButton();
-    return;
-    var existingTalkButton = document.getElementById('talkFloatBtn');
-    if (existingTalkButton) {
-      if (existingTalkButton.dataset.ready !== '1') {
-        existingTalkButton.dataset.ready = '1';
-        existingTalkButton.addEventListener('click', openTalkPopover);
-      }
-      return;
-    }
-    if (document.getElementById('talkFloatBtn')) return;
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'demo-banner';
-    b.id = 'talkFloatBtn';
-    b.innerHTML = '<b>真如開講</b>';
-    b.addEventListener('click', openTalkPopover);
-    document.body.appendChild(b);
   }
 
   var talkClose = document.getElementById('talkClose');
   var talkPopover = document.getElementById('talkPopover');
   var talkPager = document.getElementById('talkPager');
   var talkList = document.getElementById('talkList');
+  var talkReturnFocus = null;
   bindTalkButton();
   if (talkClose) talkClose.addEventListener('click', closeTalkPopover);
   if (talkPopover) {
     talkPopover.addEventListener('click', function (e) {
-      if (e.target && e.target.hasAttribute('data-talk-close')) return;
+      if (e.target && e.target.hasAttribute('data-talk-close')) closeTalkPopover();
     });
   }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && talkPopover && !talkPopover.hidden) closeTalkPopover();
+  });
   if (talkPager) {
     talkPager.addEventListener('click', function (e) {
       var btn = e.target.closest('button[data-talk-page]');
@@ -1069,35 +1057,55 @@
       }
     });
   }
+  var navSections = Array.prototype.slice.call(document.querySelectorAll('main section.block, header.hero, #news'));
+  var navAnchors = Array.prototype.slice.call(document.querySelectorAll('.nav-links a'));
+  var navUpdatePending = false;
   function updateNavActive() {
     nav.classList.toggle('scrolled', window.scrollY > 30);
-    var secs = document.querySelectorAll('main section.block, header.hero, #news');
     var cur = '';
     var pos = window.scrollY + 130;
-    secs.forEach(function (s) { if (pos >= s.offsetTop) cur = s.id; });
+    navSections.forEach(function (s) { if (pos >= s.offsetTop) cur = s.id; });
     if (!cur || cur === 'top') cur = 'home';
     if (cur === 'home' && !document.querySelector('.nav-links a[href="#home"]')) cur = 'news';
-    document.querySelectorAll('.nav-links a').forEach(function (a) {
+    navAnchors.forEach(function (a) {
       var isActive = a.getAttribute('href') === '#' + cur;
       a.classList.toggle('active', isActive);
       if (isActive) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     });
   }
-  window.addEventListener('scroll', updateNavActive, { passive: true });
+  function scheduleNavUpdate() {
+    if (navUpdatePending) return;
+    navUpdatePending = true;
+    requestAnimationFrame(function () {
+      navUpdatePending = false;
+      updateNavActive();
+    });
+  }
+  window.addEventListener('scroll', scheduleNavUpdate, { passive: true });
+  window.addEventListener('resize', scheduleNavUpdate, { passive: true });
   window.addEventListener('load', updateNavActive);
   updateNavActive();
 
   var ham = document.getElementById('hamburger'), navLinks = document.getElementById('navLinks');
+  function syncNavMenuAccessibility(open) {
+    var hidden = window.matchMedia && window.matchMedia('(max-width: 860px)').matches && !open;
+    navLinks.toggleAttribute('inert', hidden);
+    navLinks.setAttribute('aria-hidden', hidden ? 'true' : 'false');
+    ham.setAttribute('aria-label', open ? '關閉導覽選單' : '開啟導覽選單');
+  }
   function closeNavMenu() {
     navLinks.classList.remove('open');
     ham.setAttribute('aria-expanded', 'false');
+    syncNavMenuAccessibility(false);
   }
   ham.setAttribute('aria-expanded', 'false');
+  syncNavMenuAccessibility(false);
   ham.addEventListener('click', function () {
     updateNavActive();
     var isOpen = navLinks.classList.toggle('open');
     ham.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    syncNavMenuAccessibility(isOpen);
   });
   navLinks.addEventListener('click', function (e) {
     if (!e.target.closest('a, button')) return;
@@ -1111,6 +1119,13 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeNavMenu();
   });
+  window.addEventListener('resize', function () {
+    if (window.innerWidth > 860) {
+      navLinks.classList.remove('open');
+      ham.setAttribute('aria-expanded', 'false');
+    }
+    syncNavMenuAccessibility(navLinks.classList.contains('open'));
+  }, { passive: true });
 
   var jumpTop = document.getElementById('jumpTop');
   var jumpBottom = document.getElementById('jumpBottom');
@@ -1197,12 +1212,14 @@
   function setLiveUrl(url, officialPage) {
     var videoLink = document.getElementById('liveVideoLink');
     var officialLink = document.getElementById('liveOfficialPageLink');
-    if (url) {
-      currentLiveUrl = url;
-      if (videoLink) videoLink.href = url;
+    var safeVideoUrl = safeLinkUrl(url);
+    var safeOfficialUrl = safeLinkUrl(officialPage);
+    if (safeVideoUrl) {
+      currentLiveUrl = safeVideoUrl;
+      if (videoLink) videoLink.href = safeVideoUrl;
       updateLiveLineShare();
     }
-    if (officialPage && officialLink) officialLink.href = officialPage;
+    if (safeOfficialUrl && officialLink) officialLink.href = safeOfficialUrl;
   }
 
   function refreshOfficialLive(fresh) {
@@ -1243,7 +1260,8 @@
     var memberLoginForm = document.getElementById('memberLoginForm');
     var memberRegisterForm = document.getElementById('memberRegisterForm');
     var memberLoginMobile = document.getElementById('memberLoginMobile');
-    var memberCloseTimer = null;
+    var memberReturnFocus = null;
+    var pendingMemberTarget = '';
     var protectedHashes = {
       '#home': true,
       '#podcast': true,
@@ -1280,7 +1298,6 @@
       localStorage.removeItem(MEMBER_KEY);
       localStorage.removeItem(LEGACY_MEMBER_KEY);
       memberAuthReady = true;
-      clearTimeout(memberCloseTimer);
       clearMemberDirectory();
       syncMemberUi();
       setMemberStatus('已登出，請重新輸入手機。', '');
@@ -1377,7 +1394,7 @@
     function openMemberPopover(tab, msg) {
       if (tab && tab.type) tab = '';
       if (!memberPopover) return;
-      clearTimeout(memberCloseTimer);
+      if (memberPopover.hidden) memberReturnFocus = document.activeElement;
       var m = currentMember();
       var loggedIn = isMemberLoggedIn();
       memberPopover.hidden = false;
@@ -1391,12 +1408,19 @@
       }
     }
     function closeMemberPopover() {
-      clearTimeout(memberCloseTimer);
       if (memberPopover) memberPopover.hidden = true;
+      if (memberReturnFocus && document.contains(memberReturnFocus)) memberReturnFocus.focus();
+      memberReturnFocus = null;
     }
-    function closeMemberPopoverSoon() {
-      clearTimeout(memberCloseTimer);
-      memberCloseTimer = setTimeout(closeMemberPopover, 900);
+    function finishMemberEntry() {
+      closeMemberPopover();
+      if (!pendingMemberTarget) return;
+      var target = document.querySelector(pendingMemberTarget);
+      if (target) {
+        try { history.replaceState(null, document.title, pendingMemberTarget); } catch (e) {}
+        target.scrollIntoView({ behavior: shouldReduceMotion() ? 'auto' : 'smooth', block: 'start' });
+      }
+      pendingMemberTarget = '';
     }
     if (memberOpen) memberOpen.addEventListener('click', openMemberPopover);
     if (memberClose) memberClose.addEventListener('click', closeMemberPopover);
@@ -1406,6 +1430,9 @@
         if (e.target && e.target.classList.contains('member-backdrop')) closeMemberPopover();
       });
     }
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && memberPopover && !memberPopover.hidden) closeMemberPopover();
+    });
     document.querySelectorAll('[data-member-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var tab = btn.getAttribute('data-member-tab');
@@ -1437,6 +1464,9 @@
     }
     function promptMemberRegistration(e) {
       if (isMemberLoggedIn() || !requiresMember(e.target)) return;
+      var link = e.target.closest && e.target.closest('a[href^="#"]');
+      var section = e.target.closest && e.target.closest('main section.block');
+      pendingMemberTarget = link ? link.getAttribute('href') : (section && section.id ? '#' + section.id : '');
       e.preventDefault();
       e.stopPropagation();
       if (typeof closeNavMenu === 'function') closeNavMenu();
@@ -1480,13 +1510,7 @@
             saveMember(res.data, res.token);
             setMemberStatus('登入成功，歡迎 ' + res.data.name + '。', 'ok');
             loadMemberDirectory();
-            setTimeout(function () {
-              closeMemberPopover();
-              if (location.hash) {
-                try { history.replaceState(null, document.title, location.pathname + location.search); } catch (e) {}
-              }
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }, 700);
+            setTimeout(finishMemberEntry, 700);
           } else {
             setMemberStatus(res.error || '登入失敗。', 'err');
           }
@@ -1540,7 +1564,10 @@
             setMemberStatus(failedMail.length
               ? '註冊完成，但郵件通知失敗，詳細錯誤已寫入瀏覽器 console。'
               : '註冊完成，已登入會員。', failedMail.length ? 'err' : 'ok');
-            if (!failedMail.length) loadMemberDirectory();
+            if (!failedMail.length) {
+              loadMemberDirectory();
+              setTimeout(finishMemberEntry, 700);
+            }
           } else {
             setMemberStatus(res.error || '註冊失敗。', 'err');
           }

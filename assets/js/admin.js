@@ -159,6 +159,8 @@
   var editing = null;    // 正在編輯的紀錄（null = 新增）
   var seedingTools = false;
   var savingSort = {};
+  var editorReturnFocus = null;
+  var passwordReturnFocus = null;
 
   // ---------- 提示 ----------
   var toastEl = $('#toast'), toastT;
@@ -324,6 +326,7 @@
       btn.textContent = '登入'; btn.disabled = false;
       if (res.ok && res.token) {
         token = res.token;
+        $('#pwd').value = '';
         saveLoginPreference(account);
         if (rememberLogin) {
           localStorage.setItem(TOKEN_KEY, token);
@@ -342,6 +345,7 @@
 
   $('#logoutBtn').addEventListener('click', function () {
     clearStoredToken();
+    $('#pwd').value = '';
     showLogin();
   });
 
@@ -359,11 +363,15 @@
   function setMobileTabMenu(open) {
     var tabs = $('#tabs');
     if (!tabs || !mobileTabToggle) return;
+    var hidden = window.innerWidth <= 760 && !open;
     tabs.classList.toggle('mobile-open', !!open);
+    tabs.toggleAttribute('inert', hidden);
+    tabs.setAttribute('aria-hidden', hidden ? 'true' : 'false');
     mobileTabToggle.classList.toggle('is-open', !!open);
     mobileTabToggle.setAttribute('aria-expanded', String(!!open));
   }
   if (mobileTabToggle) {
+    setMobileTabMenu(false);
     mobileTabToggle.addEventListener('click', function () {
       setMobileTabMenu(!$('#tabs').classList.contains('mobile-open'));
     });
@@ -372,7 +380,10 @@
       setMobileTabMenu(false);
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') setMobileTabMenu(false);
+      if (e.key !== 'Escape') return;
+      if ($('#pwdMask').classList.contains('open')) closePwdModal();
+      else if ($('#modalMask').classList.contains('open')) closeEditor();
+      else setMobileTabMenu(false);
     });
     window.addEventListener('resize', function () {
       if (window.innerWidth > 760) setMobileTabMenu(false);
@@ -464,6 +475,8 @@
       }
       if ((type === 'tools' || type === 'talks') && !cache[type].length) cache[type] = seedFallbackRows(type);
       renderList(type);
+    }).catch(function () {
+      toast(byType(type).label + '讀取失敗，請檢查連線。', true);
     });
   }
   function renderList(type) {
@@ -475,9 +488,9 @@
       return '<div class="rec" data-id="' + esc(r.id) + '"' + (sortable ? ' draggable="true"' : '') + '><span class="rec-order" title="排序號">' + esc(idx + 1) + '</span><div class="rec-main"><h4>' + esc(c.title(r) || '(無標題)') + '</h4>' +
         '<div class="sub">' + esc(c.sub(r) || '') + '</div></div>' +
         '<div class="rec-actions">' +
-        '<button class="icon-btn" data-edit="' + esc(r.id) + '" title="編輯"><svg viewBox="0 0 24 24"><path d="M4 20h4L18 10l-4-4L4 16z"/><path d="M13 5l4 4"/></svg></button>' +
-        '<button class="icon-btn" data-copy="' + esc(r.id) + '" title="複製"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg></button>' +
-        '<button class="icon-btn danger" data-del="' + esc(r.id) + '" title="刪除"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/></svg></button>' +
+        '<button class="icon-btn" data-edit="' + esc(r.id) + '" title="編輯" aria-label="編輯 ' + esc(c.title(r) || '此筆資料') + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L18 10l-4-4L4 16z"/><path d="M13 5l4 4"/></svg></button>' +
+        '<button class="icon-btn" data-copy="' + esc(r.id) + '" title="複製" aria-label="複製 ' + esc(c.title(r) || '此筆資料') + '"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg></button>' +
+        '<button class="icon-btn danger" data-del="' + esc(r.id) + '" title="刪除" aria-label="刪除 ' + esc(c.title(r) || '此筆資料') + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/></svg></button>' +
         '</div></div>';
     }).join('');
     el.querySelectorAll('[data-edit]').forEach(function (b) {
@@ -636,7 +649,7 @@
     var v = esc(f.type === 'date' ? dateValue(val) : (val == null ? '' : val));
     if (f.type === 'textarea') return '<textarea id="f_' + f.k + '"' + (f.req ? ' required' : '') + '>' + v + '</textarea>';
     if (f.type === 'bool') return '<select id="f_' + f.k + '"><option value="">否</option><option value="TRUE"' + (truthy(val) ? ' selected' : '') + '>是</option></select>';
-    var t = f.type === 'number' ? 'number' : (f.type === 'date' ? 'date' : 'text');
+    var t = f.type === 'number' ? 'number' : (f.type === 'date' ? 'date' : (f.type === 'url' ? 'url' : 'text'));
     var input = '<input type="' + t + '" id="f_' + f.k + '" value="' + v + '"' +
       (f.type === 'date' ? ' class="date-picker"' : '') +
       (f.type === 'url' ? ' inputmode="url" autocomplete="url"' : '') +
@@ -644,29 +657,38 @@
     return input;
   }
   function openEditor(type, record) {
+    editorReturnFocus = document.activeElement;
     current = type; editing = record;
     var c = byType(type);
     $('#modalTitle').textContent = (record ? '編輯' : '新增') + '：' + c.label;
     alertBox($('#modalAlert'), '', '');
     var compact = ['order', 'pinned', 'date', 'issue', 'ep'];
     $('#formFields').innerHTML = c.fields.map(function (f) {
-      return '<div class="field"><label>' + esc(f.label) + (f.req ? ' *' : '') + '</label>' +
+      return '<div class="field"><label for="f_' + esc(f.k) + '">' + esc(f.label) + (f.req ? ' *' : '') + '</label>' +
         fieldHtml(f, record ? record[f.k] : (f.k === 'category' && type === 'dharma' ? '瑞聲法語' : '')) + '</div>';
     }).join('') + (canNotifyMembers(c)
       ? '<label class="notify-members-toggle"><input type="checkbox" id="notifyMembers" />' +
         '<span><b>發信通知所有會員</b><small>本次儲存後，若有連結網址，寄送新上架通知到會員 Email。</small></span></label>'
       : '');
     $('#modalMask').classList.add('open');
+    $('#modalMask').setAttribute('aria-hidden', 'false');
     document.documentElement.classList.add('admin-modal-open');
+    setTimeout(function () {
+      var first = $('#formFields input, #formFields textarea, #formFields select');
+      if (first) first.focus();
+    }, 0);
   }
   function closeEditor() {
     $('#modalMask').classList.remove('open');
+    $('#modalMask').setAttribute('aria-hidden', 'true');
     document.documentElement.classList.remove('admin-modal-open');
     editing = null;
+    if (editorReturnFocus && document.contains(editorReturnFocus)) editorReturnFocus.focus();
+    editorReturnFocus = null;
   }
   $('#cancelBtn').addEventListener('click', closeEditor);
   $('#modalClose').addEventListener('click', closeEditor);
-  $('#modalMask').addEventListener('click', function (e) { if (e.target === $('#modalMask')) return; });
+  $('#modalMask').addEventListener('click', function (e) { if (e.target === $('#modalMask')) closeEditor(); });
 
   $('#recordForm').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -713,36 +735,58 @@
         toast(res.error || '刪除失敗', true);
         if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1200);
       }
-    });
+    }).catch(function () { toast('刪除失敗，請檢查連線。', true); });
   }
 
   // ---------- 修改密碼 ----------
   function closePwdModal() {
     $('#pwdMask').classList.remove('open');
+    $('#pwdMask').setAttribute('aria-hidden', 'true');
     document.documentElement.classList.remove('admin-modal-open');
+    if (passwordReturnFocus && document.contains(passwordReturnFocus)) passwordReturnFocus.focus();
+    passwordReturnFocus = null;
   }
   $('#pwdBtn').addEventListener('click', function () {
+    passwordReturnFocus = document.activeElement;
     alertBox($('#pwdAlert'), '', '');
     $('#pwdForm').reset();
     document.querySelectorAll('#pwdForm [data-toggle-password]').forEach(function (btn) {
       setPasswordVisible($('#' + btn.getAttribute('data-toggle-password')), false, btn);
     });
     $('#pwdMask').classList.add('open');
+    $('#pwdMask').setAttribute('aria-hidden', 'false');
     document.documentElement.classList.add('admin-modal-open');
+    setTimeout(function () { $('#oldPwd').focus(); }, 0);
   });
   $('#pwdCancel').addEventListener('click', closePwdModal);
   $('#pwdClose').addEventListener('click', closePwdModal);
-  $('#pwdMask').addEventListener('click', function (e) { if (e.target === $('#pwdMask')) return; });
+  $('#pwdMask').addEventListener('click', function (e) { if (e.target === $('#pwdMask')) closePwdModal(); });
   $('#pwdForm').addEventListener('submit', function (e) {
     e.preventDefault();
     if (API.isReadOnly()) { alertBox($('#pwdAlert'), '唯讀模式無法修改密碼。', 'err'); return; }
+    if ($('#newPwd').value !== $('#confirmPwd').value) {
+      alertBox($('#pwdAlert'), '兩次輸入的新密碼不一致。', 'err');
+      $('#confirmPwd').focus();
+      return;
+    }
     API.changePassword($('#oldPwd').value, $('#newPwd').value, token).then(function (res) {
-      if (res.ok) { alertBox($('#pwdAlert'), '密碼已更新。', 'ok'); setTimeout(closePwdModal, 1200); }
+      if (res.ok && res.token) {
+        token = res.token;
+        if (rememberLogin) {
+          localStorage.setItem(TOKEN_KEY, token);
+          sessionStorage.removeItem(TOKEN_KEY);
+        } else {
+          sessionStorage.setItem(TOKEN_KEY, token);
+          localStorage.removeItem(TOKEN_KEY);
+        }
+        alertBox($('#pwdAlert'), '密碼已更新，登入狀態已同步。', 'ok');
+        setTimeout(closePwdModal, 1200);
+      }
       else {
         alertBox($('#pwdAlert'), res.error || '更新失敗', 'err');
         if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1200);
       }
-    });
+    }).catch(function () { alertBox($('#pwdAlert'), '更新失敗，請檢查連線。', 'err'); });
   });
 
   // ---------- 啟動 ----------

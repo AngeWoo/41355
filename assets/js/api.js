@@ -12,25 +12,50 @@
   var PUB = CFG.PUBLISHED_SHEET && CFG.PUBLISHED_SHEET.base ? CFG.PUBLISHED_SHEET : null;
 
   var MODE = GAS ? 'gas' : (PUB ? 'published' : 'demo');
+  var REQUEST_TIMEOUT_MS = 15000;
 
   var TYPES = ['news', 'podcast', 'calendar', 'headquarters', 'newsletter', 'dharma', 'tools', 'talks'];
   var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], headquarters: [], newsletter: [], dharma: [], tools: [], talks: [], members: [] };
 
   function requestUrl(url, fresh) {
+    if (!fresh) return url;
     var sep = url.indexOf('?') === -1 ? '?' : '&';
-    return url + sep + (fresh ? 'fresh=1&' : '') + '_ts=' + encodeURIComponent(Date.now());
+    return url + sep + 'fresh=1&_ts=' + encodeURIComponent(Date.now());
+  }
+
+  function fetchWithTimeout(url, options) {
+    options = Object.assign({}, options || {});
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timer = null;
+    if (controller) {
+      options.signal = controller.signal;
+      timer = setTimeout(function () { controller.abort(); }, REQUEST_TIMEOUT_MS);
+    }
+    return fetch(url, options).then(function (response) {
+      if (!response.ok) throw new Error('HTTP ' + response.status + '：' + response.statusText);
+      return response;
+    }).catch(function (error) {
+      if (error && error.name === 'AbortError') throw new Error('連線逾時，請稍後再試。');
+      throw error;
+    }).finally(function () {
+      if (timer) clearTimeout(timer);
+    });
+  }
+
+  function responseJson(response) {
+    return response.json().catch(function () { throw new Error('伺服器回應格式錯誤。'); });
   }
 
   function fetchFresh(url, options) {
     options = options || {};
     options.cache = 'no-store';
-    return fetch(requestUrl(url, true), options);
+    return fetchWithTimeout(requestUrl(url, true), options);
   }
 
   function fetchCached(url, options) {
     options = options || {};
-    options.cache = 'no-store';
-    return fetch(requestUrl(url, false), options);
+    options.cache = 'no-cache';
+    return fetchWithTimeout(requestUrl(url, false), options);
   }
 
   function clearFrontDataCache(action) {
@@ -98,7 +123,7 @@
     if (MODE === 'gas') {
       var fetcher = fresh ? fetchFresh : fetchCached;
       return fetcher(GAS + '?action=list&type=' + encodeURIComponent(type))
-        .then(function (r) { return r.json(); });
+        .then(responseJson);
     }
     if (MODE === 'published') {
       return fetchPublished(type, fresh).then(function (d) { return { ok: true, data: d, mode: 'published' }; });
@@ -109,7 +134,7 @@
   function listAll(fresh) {
     if (MODE === 'gas') {
       var fetcher = fresh ? fetchFresh : fetchCached;
-      return fetcher(GAS + '?action=all').then(function (r) { return r.json(); });
+      return fetcher(GAS + '?action=all').then(responseJson);
     }
     if (MODE === 'published') {
       return Promise.all(TYPES.map(function (type) { return fetchPublished(type, fresh); })).then(function (arr) {
@@ -123,7 +148,7 @@
   function officialLive(fresh) {
     if (MODE === 'gas') {
       var fetcher = fresh ? fetchFresh : fetchCached;
-      return fetcher(GAS + '?action=officialLive').then(function (r) { return r.json(); });
+      return fetcher(GAS + '?action=officialLive').then(responseJson);
     }
     return Promise.resolve({ ok: false, error: 'officialLive requires GAS mode' });
   }
@@ -131,7 +156,7 @@
   function resolveCover(url) {
     if (MODE === 'gas' && url) {
       return fetchCached(GAS + '?action=resolveCover&url=' + encodeURIComponent(url))
-        .then(function (r) { return r.json(); });
+        .then(responseJson);
     }
     return Promise.resolve({ ok: false, error: 'resolveCover requires GAS mode' });
   }
@@ -144,11 +169,11 @@
         : '尚未設定資料來源，後台無法寫入。';
       return Promise.resolve({ ok: false, error: msg });
     }
-    return fetch(GAS, {
+    return fetchWithTimeout(GAS, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(body)
-    }).then(function (r) { return r.json(); }).then(function (res) {
+    }).then(responseJson).then(function (res) {
       if (res && res.ok) clearFrontDataCache(body && body.action);
       return res;
     });
