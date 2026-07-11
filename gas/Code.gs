@@ -24,6 +24,7 @@
 var ADMIN_PASSWORD_DEFAULT = 'shinnyo2026'; // 第一次 setup() 後請從後台或這裡修改
 var ADMIN_ACCOUNT_DEFAULT = 'admin';
 var TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;  // token 有效 30 天
+var MEMBER_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 會員 token 有效 30 天
 var DATA_CACHE_SECONDS = 60 * 60 * 2;       // 前台公開資料快取 2 小時（與 CACHE_WARM_INTERVAL_HOURS 排程對齊，新增/修改/刪除仍會立即清快取）
 var CACHE_WARM_INTERVAL_HOURS = 2;          // 快取預熱觸發器執行間隔
 var OFFICIAL_LIVE_PAGE = 'https://www.shinnyo-en.org.tw/at2026/index2026.html';
@@ -238,6 +239,14 @@ function doPost(e) {
     }
     if (action === 'memberLogin') {
       return handleMemberLogin(body);
+    }
+    if (action === 'validateMemberToken') {
+      var validatedMember = verifyMemberToken(body.token);
+      return json({
+        ok: !!validatedMember,
+        data: validatedMember ? memberSessionData(validatedMember) : null,
+        ttl: MEMBER_TOKEN_TTL_SECONDS
+      });
     }
     if (action === 'memberDirectory') {
       return handleMemberDirectory(body);
@@ -604,6 +613,43 @@ function verifyToken(token) {
   }
 }
 
+function memberTokenSecret() {
+  var secret = PROP.getProperty('MEMBER_TOKEN_SECRET');
+  if (!secret) {
+    secret = Utilities.getUuid() + ':' + Utilities.getUuid();
+    PROP.setProperty('MEMBER_TOKEN_SECRET', secret);
+  }
+  return secret;
+}
+
+function signMemberTokenPayload(payload) {
+  return base64UrlEncode(Utilities.computeHmacSha256Signature(payload, memberTokenSecret()));
+}
+
+function createMemberToken(member) {
+  var payload = base64UrlEncode(JSON.stringify({
+    v: 1,
+    type: 'member',
+    sub: String(member.id || ''),
+    exp: Date.now() + MEMBER_TOKEN_TTL_SECONDS * 1000,
+    nonce: Utilities.getUuid()
+  }));
+  return payload + '.' + signMemberTokenPayload(payload);
+}
+
+function verifyMemberToken(token) {
+  if (!token) return null;
+  var parts = String(token).split('.');
+  if (parts.length !== 2 || signMemberTokenPayload(parts[0]) !== parts[1]) return null;
+  try {
+    var payload = JSON.parse(base64UrlDecodeText(parts[0]));
+    if (payload.type !== 'member' || Number(payload.exp || 0) <= Date.now() || !payload.sub) return null;
+    return findMemberById(payload.sub);
+  } catch (e) {
+    return null;
+  }
+}
+
 function handleChangePassword(body) {
   if (!checkPassword(body.oldPassword || '')) {
     return json({ ok: false, error: '舊密碼錯誤。' });
@@ -622,6 +668,14 @@ function publicMember(row) {
     dharmaName: row.dharmaName || '',
     email: row.email || '',
     mobile: normalizeMobile(row.mobile)
+  };
+}
+
+function memberSessionData(row) {
+  return {
+    id: row.id || '',
+    name: row.name || '',
+    dharmaName: row.dharmaName || ''
   };
 }
 
@@ -677,6 +731,13 @@ function findMemberByMobile(mobile) {
   var key = mobileLookupKey(mobile);
   return listRecords('members').filter(function (m) {
     return normalizeMobile(m.mobile) === target || mobileLookupKey(m.mobile) === key;
+  })[0] || null;
+}
+
+function findMemberById(id) {
+  var target = String(id || '');
+  return listRecords('members').filter(function (m) {
+    return String(m.id || '') === target;
   })[0] || null;
 }
 
@@ -777,7 +838,13 @@ function handleMemberRegister(body) {
   if (findMemberByMobile(mobile)) return json({ ok: false, error: '此手機已註冊。' });
   var created = createRecord('members', { name: name, dharmaName: dharmaName, email: email, mobile: mobile });
   var mail = notifyMemberRegistered(created);
-  return jsonWithFreshCache({ ok: true, data: publicMember(created), mail: mail });
+  return jsonWithFreshCache({
+    ok: true,
+    data: memberSessionData(created),
+    token: createMemberToken(created),
+    ttl: MEMBER_TOKEN_TTL_SECONDS,
+    mail: mail
+  });
 }
 
 function handleMemberLogin(body) {
@@ -787,12 +854,17 @@ function handleMemberLogin(body) {
     Utilities.sleep(400);
     return json({ ok: false, error: '找不到此手機會員：' + mobile + '。請確認後台會員資料的手機欄位。' });
   }
-  return json({ ok: true, data: publicMember(member) });
+  return json({
+    ok: true,
+    data: memberSessionData(member),
+    token: createMemberToken(member),
+    ttl: MEMBER_TOKEN_TTL_SECONDS
+  });
 }
 
 function handleMemberDirectory(body) {
-  var member = findMemberByMobile(body.mobile);
-  if (!member) return json({ ok: false, error: '找不到此手機會員，請重新登入。' });
+  var member = verifyMemberToken(body.token);
+  if (!member) return json({ ok: false, error: '會員登入已過期，請重新登入。' });
   var canViewAll = isMemberDirectoryAdmin(member.mobile);
   var rows = canViewAll ? listRecords('members') : [member];
   return json({ ok: true, scope: canViewAll ? 'all' : 'self', data: rows.map(memberDirectoryRow) });
