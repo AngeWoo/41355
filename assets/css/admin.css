@@ -100,8 +100,22 @@
 .topbar .container { display: flex; align-items: center; gap: 16px; min-height: 64px; padding-top: 8px; padding-bottom: 8px; }
 .topbar .brand b { font-size: 1.02rem; }
 .topbar .right { margin-left: auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
-.pill { font-size: .76rem; color: var(--gold-300); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; }
+.pill { font-size: .76rem; color: var(--gold-300); border: 1px solid var(--gold-500); border-radius: 999px; padding: 5px 12px; }
 .btn-sm { padding: 8px 15px; font-size: .85rem; }
+/* 頂欄功能按鈕：金黃文字與邊框，滑過反白發亮 */
+.topbar .right .btn-ghost {
+  color: var(--gold-300);
+  border-color: var(--gold-500);
+  background: rgba(212,175,104,.08);
+}
+.topbar .right .btn-ghost:hover,
+.topbar .right .btn-ghost:focus-visible {
+  color: var(--ink-900);
+  border-color: var(--gold-300);
+  background: linear-gradient(135deg, #f7ecc9, var(--gold-400));
+  box-shadow: 0 0 16px rgba(212,175,104,.75), 0 0 34px rgba(212,175,104,.35);
+  outline: none;
+}
 
 .admin-layout { display: grid; grid-template-columns: 220px 1fr; gap: 28px; padding: 28px 0 80px; }
 .mobile-tab-toggle { display: none; }
