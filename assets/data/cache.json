@@ -1,10 +1,21 @@
 {
   "ok": true,
   "mode": "local-json",
-  "savedAt": "2026-07-14T11:21:32.275Z",
+  "savedAt": "2026-07-14T13:19:18.954Z",
   "source": "gas",
   "data": {
     "news": [
+      {
+        "id": "d26ced35-07fe-4bcb-9dee-cae15ac3f1ba",
+        "title": "回歸親苑宣傳影片",
+        "date": "2026-07-13T16:00:00.000Z",
+        "body": "回歸親苑宣傳影片第一輯, 預計播放六輯",
+        "link": "https://drive.google.com/file/d/1fpYbqF8hVuDAwRCYLniyKs1nDm452r1q/view",
+        "pinned": "",
+        "order": 1,
+        "createdAt": "2026-07-14T12:56:28.812Z",
+        "updatedAt": "2026-07-14T12:56:28.812Z"
+      },
       {
         "id": "an-1",
         "title": "親苑時報 2026年7月號已更新",
@@ -12,7 +23,7 @@
         "body": "最新一期親苑時報已上線，歡迎點閱。",
         "link": "https://meee.ing/18d09c",
         "pinned": true,
-        "order": 1,
+        "order": 2,
         "createdAt": "2026-06-27T11:28:24.144Z",
         "updatedAt": "2026-07-09T17:32:38.023Z"
       },
@@ -23,7 +34,7 @@
         "body": "⭐️主題：【立教90年—台灣喜迎新尊像】\n💎將於今晚21:00上映\n💎來賓：藍振祐 先生",
         "link": "https://www.youtube.com/watch?v=rDPoi4WZLwM",
         "pinned": true,
-        "order": 2,
+        "order": 3,
         "createdAt": "2026-07-06T00:02:13.275Z",
         "updatedAt": "2026-07-07T14:23:37.735Z"
       },
@@ -34,7 +45,7 @@
         "body": "最新台灣行事曆已公布，請查閱本月活動安排。",
         "link": "https://meee.ing/a6546d",
         "pinned": "",
-        "order": 3,
+        "order": 4,
         "createdAt": "2026-06-27T11:28:24.699Z",
         "updatedAt": "2026-07-09T15:22:57.525Z"
       },
@@ -45,7 +56,7 @@
         "body": "瑞聲法語全集持續整理上架。",
         "link": "https://srt.tw/k9pLsY",
         "pinned": "",
-        "order": 4,
+        "order": 5,
         "createdAt": "2026-06-27T11:28:25.759Z",
         "updatedAt": "2026-07-09T15:23:13.591Z"
       },
@@ -56,7 +67,7 @@
         "body": "回歸親苑指南",
         "link": "https://recom.pages.dev/",
         "pinned": "",
-        "order": 5,
+        "order": 6,
         "createdAt": "2026-07-09T15:56:23.309Z",
         "updatedAt": "2026-07-09T15:57:05.354Z"
       },
@@ -67,7 +78,7 @@
         "body": "Facebook 上 真如苑黃琦芳經41355 網址\n會員限制, 其他經法友無法加入",
         "link": "https://www.facebook.com/groups/shinnyo41355",
         "pinned": "",
-        "order": 6,
+        "order": 7,
         "createdAt": "2026-07-11T14:14:32.885Z",
         "updatedAt": "2026-07-11T14:14:32.885Z"
       }
