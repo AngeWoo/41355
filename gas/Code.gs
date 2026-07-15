@@ -269,7 +269,7 @@ function doPost(e) {
     }
 
     // 以下動作需驗證 token
-    var mutating = ['create', 'update', 'delete', 'reorder', 'changePassword', 'recalculateStats', 'recalculateLatest'];
+    var mutating = ['create', 'update', 'delete', 'reorder', 'changePassword', 'recalculateStats', 'recalculateLatest', 'sendBulkMail'];
     if (mutating.indexOf(action) !== -1) {
       if (!verifyToken(body.token)) {
         return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
@@ -298,6 +298,7 @@ function doPost(e) {
       case 'changePassword': return withWriteLock(function () { return handleChangePassword(body); });
       case 'recalculateStats': return json({ ok: true, stats: recalculateStats() });
       case 'recalculateLatest': return json({ ok: true, latest: recalculateLatest() });
+      case 'sendBulkMail':    return json(handleBulkMail(body));
       default:               return json({ ok: false, error: '未知的 action: ' + action });
     }
   } catch (err) {
@@ -979,6 +980,126 @@ function notifyMembersForRecord(type, record, enabled) {
     sent: sent,
     total: emails.length,
     error: failed.map(function (r) { return r.error; }).filter(Boolean).join('；'),
+    results: results
+  };
+}
+
+// ====================== 後台群組發信 ======================
+var BULK_MAIL_MAX_FILE_BYTES = 5 * 1024 * 1024;
+var BULK_MAIL_MAX_TOTAL_BYTES = 10 * 1024 * 1024;
+var BULK_MAIL_MAX_HTML_BYTES = 160 * 1024;
+
+function sanitizeBulkMailHtml(html) {
+  return String(html || '')
+    .replace(/<\s*(script|iframe|object|embed|form|input|button|textarea|select|meta|link|base)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
+    .replace(/<\s*(script|iframe|object|embed|form|input|button|textarea|select|meta|link|base)\b[^>]*\/?>/gi, '')
+    .replace(/\s+on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/(href|src)\s*=\s*(["'])\s*(javascript|vbscript):[\s\S]*?\2/gi, '$1="#"')
+    .replace(/(href|src)\s*=\s*(javascript|vbscript):[^\s>]+/gi, '$1="#"')
+    .replace(/expression\s*\(|javascript\s*:|behavior\s*:/gi, '');
+}
+
+function safeBulkMailFileName(name, fallback) {
+  var cleaned = String(name || fallback || 'attachment')
+    .replace(/[\\\/\x00-\x1f\x7f]+/g, '_')
+    .trim();
+  return (cleaned || fallback || 'attachment').slice(0, 120);
+}
+
+function bulkMailBlob(file, imageOnly) {
+  file = file || {};
+  var mimeType = String(file.mimeType || (imageOnly ? 'image/png' : 'application/octet-stream')).trim();
+  if (imageOnly && !/^image\//i.test(mimeType)) throw new Error('內嵌圖片格式不正確。');
+  var encoded = String(file.base64 || '').replace(/^data:[^,]+,/, '').replace(/\s/g, '');
+  if (!encoded) throw new Error('附件內容是空的：' + safeBulkMailFileName(file.name, 'attachment'));
+  var bytes = Utilities.base64Decode(encoded);
+  if (!bytes.length) throw new Error('附件內容是空的：' + safeBulkMailFileName(file.name, 'attachment'));
+  if (bytes.length > BULK_MAIL_MAX_FILE_BYTES) throw new Error('單一檔案不可超過 5 MB：' + safeBulkMailFileName(file.name, 'attachment'));
+  return {
+    size: bytes.length,
+    blob: Utilities.newBlob(bytes, mimeType, safeBulkMailFileName(file.name, imageOnly ? 'image.png' : 'attachment'))
+  };
+}
+
+function handleBulkMail(body) {
+  var requestedIds = Array.isArray(body.recipientIds) ? body.recipientIds.map(String) : [];
+  var wanted = {};
+  requestedIds.forEach(function (id) { if (id) wanted[id] = true; });
+  var seenEmails = {};
+  var emails = listRecords('members').filter(function (member) {
+    return wanted[String(member.id || '')];
+  }).map(function (member) {
+    return normalizeEmail(member.email);
+  }).filter(function (email) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || seenEmails[email]) return false;
+    seenEmails[email] = true;
+    return true;
+  });
+  if (!emails.length) return { ok: false, error: '沒有有效的收件者。', sent: 0 };
+
+  var subject = String(body.subject || '').replace(/[\r\n]+/g, ' ').trim();
+  if (!subject) return { ok: false, error: '郵件主旨不可空白。', sent: 0 };
+  if (subject.length > 250) return { ok: false, error: '郵件主旨不可超過 250 字。', sent: 0 };
+  var htmlBody = sanitizeBulkMailHtml(body.htmlBody);
+  var textBody = String(body.textBody || '').trim() || '請使用支援 HTML 的郵件程式閱讀此信。';
+  if (!htmlBody.trim()) return { ok: false, error: 'HTML 郵件內容不可空白。', sent: 0 };
+  if (Utilities.newBlob(htmlBody).getBytes().length > BULK_MAIL_MAX_HTML_BYTES) {
+    return { ok: false, error: 'HTML 郵件內容不可超過 160 KB。', sent: 0 };
+  }
+
+  var attachments = [];
+  var inlineImages = {};
+  var totalBytes = 0;
+  var attachmentInput = Array.isArray(body.attachments) ? body.attachments : [];
+  var imageInput = Array.isArray(body.inlineImages) ? body.inlineImages : [];
+  if (attachmentInput.length > 50) return { ok: false, error: '一次最多附加 50 個檔案。', sent: 0 };
+  if (imageInput.length > 50) return { ok: false, error: '一次最多插入 50 張圖片。', sent: 0 };
+  attachmentInput.forEach(function (file) {
+    var decoded = bulkMailBlob(file, false);
+    totalBytes += decoded.size;
+    attachments.push(decoded.blob);
+  });
+  imageInput.forEach(function (file, index) {
+    var decoded = bulkMailBlob(file, true);
+    totalBytes += decoded.size;
+    var cid = String(file.cid || ('mailimg_' + index)).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80) || ('mailimg_' + index);
+    inlineImages[cid] = decoded.blob;
+  });
+  if (totalBytes > BULK_MAIL_MAX_TOTAL_BYTES) {
+    return { ok: false, error: '附件與內嵌圖片合計不可超過 10 MB。', sent: 0 };
+  }
+
+  var quota = MailApp.getRemainingDailyQuota();
+  if (quota < emails.length) {
+    return { ok: false, error: '今日寄信額度不足：尚餘 ' + quota + ' 人，但目前選擇 ' + emails.length + ' 人。', sent: 0, remainingQuota: quota };
+  }
+
+  var results = [];
+  var sent = 0;
+  for (var i = 0; i < emails.length; i += 50) {
+    var chunk = emails.slice(i, i + 50);
+    var mail = {
+      to: chunk[0],
+      subject: subject,
+      body: textBody,
+      htmlBody: htmlBody,
+      name: '真如苑資料網站'
+    };
+    if (chunk.length > 1) mail.bcc = chunk.slice(1).join(',');
+    if (attachments.length) mail.attachments = attachments;
+    if (Object.keys(inlineImages).length) mail.inlineImages = inlineImages;
+    var result = sendMemberMail('bulk-mail-' + (results.length + 1), mail);
+    result.count = chunk.length;
+    results.push(result);
+    if (result.ok) sent += chunk.length;
+  }
+  var failed = results.filter(function (result) { return !result.ok; });
+  return {
+    ok: failed.length === 0,
+    sent: sent,
+    total: emails.length,
+    remainingQuota: MailApp.getRemainingDailyQuota(),
+    error: failed.map(function (result) { return result.error; }).filter(Boolean).join('；'),
     results: results
   };
 }
