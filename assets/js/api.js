@@ -245,6 +245,19 @@
     },
     validateMemberToken: function (token) { return post({ action: 'validateMemberToken', token: token }); },
     memberDirectory: function (token) { return post({ action: 'memberDirectory', token: token }); },
-    adminMemberList: function (token) { return post({ action: 'adminMemberList', token: token }); }
+    adminMemberList: function (token) { return post({ action: 'adminMemberList', token: token }); },
+    sendBulkMail: function (message, token) {
+      message = message || {};
+      return post({
+        action: 'sendBulkMail',
+        token: token,
+        recipientIds: message.recipientIds || [],
+        subject: message.subject || '',
+        htmlBody: message.htmlBody || '',
+        textBody: message.textBody || '',
+        attachments: message.attachments || [],
+        inlineImages: message.inlineImages || []
+      });
+    }
   };
 })();

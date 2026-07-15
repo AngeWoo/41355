@@ -5,6 +5,11 @@
   var LEGACY_TOKEN_KEY = 'shinnyo_admin_token';
   var ACCOUNT_KEY = 'shinnyo_admin_account_v1';
   var REMEMBER_KEY = 'shinnyo_admin_remember_v1';
+  var PAGE_SIZE = 10;
+  var BULK_MAIL_TYPE = 'bulk-mail';
+  var MAIL_MAX_FILE_BYTES = 5 * 1024 * 1024;
+  var MAIL_MAX_TOTAL_BYTES = 10 * 1024 * 1024;
+  var MAIL_MAX_HTML_BYTES = 160 * 1024;
 
   // 各內容類型的欄位定義（須與 GAS 的 SCHEMA 對應）
   var COLLECTIONS = [
@@ -159,8 +164,15 @@
   var editing = null;    // 正在編輯的紀錄（null = 新增）
   var seedingTools = false;
   var savingSort = {};
+  var pageByType = {};
   var editorReturnFocus = null;
   var passwordReturnFocus = null;
+  var editorInitialState = '';
+  var editorFocusTimer = null;
+  var mailAttachments = [];
+  var mailInlineImages = [];
+  var mailSavedRange = null;
+  var mailSelectedRecipientIds = {};
 
   // ---------- 提示 ----------
   var toastEl = $('#toast'), toastT;
@@ -382,7 +394,7 @@
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       if ($('#pwdMask').classList.contains('open')) closePwdModal();
-      else if ($('#modalMask').classList.contains('open')) closeEditor();
+      else if ($('#modalMask').classList.contains('open')) requestCloseEditor();
       else setMobileTabMenu(false);
     });
     window.addEventListener('resize', function () {
@@ -394,26 +406,372 @@
       return '<button class="tab" data-type="' + c.type + '">' +
         '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7">' + c.icon + '</svg>' +
         '<span>' + esc(c.label) + '</span><span class="badge" id="badge-' + c.type + '">0</span></button>';
-    }).join('');
+    }).join('') +
+      '<button class="tab mail-tab" data-type="' + BULK_MAIL_TYPE + '">' +
+      '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>' +
+      '<span>群組發信</span><span class="badge" id="mail-selected-badge">0</span></button>';
     $('#panels').innerHTML = COLLECTIONS.map(function (c) {
       return '<section class="panel" data-type="' + c.type + '">' +
         '<div class="panel-head"><h2>' + esc(c.label) + '</h2>' +
         '<button class="btn btn-gold btn-sm" data-add="' + c.type + '">＋ 新增</button></div>' +
-        '<div class="rec-list" id="list-' + c.type + '"><div class="empty">載入中…</div></div></section>';
-    }).join('');
+        '<div class="rec-list" id="list-' + c.type + '"><div class="empty">載入中…</div></div>' +
+        '<nav class="pagination" id="pagination-' + c.type + '" aria-label="' + esc(c.label) + '分頁"></nav></section>';
+    }).join('') + bulkMailPanelHtml();
     $('#tabs').querySelectorAll('.tab').forEach(function (t) {
       t.addEventListener('click', function () { selectTab(t.dataset.type); setMobileTabMenu(false); });
     });
     $('#panels').querySelectorAll('[data-add]').forEach(function (b) {
       b.addEventListener('click', function () { openEditor(b.dataset.add, null); });
     });
+    setupBulkMailPanel();
   }
   function selectTab(type) {
     current = type;
     $('#tabs').querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('active', t.dataset.type === type); });
     $('#panels').querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('active', p.dataset.type === type); });
     var currentLabel = $('#mobileTabCurrent'), collection = byType(type);
-    if (currentLabel && collection) currentLabel.textContent = collection.label;
+    if (currentLabel) currentLabel.textContent = collection ? collection.label : (type === BULK_MAIL_TYPE ? '群組發信' : '');
+  }
+
+  // ---------- 群組發信 ----------
+  function bulkMailPanelHtml() {
+    return '<section class="panel bulk-mail-panel" data-type="' + BULK_MAIL_TYPE + '">' +
+      '<div class="panel-head"><h2>群組發信</h2><span class="mail-security-note">收件者以密件副本分批寄送</span></div>' +
+      '<div class="alert" id="bulkMailAlert" role="alert" aria-live="polite"></div>' +
+      '<form id="bulkMailForm">' +
+      '<div class="mail-section"><h3>1. 挑選收件者</h3>' +
+      '<div class="mail-recipient-tools"><input type="search" id="mailRecipientSearch" placeholder="搜尋姓名、經名、Email 或手機" aria-label="搜尋收件者" />' +
+      '<button type="button" class="btn btn-ghost btn-sm" id="mailSelectAll">全選</button>' +
+      '<button type="button" class="btn btn-ghost btn-sm" id="mailClearAll">清除</button></div>' +
+      '<div class="mail-selection-summary" id="mailSelectionSummary">已選 0 人</div>' +
+      '<div class="mail-recipient-list" id="mailRecipientList"><div class="empty">正在載入會員資料…</div></div></div>' +
+      '<div class="mail-section"><h3>2. 郵件內容</h3>' +
+      '<div class="field"><label for="mailSubject">郵件主旨 *</label><input type="text" id="mailSubject" maxlength="250" required /></div>' +
+      '<div class="field"><label id="mailBodyLabel">HTML 郵件內容 *</label>' +
+      '<div class="mail-editor-toolbar" role="toolbar" aria-label="郵件格式工具列">' +
+      '<button type="button" data-mail-command="bold" title="粗體"><b>B</b></button>' +
+      '<button type="button" data-mail-command="italic" title="斜體"><i>I</i></button>' +
+      '<button type="button" data-mail-command="underline" title="底線"><u>U</u></button>' +
+      '<button type="button" data-mail-command="insertUnorderedList" title="項目符號">• 清單</button>' +
+      '<button type="button" data-mail-command="insertOrderedList" title="編號清單">1. 清單</button>' +
+      '<button type="button" id="mailInsertLink">插入連結</button>' +
+      '<button type="button" id="mailInsertImage">插入圖片</button>' +
+      '<button type="button" id="mailShowSource">HTML 原始碼</button></div>' +
+      '<div id="mailHtmlEditor" class="mail-html-editor" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="mailBodyLabel"><p>親愛的會員您好：</p><p><br></p></div>' +
+      '<div class="hint">可直接貼上格式化文字或剪貼簿圖片；外部圖片可能被收件端封鎖，建議使用「插入圖片」或直接貼圖。</div>' +
+      '<input type="file" id="mailImageInput" accept="image/*" multiple hidden />' +
+      '<div class="mail-source-wrap" id="mailSourceWrap" hidden><label for="mailHtmlSource">HTML 原始碼</label>' +
+      '<textarea id="mailHtmlSource" spellcheck="false"></textarea><button type="button" class="btn btn-ghost btn-sm" id="mailApplySource">套用 HTML</button></div></div></div>' +
+      '<div class="mail-section"><h3>3. 附加檔案</h3>' +
+      '<input type="file" id="mailAttachmentInput" multiple />' +
+      '<div class="hint">單一檔案上限 5 MB；附件與內嵌圖片合計上限 10 MB。</div>' +
+      '<div class="mail-file-list" id="mailAttachmentList"><span class="mail-no-files">尚未選擇附件</span></div></div>' +
+      '<div class="mail-send-bar"><span id="mailPayloadSummary">尚未選擇收件者</span>' +
+      '<button type="submit" class="btn btn-gold" id="bulkMailSendBtn">確認並寄送</button></div>' +
+      '</form></section>';
+  }
+
+  function setupBulkMailPanel() {
+    var editor = $('#mailHtmlEditor');
+    if (!editor) return;
+    $('#mailRecipientSearch').addEventListener('input', renderBulkMailRecipients);
+    $('#mailSelectAll').addEventListener('click', function () {
+      (cache.members || []).forEach(function (m) {
+        var email = String(m.email || '').trim();
+        if (m.id && email.indexOf('@') !== -1) mailSelectedRecipientIds[String(m.id)] = true;
+      });
+      renderBulkMailRecipients();
+    });
+    $('#mailClearAll').addEventListener('click', function () {
+      mailSelectedRecipientIds = {};
+      renderBulkMailRecipients();
+    });
+    editor.addEventListener('keyup', saveMailSelection);
+    editor.addEventListener('mouseup', saveMailSelection);
+    editor.addEventListener('focus', saveMailSelection);
+    editor.addEventListener('input', updateMailPayloadSummary);
+    editor.addEventListener('paste', handleMailPaste);
+    document.querySelectorAll('[data-mail-command]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        restoreMailSelection();
+        document.execCommand(btn.getAttribute('data-mail-command'), false, null);
+        editor.focus(); saveMailSelection(); updateMailPayloadSummary();
+      });
+    });
+    $('#mailInsertLink').addEventListener('click', function () {
+      var url = prompt('請輸入連結網址（https://…）');
+      if (!url) return;
+      url = String(url).trim();
+      if (!/^https?:\/\//i.test(url)) { alertBox($('#bulkMailAlert'), '連結網址必須以 http:// 或 https:// 開頭。', 'err'); return; }
+      restoreMailSelection();
+      document.execCommand('createLink', false, url);
+      editor.focus(); saveMailSelection();
+    });
+    $('#mailInsertImage').addEventListener('click', function () { saveMailSelection(); $('#mailImageInput').click(); });
+    $('#mailImageInput').addEventListener('change', function () {
+      addMailImages(Array.prototype.slice.call(this.files || []));
+      this.value = '';
+    });
+    $('#mailShowSource').addEventListener('click', function () {
+      var wrap = $('#mailSourceWrap'), show = wrap.hidden;
+      wrap.hidden = !show;
+      if (show) { $('#mailHtmlSource').value = editor.innerHTML; $('#mailHtmlSource').focus(); }
+    });
+    $('#mailApplySource').addEventListener('click', function () {
+      editor.innerHTML = sanitizeMailHtml($('#mailHtmlSource').value);
+      extractDataImagesFromEditor();
+      updateMailPayloadSummary();
+      toast('HTML 已套用');
+    });
+    $('#mailAttachmentInput').addEventListener('change', function () {
+      addMailAttachments(Array.prototype.slice.call(this.files || []));
+      this.value = '';
+    });
+    $('#bulkMailForm').addEventListener('submit', submitBulkMail);
+    renderMailAttachments();
+    updateMailPayloadSummary();
+  }
+
+  function renderBulkMailRecipients() {
+    var listEl = $('#mailRecipientList');
+    if (!listEl) return;
+    var query = String(($('#mailRecipientSearch') && $('#mailRecipientSearch').value) || '').trim().toLowerCase();
+    var members = (cache.members || []).filter(function (m) {
+      return !query || [m.name, m.dharmaName, m.email, m.mobile].some(function (value) { return String(value || '').toLowerCase().indexOf(query) !== -1; });
+    });
+    if (!members.length) {
+      listEl.innerHTML = '<div class="empty">' + (cache.members ? '找不到符合條件的人員。' : '會員資料尚未載入。') + '</div>';
+      updateMailSelectionSummary();
+      return;
+    }
+    listEl.innerHTML = members.map(function (m) {
+      var id = String(m.id || ''), email = String(m.email || '').trim(), disabled = !email || email.indexOf('@') === -1;
+      return '<label class="mail-recipient' + (disabled ? ' is-disabled' : '') + '">' +
+        '<input type="checkbox" value="' + esc(id) + '"' + (mailSelectedRecipientIds[id] ? ' checked' : '') + (disabled ? ' disabled' : '') + ' />' +
+        '<span><b>' + esc(m.name || '未命名') + '</b><small>' + esc([m.dharmaName, email, m.mobile].filter(Boolean).join(' · ')) + '</small></span></label>';
+    }).join('');
+    listEl.querySelectorAll('input[type="checkbox"]').forEach(function (input) {
+      input.addEventListener('change', function () {
+        if (input.checked) mailSelectedRecipientIds[input.value] = true;
+        else delete mailSelectedRecipientIds[input.value];
+        updateMailSelectionSummary();
+      });
+    });
+    updateMailSelectionSummary();
+  }
+
+  function selectedMailRecipientIds() {
+    return Object.keys(mailSelectedRecipientIds).filter(function (id) { return mailSelectedRecipientIds[id]; });
+  }
+
+  function updateMailSelectionSummary() {
+    var selected = selectedMailRecipientIds().length;
+    var summary = $('#mailSelectionSummary'), badge = $('#mail-selected-badge');
+    if (summary) summary.textContent = '已選 ' + selected + ' 人';
+    if (badge) badge.textContent = selected;
+    updateMailPayloadSummary();
+  }
+
+  function saveMailSelection() {
+    var selection = window.getSelection && window.getSelection();
+    if (!selection || !selection.rangeCount || !$('#mailHtmlEditor').contains(selection.anchorNode)) return;
+    mailSavedRange = selection.getRangeAt(0).cloneRange();
+  }
+
+  function restoreMailSelection() {
+    var editor = $('#mailHtmlEditor'), selection = window.getSelection && window.getSelection();
+    editor.focus();
+    if (!selection || !mailSavedRange || !editor.contains(mailSavedRange.commonAncestorContainer)) return;
+    selection.removeAllRanges(); selection.addRange(mailSavedRange);
+  }
+
+  function insertMailHtml(html) {
+    restoreMailSelection();
+    document.execCommand('insertHTML', false, html);
+    saveMailSelection(); updateMailPayloadSummary();
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result || '')); };
+      reader.onerror = function () { reject(new Error('無法讀取檔案：' + file.name)); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function mailPayloadBytes() {
+    return mailAttachments.concat(mailInlineImages).reduce(function (sum, file) { return sum + (Number(file.size) || 0); }, 0);
+  }
+
+  function pruneUnusedMailImages() {
+    var editor = $('#mailHtmlEditor');
+    if (!editor) return;
+    var used = {};
+    editor.querySelectorAll('[data-inline-cid]').forEach(function (img) { used[img.getAttribute('data-inline-cid')] = true; });
+    mailInlineImages = mailInlineImages.filter(function (image) { return used[image.cid]; });
+  }
+
+  function safeMailFile(file, imageOnly) {
+    pruneUnusedMailImages();
+    if (!file || !file.size) return '檔案內容是空的。';
+    if (file.size > MAIL_MAX_FILE_BYTES) return '「' + file.name + '」超過單檔 5 MB 限制。';
+    if (imageOnly && !/^image\//i.test(file.type || '')) return '「' + file.name + '」不是圖片格式。';
+    if (mailPayloadBytes() + file.size > MAIL_MAX_TOTAL_BYTES) return '附件與圖片合計不可超過 10 MB。';
+    return '';
+  }
+
+  function addMailImages(files) {
+    files.reduce(function (chain, file) {
+      return chain.then(function () {
+        var error = safeMailFile(file, true);
+        if (error) { alertBox($('#bulkMailAlert'), error, 'err'); return; }
+        return readFileAsDataUrl(file).then(function (dataUrl) {
+          var cid = 'mailimg_' + Date.now() + '_' + mailInlineImages.length;
+          mailInlineImages.push({ cid: cid, name: file.name || cid, mimeType: file.type || 'image/png', base64: dataUrl.split(',')[1] || '', size: file.size });
+          insertMailHtml('<img src="' + esc(dataUrl) + '" data-inline-cid="' + esc(cid) + '" alt="' + esc(file.name || '郵件圖片') + '" style="max-width:100%;height:auto;" />');
+        });
+      });
+    }, Promise.resolve()).catch(function (err) { alertBox($('#bulkMailAlert'), err.message || String(err), 'err'); });
+  }
+
+  function handleMailPaste(e) {
+    var items = Array.prototype.slice.call((e.clipboardData && e.clipboardData.items) || []);
+    var images = items.filter(function (item) { return item.kind === 'file' && /^image\//i.test(item.type || ''); }).map(function (item) { return item.getAsFile(); }).filter(Boolean);
+    if (!images.length) return;
+    e.preventDefault(); saveMailSelection(); addMailImages(images);
+  }
+
+  function addMailAttachments(files) {
+    files.reduce(function (chain, file) {
+      return chain.then(function () {
+        var error = safeMailFile(file, false);
+        if (error) { alertBox($('#bulkMailAlert'), error, 'err'); return; }
+        return readFileAsDataUrl(file).then(function (dataUrl) {
+          mailAttachments.push({ name: file.name || 'attachment', mimeType: file.type || 'application/octet-stream', base64: dataUrl.split(',')[1] || '', size: file.size });
+          renderMailAttachments(); updateMailPayloadSummary();
+        });
+      });
+    }, Promise.resolve()).catch(function (err) { alertBox($('#bulkMailAlert'), err.message || String(err), 'err'); });
+  }
+
+  function renderMailAttachments() {
+    var el = $('#mailAttachmentList');
+    if (!el) return;
+    if (!mailAttachments.length) { el.innerHTML = '<span class="mail-no-files">尚未選擇附件</span>'; return; }
+    el.innerHTML = mailAttachments.map(function (file, idx) {
+      return '<span class="mail-file-chip">' + esc(file.name) + ' <small>' + formatBytes(file.size) + '</small><button type="button" data-remove-mail-file="' + idx + '" aria-label="移除 ' + esc(file.name) + '">×</button></span>';
+    }).join('');
+    el.querySelectorAll('[data-remove-mail-file]').forEach(function (btn) {
+      btn.addEventListener('click', function () { mailAttachments.splice(Number(btn.getAttribute('data-remove-mail-file')), 1); renderMailAttachments(); updateMailPayloadSummary(); });
+    });
+  }
+
+  function formatBytes(bytes) {
+    bytes = Number(bytes) || 0;
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function sanitizeMailHtml(html) {
+    var doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+    doc.querySelectorAll('script, iframe, object, embed, form, input, button, textarea, select, meta, link, base').forEach(function (el) { el.remove(); });
+    doc.querySelectorAll('*').forEach(function (el) {
+      Array.prototype.slice.call(el.attributes || []).forEach(function (attr) {
+        var name = attr.name.toLowerCase(), value = String(attr.value || '').trim();
+        if (name.indexOf('on') === 0 || name === 'srcdoc') el.removeAttribute(attr.name);
+        else if ((name === 'href' || name === 'src') && /^(javascript|vbscript):/i.test(value)) el.removeAttribute(attr.name);
+        else if (name === 'style' && /(expression\s*\(|javascript\s*:|behavior\s*:)/i.test(value)) el.removeAttribute(attr.name);
+      });
+    });
+    return doc.body.innerHTML;
+  }
+
+  function extractDataImagesFromEditor() {
+    $('#mailHtmlEditor').querySelectorAll('img[src^="data:image/"]').forEach(function (img) {
+      if (img.getAttribute('data-inline-cid')) return;
+      var dataUrl = img.getAttribute('src') || '', match = dataUrl.match(/^data:(image\/[^;,]+);base64,(.+)$/i);
+      if (!match) return;
+      var cid = 'mailimg_' + Date.now() + '_' + mailInlineImages.length;
+      var size = Math.floor(match[2].length * 3 / 4);
+      if (size > MAIL_MAX_FILE_BYTES || mailPayloadBytes() + size > MAIL_MAX_TOTAL_BYTES) { img.remove(); return; }
+      mailInlineImages.push({ cid: cid, name: cid + '.png', mimeType: match[1], base64: match[2], size: size });
+      img.setAttribute('data-inline-cid', cid);
+    });
+  }
+
+  function preparedMailContent() {
+    extractDataImagesFromEditor();
+    var clone = $('#mailHtmlEditor').cloneNode(true), used = {};
+    var clean = document.createElement('div');
+    clean.innerHTML = sanitizeMailHtml(clone.innerHTML);
+    var text = String(clean.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    clean.querySelectorAll('[data-inline-cid]').forEach(function (img) {
+      var cid = img.getAttribute('data-inline-cid');
+      if (!cid) return;
+      used[cid] = true;
+      img.removeAttribute('src');
+      img.setAttribute('data-mail-cid-src', 'cid:' + cid);
+      img.removeAttribute('data-inline-cid');
+    });
+    var html = clean.innerHTML.replace(/\sdata-mail-cid-src="([^"]+)"/g, ' src="$1"');
+    return {
+      html: html,
+      text: text,
+      inlineImages: mailInlineImages.filter(function (image) { return used[image.cid]; })
+    };
+  }
+
+  function updateMailPayloadSummary() {
+    var el = $('#mailPayloadSummary');
+    if (!el) return;
+    pruneUnusedMailImages();
+    el.textContent = '收件者 ' + selectedMailRecipientIds().length + ' 人 · 附件 ' + mailAttachments.length + ' 個 · 檔案合計 ' + formatBytes(mailPayloadBytes());
+  }
+
+  function resetBulkMailForm() {
+    $('#bulkMailForm').reset();
+    $('#mailHtmlEditor').innerHTML = '<p>親愛的會員您好：</p><p><br></p>';
+    $('#mailSourceWrap').hidden = true;
+    mailAttachments = []; mailInlineImages = []; mailSavedRange = null; mailSelectedRecipientIds = {};
+    renderMailAttachments(); renderBulkMailRecipients(); updateMailSelectionSummary();
+  }
+
+  function submitBulkMail(e) {
+    e.preventDefault();
+    alertBox($('#bulkMailAlert'), '', '');
+    if (API.isReadOnly()) { alertBox($('#bulkMailAlert'), '目前為唯讀模式，無法寄送郵件。', 'err'); return; }
+    var recipientIds = selectedMailRecipientIds();
+    var subject = $('#mailSubject').value.trim();
+    var content = preparedMailContent();
+    if (!recipientIds.length) { alertBox($('#bulkMailAlert'), '請至少選擇一位收件者。', 'err'); return; }
+    if (!subject) { alertBox($('#bulkMailAlert'), '請輸入郵件主旨。', 'err'); $('#mailSubject').focus(); return; }
+    if (!content.text && !content.inlineImages.length) { alertBox($('#bulkMailAlert'), '請輸入郵件內容。', 'err'); return; }
+    if (new Blob([content.html]).size > MAIL_MAX_HTML_BYTES) { alertBox($('#bulkMailAlert'), 'HTML 郵件內容不可超過 160 KB。', 'err'); return; }
+    if (mailPayloadBytes() > MAIL_MAX_TOTAL_BYTES) { alertBox($('#bulkMailAlert'), '附件與圖片合計不可超過 10 MB。', 'err'); return; }
+    if (!confirm('確定要寄送「' + subject + '」給已選取的 ' + recipientIds.length + ' 人嗎？')) return;
+    var btn = $('#bulkMailSendBtn'); btn.disabled = true; btn.textContent = '寄送中…';
+    API.sendBulkMail({
+      recipientIds: recipientIds,
+      subject: subject,
+      htmlBody: content.html,
+      textBody: content.text || '請使用支援 HTML 的郵件程式閱讀此信。',
+      attachments: mailAttachments,
+      inlineImages: content.inlineImages
+    }, token).then(function (res) {
+      btn.disabled = false; btn.textContent = '確認並寄送';
+      if (res && res.ok) {
+        alertBox($('#bulkMailAlert'), '寄送完成：成功 ' + (res.sent || 0) + ' 人；今日剩餘額度 ' + (res.remainingQuota == null ? '—' : res.remainingQuota) + ' 人。', 'ok');
+        toast('群組郵件已寄送'); resetBulkMailForm();
+      } else {
+        alertBox($('#bulkMailAlert'), (res && res.error) || '寄送失敗。', 'err');
+        if (res && isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1500);
+      }
+    }).catch(function (err) {
+      btn.disabled = false; btn.textContent = '確認並寄送';
+      alertBox($('#bulkMailAlert'), '寄送失敗：' + (err && err.message ? err.message : '請檢查連線。'), 'err');
+    });
   }
 
   // ---------- 載入與渲染 ----------
@@ -475,6 +833,7 @@
       }
       if ((type === 'tools' || type === 'talks') && !cache[type].length) cache[type] = seedFallbackRows(type);
       renderList(type);
+      if (type === 'members') renderBulkMailRecipients();
     }).catch(function () {
       toast(byType(type).label + '讀取失敗，請檢查連線。', true);
     });
@@ -482,10 +841,21 @@
   function renderList(type) {
     var c = byType(type), list = cache[type] || [], el = $('#list-' + type);
     $('#badge-' + type).textContent = list.length;
-    if (!list.length) { el.innerHTML = '<div class="empty">尚無資料，點右上角「新增」建立第一筆。</div>'; return; }
-    el.innerHTML = list.map(function (r, idx) {
-      var sortable = !API.isReadOnly() && list.length > 1;
-      return '<div class="rec" data-id="' + esc(r.id) + '"' + (sortable ? ' draggable="true"' : '') + '><span class="rec-order" title="排序號">' + esc(idx + 1) + '</span><div class="rec-main"><h4>' + esc(c.title(r) || '(無標題)') + '</h4>' +
+    if (!list.length) {
+      pageByType[type] = 1;
+      el.innerHTML = '<div class="empty">尚無資料，點右上角「新增」建立第一筆。</div>';
+      renderPagination(type, 0);
+      return;
+    }
+    var totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    var page = Math.min(Math.max(Number(pageByType[type]) || 1, 1), totalPages);
+    var start = (page - 1) * PAGE_SIZE;
+    var pageRows = list.slice(start, start + PAGE_SIZE);
+    pageByType[type] = page;
+    el.setAttribute('data-page-start', String(start));
+    el.innerHTML = pageRows.map(function (r, idx) {
+      var sortable = !API.isReadOnly() && pageRows.length > 1;
+      return '<div class="rec" data-id="' + esc(r.id) + '"' + (sortable ? ' draggable="true"' : '') + '><span class="rec-order" title="排序號">' + esc(start + idx + 1) + '</span><div class="rec-main"><h4>' + esc(c.title(r) || '(無標題)') + '</h4>' +
         '<div class="sub">' + esc(c.sub(r) || '') + '</div></div>' +
         '<div class="rec-actions">' +
         '<button class="icon-btn" data-edit="' + esc(r.id) + '" title="編輯" aria-label="編輯 ' + esc(c.title(r) || '此筆資料') + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L18 10l-4-4L4 16z"/><path d="M13 5l4 4"/></svg></button>' +
@@ -503,6 +873,37 @@
       b.addEventListener('click', function () { copyRecord(type, b.dataset.copy); });
     });
     setupDragSort(type, el);
+    renderPagination(type, list.length);
+  }
+
+  function renderPagination(type, totalItems) {
+    var nav = $('#pagination-' + type);
+    if (!nav) return;
+    if (!totalItems) { nav.innerHTML = ''; nav.hidden = true; return; }
+    var totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+    var page = Math.min(Math.max(Number(pageByType[type]) || 1, 1), totalPages);
+    var from = (page - 1) * PAGE_SIZE + 1;
+    var to = Math.min(page * PAGE_SIZE, totalItems);
+    var atFirst = page === 1, atLast = page === totalPages;
+    nav.hidden = false;
+    nav.innerHTML =
+      '<button type="button" class="page-btn page-edge" data-page="first"' + (atFirst ? ' disabled' : '') + '>最前頁</button>' +
+      '<button type="button" class="page-btn" data-page="prev" aria-label="上一頁"' + (atFirst ? ' disabled' : '') + '>‹</button>' +
+      '<span class="page-status" aria-live="polite"><b>第 ' + page + ' / ' + totalPages + ' 頁</b><small>第 ' + from + '–' + to + ' 筆，共 ' + totalItems + ' 筆</small></span>' +
+      '<button type="button" class="page-btn" data-page="next" aria-label="下一頁"' + (atLast ? ' disabled' : '') + '>›</button>' +
+      '<button type="button" class="page-btn page-edge" data-page="last"' + (atLast ? ' disabled' : '') + '>最後頁</button>';
+    nav.querySelectorAll('[data-page]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var action = btn.getAttribute('data-page');
+        if (action === 'first') pageByType[type] = 1;
+        else if (action === 'prev') pageByType[type] = Math.max(1, page - 1);
+        else if (action === 'next') pageByType[type] = Math.min(totalPages, page + 1);
+        else if (action === 'last') pageByType[type] = totalPages;
+        renderList(type);
+        var panel = document.querySelector('.panel[data-type="' + type + '"]');
+        if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
   }
   function find(type, id) { return (cache[type] || []).filter(function (r) { return String(r.id) === String(id); })[0]; }
 
@@ -546,9 +947,10 @@
   }
 
   function updateVisibleOrderNumbers(el) {
+    var start = Number(el.getAttribute('data-page-start')) || 0;
     Array.prototype.forEach.call(el.querySelectorAll('.rec'), function (rec, idx) {
       var badge = rec.querySelector('.rec-order');
-      if (badge) badge.textContent = idx + 1;
+      if (badge) badge.textContent = start + idx + 1;
     });
   }
 
@@ -574,10 +976,14 @@
 
   function saveDragOrder(type, el) {
     if (API.isReadOnly() || !API.reorder || savingSort[type]) return;
-    var ids = Array.prototype.map.call(el.querySelectorAll('.rec[data-id]'), function (rec) {
+    var visibleIds = Array.prototype.map.call(el.querySelectorAll('.rec[data-id]'), function (rec) {
       return rec.getAttribute('data-id');
     }).filter(Boolean);
-    if (ids.length < 2) return;
+    if (visibleIds.length < 2) return;
+    var ids = (cache[type] || []).map(function (row) { return String(row.id); });
+    var page = Math.max(Number(pageByType[type]) || 1, 1);
+    var start = (page - 1) * PAGE_SIZE;
+    ids.splice.apply(ids, [start, visibleIds.length].concat(visibleIds));
     savingSort[type] = true;
     el.classList.add('sorting-saving');
     applyCacheOrder(type, ids);
@@ -673,22 +1079,43 @@
     $('#modalMask').classList.add('open');
     $('#modalMask').setAttribute('aria-hidden', 'false');
     document.documentElement.classList.add('admin-modal-open');
-    setTimeout(function () {
-      var first = $('#formFields input, #formFields textarea, #formFields select');
-      if (first) first.focus();
-    }, 0);
+    editorInitialState = formState();
+    clearTimeout(editorFocusTimer);
+    // 手機自動叫出鍵盤會造成視窗高度劇烈改變；只在滑鼠/桌機環境自動聚焦。
+    if (!window.matchMedia || !window.matchMedia('(pointer: coarse)').matches) {
+      editorFocusTimer = setTimeout(function () {
+        if (!$('#modalMask').classList.contains('open')) return;
+        var first = $('#formFields input, #formFields textarea, #formFields select');
+        if (first) first.focus({ preventScroll: true });
+      }, 0);
+    }
+  }
+  function formState() {
+    return Array.prototype.map.call($('#recordForm').elements, function (el) {
+      if (!el.id || el.id === 'saveBtn') return '';
+      return el.id + ':' + (el.type === 'checkbox' ? String(el.checked) : el.value);
+    }).join('|');
+  }
+  function editorIsDirty() {
+    return $('#modalMask').classList.contains('open') && formState() !== editorInitialState;
+  }
+  function requestCloseEditor() {
+    if (editorIsDirty() && !confirm('尚有未儲存的修改，確定要關閉編輯視窗嗎？')) return;
+    closeEditor();
   }
   function closeEditor() {
+    clearTimeout(editorFocusTimer);
     $('#modalMask').classList.remove('open');
     $('#modalMask').setAttribute('aria-hidden', 'true');
     document.documentElement.classList.remove('admin-modal-open');
     editing = null;
+    editorInitialState = '';
     if (editorReturnFocus && document.contains(editorReturnFocus)) editorReturnFocus.focus();
     editorReturnFocus = null;
   }
-  $('#cancelBtn').addEventListener('click', closeEditor);
-  $('#modalClose').addEventListener('click', closeEditor);
-  $('#modalMask').addEventListener('click', function (e) { if (e.target === $('#modalMask')) closeEditor(); });
+  $('#cancelBtn').addEventListener('click', requestCloseEditor);
+  $('#modalClose').addEventListener('click', requestCloseEditor);
+  // 遮罩不綁定關閉事件，避免手機滑動或點擊邊緣時誤觸造成「閃退」。
 
   $('#recordForm').addEventListener('submit', function (e) {
     e.preventDefault();
