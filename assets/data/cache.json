@@ -1,20 +1,31 @@
 {
   "ok": true,
   "mode": "local-json",
-  "savedAt": "2026-07-09T17:19:48.765Z",
+  "savedAt": "2026-07-15T15:22:27.865Z",
   "source": "gas",
   "data": {
     "news": [
       {
-        "id": "an-1",
-        "title": "親苑時報 2026年7月號已更新",
-        "date": "2026-07-03T16:00:00.000Z",
-        "body": "最新一期親苑時報已上線，歡迎點閱。",
-        "link": "https://meee.ing/18d09c",
-        "pinned": true,
+        "id": "d26ced35-07fe-4bcb-9dee-cae15ac3f1ba",
+        "title": "回歸親苑宣傳影片",
+        "date": "2026-07-13T16:00:00.000Z",
+        "body": "回歸親苑宣傳影片第一輯, 預計播放六輯",
+        "link": "https://drive.google.com/file/d/1fpYbqF8hVuDAwRCYLniyKs1nDm452r1q/view",
+        "pinned": "",
         "order": 1,
-        "createdAt": "2026-06-27T11:28:24.144Z",
-        "updatedAt": "2026-07-05T14:20:35.064Z"
+        "createdAt": "2026-07-14T12:56:28.812Z",
+        "updatedAt": "2026-07-14T12:56:28.812Z"
+      },
+      {
+        "id": "an-2",
+        "title": "2026年8月台灣行事曆已更新-0715",
+        "date": "2026-07-14T16:00:00.000Z",
+        "body": "最新台灣行事曆已公布，請查閱本月活動安排。",
+        "link": "https://meee.ing/a6546d",
+        "pinned": "",
+        "order": 2,
+        "createdAt": "2026-06-27T11:28:24.699Z",
+        "updatedAt": "2026-07-15T12:33:03.331Z"
       },
       {
         "id": "d1201571-b4e2-4487-bcec-58a8414a36fd",
@@ -23,20 +34,9 @@
         "body": "⭐️主題：【立教90年—台灣喜迎新尊像】\n💎將於今晚21:00上映\n💎來賓：藍振祐 先生",
         "link": "https://www.youtube.com/watch?v=rDPoi4WZLwM",
         "pinned": true,
-        "order": 2,
+        "order": 3,
         "createdAt": "2026-07-06T00:02:13.275Z",
         "updatedAt": "2026-07-07T14:23:37.735Z"
-      },
-      {
-        "id": "an-2",
-        "title": "2026年8月台灣行事曆已上線",
-        "date": "2026-07-08T16:00:00.000Z",
-        "body": "最新台灣行事曆已公布，請查閱本月活動安排。",
-        "link": "https://meee.ing/a6546d",
-        "pinned": "",
-        "order": 3,
-        "createdAt": "2026-06-27T11:28:24.699Z",
-        "updatedAt": "2026-07-09T15:22:57.525Z"
       },
       {
         "id": "an-4",
@@ -59,6 +59,17 @@
         "order": 5,
         "createdAt": "2026-07-09T15:56:23.309Z",
         "updatedAt": "2026-07-09T15:57:05.354Z"
+      },
+      {
+        "id": "3a30672e-9498-4080-9d0c-813ae5b76f71",
+        "title": "真如苑黃琦芳經41355",
+        "date": "2024-07-10T16:00:00.000Z",
+        "body": "Facebook 上 真如苑黃琦芳經41355 網址\n會員限制, 其他經法友無法加入",
+        "link": "https://www.facebook.com/groups/shinnyo41355",
+        "pinned": "",
+        "order": 6,
+        "createdAt": "2026-07-11T14:14:32.885Z",
+        "updatedAt": "2026-07-11T14:14:32.885Z"
       }
     ],
     "podcast": [
@@ -273,20 +284,20 @@
     ],
     "calendar": [
       {
-        "id": "cal-202607",
-        "date": "2026-07-04T16:00:00.000Z",
-        "title": "2026年7月 台灣行事曆",
+        "id": "e0532230-775b-40bf-8309-2a56aa80b448",
+        "date": "2026-07-14T16:00:00.000Z",
+        "title": "2026年9月 台灣行事曆",
         "location": "",
         "desc": "本月台灣地區行事曆",
         "tag": "月曆",
-        "link": "https://bely.cc/PqPMTE",
+        "link": "https://meee.ing/618fb0",
         "order": 1,
-        "createdAt": "2026-06-27T11:28:35.496Z",
-        "updatedAt": "2026-07-04T16:52:36.604Z"
+        "createdAt": "2026-07-15T12:27:54.872Z",
+        "updatedAt": "2026-07-15T12:29:53.646Z"
       },
       {
         "id": "cal-202608",
-        "date": "2026-06-03T16:00:00.000Z",
+        "date": "2026-07-14T16:00:00.000Z",
         "title": "2026年8月 台灣行事曆",
         "location": "",
         "desc": "本月台灣地區行事曆",
@@ -294,7 +305,19 @@
         "link": "https://meee.ing/a6546d",
         "order": 2,
         "createdAt": "2026-06-27T11:28:34.955Z",
-        "updatedAt": "2026-07-09T14:42:59.610Z"
+        "updatedAt": "2026-07-15T12:33:48.892Z"
+      },
+      {
+        "id": "cal-202607",
+        "date": "2026-07-04T16:00:00.000Z",
+        "title": "2026年7月 台灣行事曆",
+        "location": "",
+        "desc": "本月台灣地區行事曆",
+        "tag": "月曆",
+        "link": "https://bely.cc/PqPMTE",
+        "order": 3,
+        "createdAt": "2026-06-27T11:28:35.496Z",
+        "updatedAt": "2026-07-04T16:52:36.604Z"
       },
       {
         "id": "cal-202606",
@@ -304,7 +327,7 @@
         "desc": "本月台灣地區行事曆",
         "tag": "月曆",
         "link": "https://twgo.io/ewuub",
-        "order": 3,
+        "order": 4,
         "createdAt": "2026-06-27T11:28:35.958Z",
         "updatedAt": "2026-06-27T11:28:35.958Z"
       },
@@ -316,7 +339,7 @@
         "desc": "本月台灣地區行事曆",
         "tag": "月曆",
         "link": "https://srt.tw/SrU8SU",
-        "order": 4,
+        "order": 5,
         "createdAt": "2026-06-27T11:28:36.690Z",
         "updatedAt": "2026-06-27T11:28:36.690Z"
       },
@@ -328,7 +351,7 @@
         "desc": "本月台灣地區行事曆",
         "tag": "月曆",
         "link": "https://meee.ing/f9fbc0",
-        "order": 5,
+        "order": 6,
         "createdAt": "2026-06-27T11:28:37.363Z",
         "updatedAt": "2026-06-27T11:28:37.363Z"
       },
@@ -340,7 +363,7 @@
         "desc": "本月台灣地區行事曆",
         "tag": "月曆",
         "link": "https://twgo.io/acyei",
-        "order": 6,
+        "order": 7,
         "createdAt": "2026-06-27T11:28:38.126Z",
         "updatedAt": "2026-06-27T11:28:38.126Z"
       },
@@ -352,7 +375,7 @@
         "desc": "本月台灣地區行事曆",
         "tag": "月曆",
         "link": "https://meee.ing/b35d77",
-        "order": 7,
+        "order": 8,
         "createdAt": "2026-06-27T11:28:38.904Z",
         "updatedAt": "2026-06-27T11:28:38.904Z"
       },
@@ -364,7 +387,7 @@
         "desc": "本月台灣地區行事曆",
         "tag": "月曆",
         "link": "https://twgo.io/eeznt",
-        "order": 8,
+        "order": 9,
         "createdAt": "2026-06-27T11:28:40.107Z",
         "updatedAt": "2026-06-27T11:28:40.107Z"
       }
@@ -2330,14 +2353,54 @@
     ],
     "talks": [
       {
+        "id": "f4414ca0-897a-4cdf-9f66-0ce7cc5d25aa",
+        "title": "真如音檔",
+        "icon": "講13",
+        "desc": "914 Joyce 歡喜世界255 教化專欄 苑歌 P.54",
+        "link": "https://angewoo.github.io/41355/assets/audio/13.mp3",
+        "order": 1,
+        "createdAt": "2026-07-15T00:33:41.999Z",
+        "updatedAt": "2026-07-15T00:36:01.902Z"
+      },
+      {
+        "id": "22d74a1a-3563-42b5-8bf8-da25c5519981",
+        "title": "真如音檔",
+        "icon": "講12",
+        "desc": "914 Joyce 歡喜世界255 天音 大乘會2018年2月23日 總結談話 新井修一",
+        "link": "https://angewoo.github.io/41355/assets/audio/12.mp3",
+        "order": 2,
+        "createdAt": "2026-07-13T23:56:24.828Z",
+        "updatedAt": "2026-07-15T00:34:23.627Z"
+      },
+      {
+        "id": "7e534f69-cb36-4113-8c0d-707ecfb25039",
+        "title": "真如音檔",
+        "icon": "講11",
+        "desc": "914 Joyce 歡喜世界255 天音 大乘會2018年2月23日 P.50",
+        "link": "https://angewoo.github.io/41355/assets/audio/11.mp3",
+        "order": 3,
+        "createdAt": "2026-07-13T03:40:29.381Z",
+        "updatedAt": "2026-07-13T03:52:00.282Z"
+      },
+      {
+        "id": "3e29ddc9-fd0c-4829-8a55-641a42c9e610",
+        "title": "真如音檔",
+        "icon": "講10",
+        "desc": "914 Joyce 歡喜世界 255 2018寒修行體驗談 台灣 魏俊哲",
+        "link": "https://angewoo.github.io/41355/assets/audio/10.mp3",
+        "order": 4,
+        "createdAt": "2026-07-10T00:28:43.270Z",
+        "updatedAt": "2026-07-10T00:29:54.983Z"
+      },
+      {
         "id": "55743f86-54c5-48fa-b628-e7440c5a415a",
         "title": "真如音檔",
         "icon": "講9",
         "desc": "914 Joyce 歡喜世界254  開基八十年開基開啟前住節與聖地莊嚴",
-        "link": "https://angewoo.github.io/41355/assets/audio/02.mp3",
-        "order": 1,
+        "link": "https://angewoo.github.io/41355/assets/audio/09.mp3",
+        "order": 5,
         "createdAt": "2026-07-09T00:19:14.897Z",
-        "updatedAt": "2026-07-09T00:19:14.897Z"
+        "updatedAt": "2026-07-10T00:34:01.277Z"
       },
       {
         "id": "16043bac-e915-482c-be4e-0f492e14eb40",
@@ -2345,29 +2408,9 @@
         "icon": "講8",
         "desc": "914 Joyce 歡喜世界255  真如繼主親自介紹真澄寺",
         "link": "https://angewoo.github.io/41355/assets/audio/08.mp3",
-        "order": 2,
+        "order": 6,
         "createdAt": "2026-07-07T23:56:56.838Z",
         "updatedAt": "2026-07-07T23:57:48.749Z"
-      },
-      {
-        "id": "e47508a6-d585-4a2a-ac43-452e6c28bb1b",
-        "title": "真如開講",
-        "icon": "講2",
-        "desc": "914 Joyce  歡喜世界254 教化問答專欄 智流學院 p.48",
-        "link": "https://angewoo.github.io/41355/assets/audio/02.mp3",
-        "order": 3,
-        "createdAt": "2026-07-04T08:58:09.786Z",
-        "updatedAt": "2026-07-09T00:17:22.452Z"
-      },
-      {
-        "id": "a74df0dc-52b6-426e-be38-d8c24be5c30d",
-        "title": "真如音檔",
-        "icon": "講6",
-        "desc": "914 Joyce 歡喜世界254 真如繼主瑞教 2017年10月12日",
-        "link": "https://angewoo.github.io/41355/assets/audio/06.mp3",
-        "order": 4,
-        "createdAt": "2026-07-06T00:44:01.389Z",
-        "updatedAt": "2026-07-06T00:44:01.389Z"
       },
       {
         "id": "2fa1dde6-b53f-4280-afd9-fae0f975fb8b",
@@ -2375,49 +2418,69 @@
         "icon": "講7",
         "desc": "歡喜世界255  真如繼主瑞教 P.12",
         "link": "https://angewoo.github.io/41355/assets/audio/07.mp3",
-        "order": 5,
+        "order": 7,
         "createdAt": "2026-07-07T00:27:41.619Z",
         "updatedAt": "2026-07-07T00:27:41.619Z"
       },
       {
-        "id": "db6cf970-adcc-4a30-a296-9b32b365f2de",
-        "title": "真如開講",
-        "icon": "講3",
-        "desc": "914 Joyce  歡喜世界254 教化問答專欄 智流學院 p.54",
-        "link": "https://angewoo.github.io/41355/assets/audio/03.mp3",
-        "order": 6,
-        "createdAt": "2026-07-04T09:42:34.039Z",
-        "updatedAt": "2026-07-04T09:52:23.160Z"
-      },
-      {
-        "id": "03e9981c-570a-4da9-a565-497c0c14f8fa",
-        "title": "真如開講",
-        "icon": "講4",
-        "desc": "914 Joyce 歡喜世界255  真如教主親教  1968年3月31日",
-        "link": "https://angewoo.github.io/41355/assets/audio/04.mp3",
-        "order": 7,
-        "createdAt": "2026-07-04T14:26:50.236Z",
-        "updatedAt": "2026-07-04T14:26:50.236Z"
+        "id": "a74df0dc-52b6-426e-be38-d8c24be5c30d",
+        "title": "真如音檔",
+        "icon": "講6",
+        "desc": "914 Joyce 歡喜世界254 真如繼主瑞教 2017年10月12日",
+        "link": "https://angewoo.github.io/41355/assets/audio/06.mp3",
+        "order": 8,
+        "createdAt": "2026-07-06T00:44:01.389Z",
+        "updatedAt": "2026-07-06T00:44:01.389Z"
       },
       {
         "id": "026cd185-2e85-4c86-8f0e-fec84b63f02f",
-        "title": "真如開講",
+        "title": "真如音檔",
         "icon": "講5",
         "desc": "914 Joyce 一如之道 P 229接心與言語",
         "link": "https://angewoo.github.io/41355/assets/audio/05.mp3",
-        "order": 8,
+        "order": 9,
         "createdAt": "2026-07-05T14:50:52.800Z",
-        "updatedAt": "2026-07-05T14:50:52.800Z"
+        "updatedAt": "2026-07-10T00:35:45.059Z"
+      },
+      {
+        "id": "03e9981c-570a-4da9-a565-497c0c14f8fa",
+        "title": "真如音檔",
+        "icon": "講4",
+        "desc": "914 Joyce 歡喜世界255  真如教主親教  1968年3月31日",
+        "link": "https://angewoo.github.io/41355/assets/audio/04.mp3",
+        "order": 10,
+        "createdAt": "2026-07-04T14:26:50.236Z",
+        "updatedAt": "2026-07-10T00:35:55.682Z"
+      },
+      {
+        "id": "db6cf970-adcc-4a30-a296-9b32b365f2de",
+        "title": "真如音檔",
+        "icon": "講3",
+        "desc": "914 Joyce  歡喜世界254 教化問答專欄 智流學院 p.54",
+        "link": "https://angewoo.github.io/41355/assets/audio/03.mp3",
+        "order": 11,
+        "createdAt": "2026-07-04T09:42:34.039Z",
+        "updatedAt": "2026-07-10T00:36:11.894Z"
+      },
+      {
+        "id": "e47508a6-d585-4a2a-ac43-452e6c28bb1b",
+        "title": "真如音檔",
+        "icon": "講2",
+        "desc": "914 Joyce  歡喜世界254 教化問答專欄 智流學院 p.48",
+        "link": "https://angewoo.github.io/41355/assets/audio/02.mp3",
+        "order": 12,
+        "createdAt": "2026-07-04T08:58:09.786Z",
+        "updatedAt": "2026-07-10T00:36:30.745Z"
       },
       {
         "id": "5eb33365-9abe-4ccd-8f13-1fb78cc956f5",
-        "title": "真如開講",
+        "title": "真如音檔",
         "icon": "講1",
         "desc": "914 Joyce 歡喜世界254 教化問答專欄 智流學院 p.52",
         "link": "https://angewoo.github.io/41355/assets/audio/01.mp3",
-        "order": 9,
+        "order": 13,
         "createdAt": "2026-07-04T07:34:28.477Z",
-        "updatedAt": "2026-07-06T00:44:53.349Z"
+        "updatedAt": "2026-07-10T00:36:39.441Z"
       }
     ]
   }
