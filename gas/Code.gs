@@ -482,14 +482,17 @@ function officialLiveInfo(fresh) {
     try { return JSON.parse(cached); } catch (e) { }
   }
 
+  // 官方網站的 SSL 憑證鏈不完整，GAS 會驗證失敗，需略過憑證驗證
   var pageText = UrlFetchApp.fetch(cacheBustOfficialUrl(OFFICIAL_LIVE_PAGE), {
     muteHttpExceptions: true,
-    followRedirects: true
+    followRedirects: true,
+    validateHttpsCertificates: false
   }).getContentText('UTF-8');
   var sourceUrl = pickOfficialHomeDataUrl(pageText);
   var text = UrlFetchApp.fetch(cacheBustOfficialUrl(sourceUrl), {
     muteHttpExceptions: true,
-    followRedirects: true
+    followRedirects: true,
+    validateHttpsCertificates: false
   }).getContentText('UTF-8');
 
   var title = pickOfficialLiveTitle(text);
