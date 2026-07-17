@@ -1365,26 +1365,6 @@ html.talk-open body {
   overflow-wrap: anywhere;
 }
 .member-note[hidden] { display: none; }
-.member-note-banner {
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(212,175,104,.28);
-  background: rgba(212,175,104,.08);
-  cursor: pointer;
-}
-.member-note-banner[hidden] { display: none; }
-.member-note-banner b {
-  display: block;
-  margin: 0 0 4px;
-  color: var(--gold-300);
-  letter-spacing: .08em;
-}
-.member-note-banner p {
-  margin: 0;
-  color: var(--text);
-  line-height: 1.7;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
 .member-note-modal[hidden] { display: none; }
 .member-note-modal {
   position: fixed;
@@ -1415,34 +1395,34 @@ html.talk-open body {
   box-shadow: 0 34px 84px -36px rgba(0,0,0,.88), inset 0 1px 0 rgba(255,255,255,.18);
 }
 .member-note-modal-panel h2 {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   padding-right: 44px;
   font-family: var(--serif);
-  font-size: clamp(1.4rem, 6vw, 1.75rem);
+  font-size: clamp(1.2rem, 4.5vw, 1.4rem);
   color: var(--gold-300);
 }
 .member-note-modal-text {
   margin: 0 0 18px;
   color: var(--text);
-  font-size: 1.05rem;
-  line-height: 1.8;
+  font-size: .96rem;
+  line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .member-note-modal-ok { width: 100%; }
 .member-note-label {
   display: block;
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   color: var(--gold-300);
-  letter-spacing: .12em;
+  letter-spacing: .06em;
   font-weight: 700;
-  font-size: .78rem;
+  font-size: .84rem;
 }
 .member-note-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.member-note-text + .member-note-label { margin-top: 14px; }
+.member-note-text + .member-note-label { margin-top: 16px; }
 .member-directory {
   display: grid;
   gap: 9px;
