@@ -1251,13 +1251,11 @@
     var memberCurrent = document.getElementById('memberCurrent');
     var memberCurrentName = document.getElementById('memberCurrentName');
     var memberNote = document.getElementById('memberNote');
-    var memberNoteBanner = document.getElementById('memberNoteBanner');
-    var memberNoteBannerText = document.getElementById('memberNoteBannerText');
     var memberNoteModal = document.getElementById('memberNoteModal');
     var memberNoteModalText = document.getElementById('memberNoteModalText');
     var memberNoteModalClose = document.getElementById('memberNoteModalClose');
     var memberNoteModalOk = document.getElementById('memberNoteModalOk');
-    var NOTE_SEEN_KEY = 'shinnyo_member_note_seen';
+    var noteModalDismissed = '';
     var memberLogout = document.getElementById('memberLogout');
     var memberStatus = document.getElementById('memberStatus');
     var memberDirectory = document.getElementById('memberDirectory');
@@ -1357,18 +1355,15 @@
     function renderNoteBlocks(container, notes) {
       if (!container) return;
       container.innerHTML = '';
-      var showLabels = !!(notes.globalNote && notes.personalNote);
       [
-        { label: '全體訊息', text: notes.globalNote },
-        { label: '個人訊息', text: notes.personalNote }
+        { label: '全體訊息 : ', text: notes.globalNote },
+        { label: '個人訊息 : ', text: notes.personalNote }
       ].forEach(function (part) {
         if (!part.text) return;
-        if (showLabels) {
-          var tag = document.createElement('small');
-          tag.className = 'member-note-label';
-          tag.textContent = part.label;
-          container.appendChild(tag);
-        }
+        var tag = document.createElement('small');
+        tag.className = 'member-note-label';
+        tag.textContent = part.label;
+        container.appendChild(tag);
         var block = document.createElement('div');
         block.className = 'member-note-text';
         block.textContent = part.text;
@@ -1385,9 +1380,7 @@
       if (!memberNoteModal || memberNoteModal.hidden) return;
       memberNoteModal.hidden = true;
       var notes = currentMemberNotes();
-      if (notes.combined) {
-        try { localStorage.setItem(NOTE_SEEN_KEY, memberNoteSeenValue(notes)); } catch (e) {}
-      }
+      if (notes.combined) noteModalDismissed = memberNoteSeenValue(notes);
     }
     function updateMemberNote() {
       var notes = currentMemberNotes();
@@ -1396,17 +1389,11 @@
         memberNote.hidden = !has;
         renderNoteBlocks(memberNote, notes);
       }
-      if (memberNoteBanner) {
-        memberNoteBanner.hidden = !has;
-        if (memberNoteBannerText) memberNoteBannerText.textContent = notes.combined;
-      }
       if (memberNoteModal) {
         if (!has) {
           memberNoteModal.hidden = true;
-        } else {
-          var seen = '';
-          try { seen = localStorage.getItem(NOTE_SEEN_KEY) || ''; } catch (e) {}
-          if (seen !== memberNoteSeenValue(notes)) openMemberNoteModal(notes);
+        } else if (noteModalDismissed !== memberNoteSeenValue(notes)) {
+          openMemberNoteModal(notes);
         }
       }
     }
@@ -1579,12 +1566,6 @@
     if (memberNoteModal) {
       memberNoteModal.addEventListener('click', function (e) {
         if (e.target && e.target.classList.contains('member-note-modal-backdrop')) closeMemberNoteModal();
-      });
-    }
-    if (memberNoteBanner) {
-      memberNoteBanner.addEventListener('click', function () {
-        var notes = currentMemberNotes();
-        if (notes.combined) openMemberNoteModal(notes);
       });
     }
     document.addEventListener('keydown', function (e) {
