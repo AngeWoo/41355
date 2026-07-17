@@ -68,7 +68,7 @@ var SCHEMA = {
   },
   members: {
     sheet: '會員',
-    headers: ['id', 'name', 'dharmaName', 'email', 'mobile', 'order', 'createdAt', 'updatedAt']
+    headers: ['id', 'name', 'dharmaName', 'email', 'mobile', 'note', 'order', 'createdAt', 'updatedAt']
   }
 };
 
@@ -263,9 +263,30 @@ function doPost(e) {
     if (action === 'memberDirectory') {
       return handleMemberDirectory(body);
     }
+    if (action === 'memberProfile') {
+      return handleMemberProfile(body);
+    }
+    if (action === 'memberUpdateProfile') {
+      return handleMemberUpdateProfile(body);
+    }
+    if (action === 'memberContactAdmin') {
+      return handleMemberContactAdmin(body);
+    }
     if (action === 'adminMemberList') {
       if (!verifyToken(body.token)) return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
       return json({ ok: true, data: listRecords('members'), scope: 'all' });
+    }
+    if (action === 'getMemberGlobalNote') {
+      if (!verifyToken(body.token)) return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
+      return json({ ok: true, data: memberGlobalNote() });
+    }
+    if (action === 'setMemberGlobalNote') {
+      if (!verifyToken(body.token)) return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
+      var globalNote = String(body.note || '').trim();
+      if (globalNote.length > 2000) return json({ ok: false, error: '全員訊息不可超過 2000 字。' });
+      if (globalNote) PROP.setProperty('MEMBER_GLOBAL_NOTE', globalNote);
+      else PROP.deleteProperty('MEMBER_GLOBAL_NOTE');
+      return json({ ok: true, data: globalNote });
     }
 
     // 以下動作需驗證 token
@@ -693,11 +714,17 @@ function handleChangePassword(body) {
   });
 }
 
+function memberGlobalNote() {
+  return String(PROP.getProperty('MEMBER_GLOBAL_NOTE') || '');
+}
+
 function memberSessionData(row) {
   return {
     id: row.id || '',
     name: row.name || '',
-    dharmaName: row.dharmaName || ''
+    dharmaName: row.dharmaName || '',
+    note: String(row.note || ''),
+    globalNote: memberGlobalNote()
   };
 }
 
@@ -891,6 +918,120 @@ function handleMemberLogin(body) {
     token: createMemberToken(member),
     ttl: MEMBER_TOKEN_TTL_SECONDS
   });
+}
+
+function memberProfileData(row) {
+  return {
+    id: row.id || '',
+    name: row.name || '',
+    dharmaName: row.dharmaName || '',
+    email: row.email || '',
+    mobile: normalizeMobile(row.mobile)
+  };
+}
+
+function handleMemberProfile(body) {
+  var member = verifyMemberToken(body.token);
+  if (!member) return json({ ok: false, error: '會員登入已過期，請重新登入。' });
+  return json({ ok: true, data: memberProfileData(member) });
+}
+
+function validateMemberFields(record) {
+  var name = String(record.name || '').trim();
+  var dharmaName = String(record.dharmaName || '').trim();
+  var email = normalizeEmail(record.email);
+  var mobile = normalizeMobile(record.mobile);
+  if (!name) return { error: '請輸入姓名。' };
+  if (!dharmaName) return { error: '請輸入經名。' };
+  if (name.length > 50 || dharmaName.length > 50) return { error: '姓名與經名不可超過 50 字。' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: '請輸入有效的 Email。' };
+  if (!/^09\d{8}$/.test(mobile)) return { error: '請輸入有效的台灣手機號碼。' };
+  return { name: name, dharmaName: dharmaName, email: email, mobile: mobile };
+}
+
+function notifyMemberProfileUpdated(before, after) {
+  var adminEmail = normalizeEmail(MEMBER_NOTIFY_EMAIL);
+  if (!adminEmail) return null;
+  function diffLine(label, oldV, newV) {
+    oldV = String(oldV || '');
+    newV = String(newV || '');
+    return label + '：' + (oldV === newV ? newV : oldV + ' → ' + newV);
+  }
+  var body = [
+    '會員修改了個人資料。',
+    '',
+    diffLine('姓名', before.name, after.name),
+    diffLine('經名', before.dharmaName, after.dharmaName),
+    diffLine('Email', before.email, after.email),
+    diffLine('手機', normalizeMobile(before.mobile), normalizeMobile(after.mobile)),
+    '會員 ID：' + (after.id || ''),
+    '修改時間：' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss')
+  ].join('\n');
+  return sendMemberMail('profile-updated', {
+    to: adminEmail,
+    subject: '會員資料修改通知：' + (after.name || ''),
+    body: body
+  });
+}
+
+function handleMemberUpdateProfile(body) {
+  var member = verifyMemberToken(body.token);
+  if (!member) return json({ ok: false, error: '會員登入已過期，請重新登入。' });
+  var fields = validateMemberFields(body.record || {});
+  if (fields.error) return json({ ok: false, error: fields.error });
+  var result = withWriteLock(function () {
+    var byEmail = findMemberByEmail(fields.email);
+    if (byEmail && String(byEmail.id) !== String(member.id)) return { error: '此 Email 已被其他會員使用。' };
+    var byMobile = findMemberByMobile(fields.mobile);
+    if (byMobile && String(byMobile.id) !== String(member.id)) return { error: '此手機已被其他會員使用。' };
+    return {
+      data: updateRecord('members', {
+        id: member.id,
+        name: fields.name,
+        dharmaName: fields.dharmaName,
+        email: fields.email,
+        mobile: fields.mobile
+      })
+    };
+  });
+  if (result.error) return json({ ok: false, error: result.error });
+  notifyMemberProfileUpdated(member, result.data);
+  return jsonWithFreshCache({ ok: true, data: memberSessionData(result.data), profile: memberProfileData(result.data) });
+}
+
+function handleMemberContactAdmin(body) {
+  var member = verifyMemberToken(body.token);
+  if (!member) return json({ ok: false, error: '會員登入已過期，請重新登入。' });
+  var message = String(body.message || '').trim();
+  if (!message) return json({ ok: false, error: '請輸入訊息內容。' });
+  if (message.length > 2000) return json({ ok: false, error: '訊息不可超過 2000 字。' });
+  var adminEmail = normalizeEmail(MEMBER_NOTIFY_EMAIL);
+  if (!adminEmail) return json({ ok: false, error: '管理員信箱尚未設定，無法送出。' });
+  var cache = CacheService.getScriptCache();
+  var rateKey = 'member_contact_' + String(member.id || '');
+  if (cache.get(rateKey)) return json({ ok: false, error: '訊息送出太頻繁，請一分鐘後再試。' });
+  var memberEmail = normalizeEmail(member.email);
+  var mail = {
+    to: adminEmail,
+    subject: '會員來信：' + (member.name || '未命名會員'),
+    body: [
+      '會員透過前台「聯絡管理員」送出訊息。',
+      '',
+      '姓名：' + (member.name || ''),
+      '經名：' + (member.dharmaName || ''),
+      'Email：' + (member.email || ''),
+      '手機：' + normalizeMobile(member.mobile),
+      '時間：' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
+      '',
+      '訊息內容：',
+      message
+    ].join('\n')
+  };
+  if (memberEmail) mail.replyTo = memberEmail;
+  var result = sendMemberMail('member-contact', mail);
+  if (!result.ok) return json({ ok: false, error: '訊息寄送失敗，請稍後再試。' });
+  cache.put(rateKey, '1', 60);
+  return json({ ok: true, msg: '訊息已送出，管理員會盡快回覆。' });
 }
 
 function handleMemberDirectory(body) {
