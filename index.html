@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#0d1728" />
   <meta name="color-scheme" content="dark" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <link rel="stylesheet" href="assets/css/style.css?v=100" />
+  <link rel="stylesheet" href="assets/css/style.css?v=104" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -38,6 +38,7 @@
         <a href="#dharma">瑞聲法語</a>
         <a href="#tools">互動程式</a>
         <button type="button" class="member-nav-btn" id="memberOpen">會員登入</button>
+        <button type="button" class="member-nav-btn member-settings-nav-btn" id="memberSettingsOpen" hidden>個人設定</button>
         <a href="admin.html" class="nav-cta">後台維護</a>
       </div>
     </div>
@@ -131,10 +132,29 @@
         <span id="memberCurrentName"></span>
         <button type="button" id="memberLogout">登出</button>
       </div>
+      <div class="member-note" id="memberNote" hidden></div>
+      <div class="member-tabs member-settings-tabs" id="memberSettingsTabs" hidden>
+        <button type="button" class="active" data-member-view="directory">會員資料</button>
+        <button type="button" data-member-view="profile">修改資料</button>
+        <button type="button" data-member-view="contact">聯絡管理員</button>
+      </div>
       <section class="member-directory" id="memberDirectory" hidden aria-live="polite">
         <div class="member-directory-head"><b id="memberDirectoryTitle">會員資料</b><span id="memberDirectoryCount"></span></div>
         <div class="member-directory-list" id="memberDirectoryList"></div>
       </section>
+      <form class="member-form" id="memberProfileForm">
+        <label>姓名<input type="text" id="profileName" autocomplete="name" maxlength="50" required /></label>
+        <label>經名<input type="text" id="profileDharmaName" autocomplete="off" maxlength="50" required /></label>
+        <label>Email<input type="email" id="profileEmail" autocomplete="email" maxlength="120" required /></label>
+        <label>手機<input type="tel" id="profileMobile" autocomplete="tel" inputmode="tel" maxlength="10" pattern="09[0-9]{8}" required /></label>
+        <div class="member-hint">修改後將以新資料登入，並通知管理員。</div>
+        <button type="submit" class="btn btn-gold member-submit">儲存修改</button>
+      </form>
+      <form class="member-form" id="memberContactForm">
+        <label>給管理員的訊息<textarea id="contactMessage" rows="5" maxlength="2000" placeholder="請輸入您想告訴管理員的內容" required></textarea></label>
+        <div class="member-hint">訊息會寄到管理員信箱，管理員可直接回覆您的 Email。</div>
+        <button type="submit" class="btn btn-gold member-submit">送出訊息</button>
+      </form>
       <p class="member-status" id="memberStatus" role="status" aria-live="polite">輸入手機即可登入。</p>
       <div class="member-tabs">
         <button type="button" class="active" data-member-tab="login">登入</button>
@@ -155,7 +175,23 @@
     </section>
   </div>
 
+  <div class="member-note-modal" id="memberNoteModal" hidden>
+    <div class="member-note-modal-backdrop" aria-hidden="true"></div>
+    <section class="member-note-modal-panel" role="dialog" aria-modal="true" aria-labelledby="memberNoteModalTitle">
+      <button type="button" class="member-close" id="memberNoteModalClose" aria-label="關閉訊息視窗">×</button>
+      <h2 id="memberNoteModalTitle">給您的訊息</h2>
+      <div class="member-note-modal-text" id="memberNoteModalText"></div>
+      <button type="button" class="btn btn-gold member-note-modal-ok" id="memberNoteModalOk">我知道了</button>
+    </section>
+  </div>
+
   <main id="mainContent" tabindex="-1">
+    <div class="member-note-banner" id="memberNoteBanner" hidden>
+      <div class="container">
+        <b>給您的訊息</b>
+        <p id="memberNoteBannerText"></p>
+      </div>
+    </div>
     <!-- 首頁四大區 -->
     <section class="block" id="home">
       <div class="container">
@@ -350,7 +386,7 @@
 
   <script src="assets/js/config.js?v=5"></script>
   <script src="assets/js/seed-data.js?v=12"></script>
-  <script src="assets/js/api.js?v=29"></script>
-  <script src="assets/js/app.js?v=103"></script>
+  <script src="assets/js/api.js?v=32"></script>
+  <script src="assets/js/app.js?v=107"></script>
 </body>
 </html>
