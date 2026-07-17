@@ -1,7 +1,7 @@
 {
   "ok": true,
   "mode": "local-json",
-  "savedAt": "2026-07-17T06:11:07.759Z",
+  "savedAt": "2026-07-17T09:51:47.371Z",
   "source": "gas",
   "data": {
     "news": [
@@ -2338,17 +2338,6 @@
         "createdAt": "2026-07-04T14:41:34.785Z",
         "updatedAt": "2026-07-04T16:48:54.368Z",
         "date": "2026-01-03T16:00:00.000Z"
-      },
-      {
-        "id": "tool-quote",
-        "title": "真如拔苦代受靈訓",
-        "desc": "隨機閱讀拔苦代受相關靈訓。",
-        "link": "https://angewoo.github.io/quote/",
-        "icon": "訓",
-        "order": 5,
-        "createdAt": "2026-07-04T14:41:34.847Z",
-        "updatedAt": "2026-07-04T14:41:34.847Z",
-        "date": ""
       }
     ],
     "talks": [
