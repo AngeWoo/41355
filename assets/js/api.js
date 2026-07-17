@@ -245,7 +245,12 @@
     },
     validateMemberToken: function (token) { return post({ action: 'validateMemberToken', token: token }); },
     memberDirectory: function (token) { return post({ action: 'memberDirectory', token: token }); },
+    memberProfile: function (token) { return post({ action: 'memberProfile', token: token }); },
+    memberUpdateProfile: function (record, token) { return post({ action: 'memberUpdateProfile', record: record, token: token }); },
+    memberContactAdmin: function (message, token) { return post({ action: 'memberContactAdmin', message: message, token: token }); },
     adminMemberList: function (token) { return post({ action: 'adminMemberList', token: token }); },
+    getMemberGlobalNote: function (token) { return post({ action: 'getMemberGlobalNote', token: token }); },
+    setMemberGlobalNote: function (note, token) { return post({ action: 'setMemberGlobalNote', note: note, token: token }); },
     sendBulkMail: function (message, token) {
       message = message || {};
       return post({

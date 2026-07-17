@@ -135,10 +135,11 @@
         { k: 'name', label: '姓名', type: 'text', req: true },
         { k: 'dharmaName', label: '經名', type: 'text', req: true },
         { k: 'email', label: 'Email', type: 'text', req: true },
-        { k: 'mobile', label: '手機', type: 'text', req: true }
+        { k: 'mobile', label: '手機', type: 'text', req: true },
+        { k: 'note', label: '會員訊息（該會員登入前台後顯示）', type: 'textarea' }
       ],
       title: function (r) { return r.name; },
-      sub: function (r) { return [r.dharmaName, r.email, r.mobile].filter(Boolean).join(' · '); }
+      sub: function (r) { return [r.dharmaName, r.email, r.mobile, r.note].filter(Boolean).join(' · '); }
     }
   ];
 
@@ -414,6 +415,7 @@
       return '<section class="panel" data-type="' + c.type + '">' +
         '<div class="panel-head"><h2>' + esc(c.label) + '</h2>' +
         '<button class="btn btn-gold btn-sm" data-add="' + c.type + '">＋ 新增</button></div>' +
+        (c.type === 'members' ? globalNoteBoxHtml() : '') +
         '<div class="rec-list" id="list-' + c.type + '"><div class="empty">載入中…</div></div>' +
         '<nav class="pagination" id="pagination-' + c.type + '" aria-label="' + esc(c.label) + '分頁"></nav></section>';
     }).join('') + bulkMailPanelHtml();
@@ -423,7 +425,66 @@
     $('#panels').querySelectorAll('[data-add]').forEach(function (b) {
       b.addEventListener('click', function () { openEditor(b.dataset.add, null); });
     });
+    setupGlobalNoteBox();
     setupBulkMailPanel();
+  }
+
+  // ---------- 全員登入顯示訊息 ----------
+  function globalNoteBoxHtml() {
+    return '<div class="global-note-box" id="globalNoteBox">' +
+      '<h3>全員登入顯示訊息</h3>' +
+      '<p class="hint">所有會員登入前台後都會看到這段文字，並與各會員的「會員訊息」一起顯示；留空＝不顯示。</p>' +
+      '<textarea id="globalNoteInput" rows="3" placeholder="輸入要對全體會員顯示的訊息"></textarea>' +
+      '<div class="global-note-actions">' +
+      '<button type="button" class="btn btn-gold btn-sm" id="globalNoteSave">儲存全員訊息</button>' +
+      '<span class="global-note-status" id="globalNoteStatus"></span></div></div>';
+  }
+  function setGlobalNoteStatus(msg, isErr) {
+    var el = $('#globalNoteStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.classList.toggle('err', !!isErr);
+  }
+  function loadGlobalNote() {
+    if (!API.getMemberGlobalNote || API.isReadOnly()) return;
+    var input = $('#globalNoteInput');
+    if (!input) return;
+    setGlobalNoteStatus('讀取中…');
+    API.getMemberGlobalNote(token).then(function (res) {
+      if (res && res.ok) {
+        input.value = String(res.data || '');
+        setGlobalNoteStatus('');
+      } else {
+        setGlobalNoteStatus((res && res.error) || '全員訊息讀取失敗。', true);
+      }
+    }).catch(function () {
+      setGlobalNoteStatus('全員訊息讀取失敗，請檢查連線。', true);
+    });
+  }
+  function setupGlobalNoteBox() {
+    var saveBtn = $('#globalNoteSave');
+    if (!saveBtn) return;
+    saveBtn.addEventListener('click', function () {
+      var input = $('#globalNoteInput');
+      if (!input) return;
+      saveBtn.disabled = true;
+      setGlobalNoteStatus('儲存中…');
+      API.setMemberGlobalNote(input.value.trim(), token).then(function (res) {
+        saveBtn.disabled = false;
+        if (res && res.ok) {
+          input.value = String(res.data || '');
+          setGlobalNoteStatus('已儲存' + (res.data ? '' : '（目前為空，前台不顯示）'));
+          toast('全員訊息已儲存');
+        } else {
+          setGlobalNoteStatus((res && res.error) || '儲存失敗。', true);
+          toast((res && res.error) || '全員訊息儲存失敗', true);
+        }
+      }).catch(function () {
+        saveBtn.disabled = false;
+        setGlobalNoteStatus('儲存失敗，請檢查連線。', true);
+        toast('全員訊息儲存失敗，請檢查連線。', true);
+      });
+    });
   }
   function selectTab(type) {
     current = type;
@@ -833,7 +894,7 @@
       }
       if ((type === 'tools' || type === 'talks') && !cache[type].length) cache[type] = seedFallbackRows(type);
       renderList(type);
-      if (type === 'members') renderBulkMailRecipients();
+      if (type === 'members') { renderBulkMailRecipients(); loadGlobalNote(); }
     }).catch(function () {
       toast(byType(type).label + '讀取失敗，請檢查連線。', true);
     });
