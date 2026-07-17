@@ -1,7 +1,7 @@
 {
   "ok": true,
   "mode": "local-json",
-  "savedAt": "2026-07-16T22:52:30.900Z",
+  "savedAt": "2026-07-17T02:05:14.715Z",
   "source": "gas",
   "data": {
     "news": [
@@ -2353,14 +2353,24 @@
     ],
     "talks": [
       {
+        "id": "bdc99cb4-1850-4e2b-8837-dba90305b75f",
+        "title": "真如音檔",
+        "icon": "講15",
+        "desc": "914 Joyce 親苑時報 2026年7月 親教、瑞教",
+        "link": "https://angewoo.github.io/41355/assets/audio/15.mp3",
+        "order": 1,
+        "createdAt": "2026-07-16T23:44:50.033Z",
+        "updatedAt": "2026-07-16T23:46:13.567Z"
+      },
+      {
         "id": "04736400-c7c1-483c-a103-c9054d608ed0",
-        "title": "真如音檔 副本",
+        "title": "真如音檔",
         "icon": "講14",
         "desc": "914 Joyce 歡喜世界255 教化專欄 苑歌 P.58",
         "link": "https://angewoo.github.io/41355/assets/audio/14.mp3",
-        "order": 1,
+        "order": 2,
         "createdAt": "2026-07-16T01:01:42.700Z",
-        "updatedAt": "2026-07-16T01:02:30.375Z"
+        "updatedAt": "2026-07-16T23:44:42.548Z"
       },
       {
         "id": "f4414ca0-897a-4cdf-9f66-0ce7cc5d25aa",
@@ -2368,7 +2378,7 @@
         "icon": "講13",
         "desc": "914 Joyce 歡喜世界255 教化專欄 苑歌 P.54",
         "link": "https://angewoo.github.io/41355/assets/audio/13.mp3",
-        "order": 2,
+        "order": 3,
         "createdAt": "2026-07-15T00:33:41.999Z",
         "updatedAt": "2026-07-15T00:36:01.902Z"
       },
@@ -2378,7 +2388,7 @@
         "icon": "講12",
         "desc": "914 Joyce 歡喜世界255 天音 大乘會2018年2月23日 總結談話 新井修一",
         "link": "https://angewoo.github.io/41355/assets/audio/12.mp3",
-        "order": 3,
+        "order": 4,
         "createdAt": "2026-07-13T23:56:24.828Z",
         "updatedAt": "2026-07-15T00:34:23.627Z"
       },
@@ -2388,7 +2398,7 @@
         "icon": "講11",
         "desc": "914 Joyce 歡喜世界255 天音 大乘會2018年2月23日 P.50",
         "link": "https://angewoo.github.io/41355/assets/audio/11.mp3",
-        "order": 4,
+        "order": 5,
         "createdAt": "2026-07-13T03:40:29.381Z",
         "updatedAt": "2026-07-13T03:52:00.282Z"
       },
@@ -2398,7 +2408,7 @@
         "icon": "講10",
         "desc": "914 Joyce 歡喜世界 255 2018寒修行體驗談 台灣 魏俊哲",
         "link": "https://angewoo.github.io/41355/assets/audio/10.mp3",
-        "order": 5,
+        "order": 6,
         "createdAt": "2026-07-10T00:28:43.270Z",
         "updatedAt": "2026-07-10T00:29:54.983Z"
       },
@@ -2408,7 +2418,7 @@
         "icon": "講9",
         "desc": "914 Joyce 歡喜世界254  開基八十年開基開啟前住節與聖地莊嚴",
         "link": "https://angewoo.github.io/41355/assets/audio/09.mp3",
-        "order": 6,
+        "order": 7,
         "createdAt": "2026-07-09T00:19:14.897Z",
         "updatedAt": "2026-07-10T00:34:01.277Z"
       },
@@ -2418,7 +2428,7 @@
         "icon": "講8",
         "desc": "914 Joyce 歡喜世界255  真如繼主親自介紹真澄寺",
         "link": "https://angewoo.github.io/41355/assets/audio/08.mp3",
-        "order": 7,
+        "order": 8,
         "createdAt": "2026-07-07T23:56:56.838Z",
         "updatedAt": "2026-07-07T23:57:48.749Z"
       },
@@ -2428,7 +2438,7 @@
         "icon": "講7",
         "desc": "歡喜世界255  真如繼主瑞教 P.12",
         "link": "https://angewoo.github.io/41355/assets/audio/07.mp3",
-        "order": 8,
+        "order": 9,
         "createdAt": "2026-07-07T00:27:41.619Z",
         "updatedAt": "2026-07-07T00:27:41.619Z"
       },
@@ -2438,7 +2448,7 @@
         "icon": "講6",
         "desc": "914 Joyce 歡喜世界254 真如繼主瑞教 2017年10月12日",
         "link": "https://angewoo.github.io/41355/assets/audio/06.mp3",
-        "order": 9,
+        "order": 10,
         "createdAt": "2026-07-06T00:44:01.389Z",
         "updatedAt": "2026-07-06T00:44:01.389Z"
       },
@@ -2448,7 +2458,7 @@
         "icon": "講5",
         "desc": "914 Joyce 一如之道 P 229接心與言語",
         "link": "https://angewoo.github.io/41355/assets/audio/05.mp3",
-        "order": 10,
+        "order": 11,
         "createdAt": "2026-07-05T14:50:52.800Z",
         "updatedAt": "2026-07-10T00:35:45.059Z"
       },
@@ -2458,7 +2468,7 @@
         "icon": "講4",
         "desc": "914 Joyce 歡喜世界255  真如教主親教  1968年3月31日",
         "link": "https://angewoo.github.io/41355/assets/audio/04.mp3",
-        "order": 11,
+        "order": 12,
         "createdAt": "2026-07-04T14:26:50.236Z",
         "updatedAt": "2026-07-10T00:35:55.682Z"
       },
@@ -2468,7 +2478,7 @@
         "icon": "講3",
         "desc": "914 Joyce  歡喜世界254 教化問答專欄 智流學院 p.54",
         "link": "https://angewoo.github.io/41355/assets/audio/03.mp3",
-        "order": 12,
+        "order": 13,
         "createdAt": "2026-07-04T09:42:34.039Z",
         "updatedAt": "2026-07-10T00:36:11.894Z"
       },
@@ -2478,7 +2488,7 @@
         "icon": "講2",
         "desc": "914 Joyce  歡喜世界254 教化問答專欄 智流學院 p.48",
         "link": "https://angewoo.github.io/41355/assets/audio/02.mp3",
-        "order": 13,
+        "order": 14,
         "createdAt": "2026-07-04T08:58:09.786Z",
         "updatedAt": "2026-07-10T00:36:30.745Z"
       },
@@ -2488,7 +2498,7 @@
         "icon": "講1",
         "desc": "914 Joyce 歡喜世界254 教化問答專欄 智流學院 p.52",
         "link": "https://angewoo.github.io/41355/assets/audio/01.mp3",
-        "order": 14,
+        "order": 15,
         "createdAt": "2026-07-04T07:34:28.477Z",
         "updatedAt": "2026-07-10T00:36:39.441Z"
       }
