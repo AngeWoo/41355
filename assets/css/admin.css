@@ -645,3 +645,50 @@ html.admin-modal-open body {
 @media (max-width: 360px) {
   .rec { padding: 12px; }
 }
+
+/* 全員登入顯示訊息 */
+.global-note-box {
+  margin-bottom: 18px;
+  padding: 20px;
+  border: 1px solid rgba(212,175,104,.35);
+  border-radius: 16px;
+  background: linear-gradient(155deg, rgba(43,62,99,.58), rgba(16,29,50,.78));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+.global-note-box h3 {
+  margin: 0 0 6px;
+  color: var(--gold-300);
+  font-family: var(--serif);
+  font-size: 1.05rem;
+}
+.global-note-box .hint {
+  margin: 0 0 10px;
+  font-size: .78rem;
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+.global-note-box textarea {
+  width: 100%;
+  min-height: 84px;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 10px;
+  background: rgba(18,31,54,.72);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.6;
+}
+.global-note-box textarea:focus {
+  outline: none;
+  border-color: rgba(212,175,104,.55);
+}
+.global-note-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.global-note-status { font-size: .8rem; color: var(--text-dim); }
+.global-note-status.err { color: #f0b9b9; }

@@ -1353,6 +1353,96 @@ html.talk-open body {
   border-color: rgba(212,175,104,.58);
   color: var(--gold-300);
 }
+.member-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(212,175,104,.4);
+  border-radius: 12px;
+  background: rgba(212,175,104,.1);
+  color: var(--gold-300);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.member-note[hidden] { display: none; }
+.member-note-banner {
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(212,175,104,.28);
+  background: rgba(212,175,104,.08);
+  cursor: pointer;
+}
+.member-note-banner[hidden] { display: none; }
+.member-note-banner b {
+  display: block;
+  margin: 0 0 4px;
+  color: var(--gold-300);
+  letter-spacing: .08em;
+}
+.member-note-banner p {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.member-note-modal[hidden] { display: none; }
+.member-note-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+.member-note-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5,10,20,.66);
+  backdrop-filter: blur(5px);
+}
+.member-note-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(460px, 100%);
+  max-height: calc(100dvh - 36px);
+  padding: 26px;
+  overflow-y: auto;
+  border: 1px solid rgba(212,175,104,.45);
+  border-radius: 18px;
+  background:
+    radial-gradient(420px 190px at 20% 0%, rgba(243,217,143,.18), transparent 62%),
+    linear-gradient(155deg, rgba(58,80,126,.96), rgba(12,21,39,.98));
+  box-shadow: 0 34px 84px -36px rgba(0,0,0,.88), inset 0 1px 0 rgba(255,255,255,.18);
+}
+.member-note-modal-panel h2 {
+  margin: 0 0 12px;
+  padding-right: 44px;
+  font-family: var(--serif);
+  font-size: clamp(1.4rem, 6vw, 1.75rem);
+  color: var(--gold-300);
+}
+.member-note-modal-text {
+  margin: 0 0 18px;
+  color: var(--text);
+  font-size: 1.05rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.member-note-modal-ok { width: 100%; }
+.member-note-label {
+  display: block;
+  margin: 0 0 4px;
+  color: var(--gold-300);
+  letter-spacing: .12em;
+  font-weight: 700;
+  font-size: .78rem;
+}
+.member-note-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.member-note-text + .member-note-label { margin-top: 14px; }
 .member-directory {
   display: grid;
   gap: 9px;
@@ -1423,6 +1513,27 @@ html.talk-open body {
 }
 .member-form input::placeholder { color: rgba(216,226,242,.46); }
 .member-form input:focus {
+  outline: none;
+  border-color: var(--gold-500);
+  box-shadow: 0 0 0 3px rgba(212,175,104,.12);
+}
+.member-settings-tabs { grid-template-columns: repeat(3, 1fr); }
+.member-settings-tabs button { font-size: .92rem; }
+.member-form textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 13px 16px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 11px;
+  background: rgba(18,31,54,.72);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+.member-form textarea::placeholder { color: rgba(216,226,242,.46); }
+.member-form textarea:focus {
   outline: none;
   border-color: var(--gold-500);
   box-shadow: 0 0 0 3px rgba(212,175,104,.12);
