@@ -503,32 +503,43 @@ function officialLiveInfo(fresh) {
     try { return JSON.parse(cached); } catch (e) { }
   }
 
-  // 官方網站的 SSL 憑證鏈不完整，GAS 會驗證失敗，需略過憑證驗證
-  var pageText = UrlFetchApp.fetch(cacheBustOfficialUrl(OFFICIAL_LIVE_PAGE), {
-    muteHttpExceptions: true,
-    followRedirects: true,
-    validateHttpsCertificates: false
-  }).getContentText('UTF-8');
-  var sourceUrl = pickOfficialHomeDataUrl(pageText);
-  var text = UrlFetchApp.fetch(cacheBustOfficialUrl(sourceUrl), {
-    muteHttpExceptions: true,
-    followRedirects: true,
-    validateHttpsCertificates: false
-  }).getContentText('UTF-8');
+  try {
+    // 官方網站的 SSL 憑證鏈不完整（甚至過期），GAS 會驗證失敗，需略過憑證驗證
+    var pageText = UrlFetchApp.fetch(cacheBustOfficialUrl(OFFICIAL_LIVE_PAGE), {
+      muteHttpExceptions: true,
+      followRedirects: true,
+      validateHttpsCertificates: false
+    }).getContentText('UTF-8');
+    var sourceUrl = pickOfficialHomeDataUrl(pageText);
+    var text = UrlFetchApp.fetch(cacheBustOfficialUrl(sourceUrl), {
+      muteHttpExceptions: true,
+      followRedirects: true,
+      validateHttpsCertificates: false
+    }).getContentText('UTF-8');
 
-  var title = pickOfficialLiveTitle(text);
-  var embedUrl = pickOfficialLiveEmbedUrl(text);
-  var url = embedUrlToPublicUrl(embedUrl);
-  var data = {
-    title: title,
-    embedUrl: embedUrl,
-    url: url,
-    officialPage: OFFICIAL_LIVE_PAGE,
-    source: sourceUrl,
-    updatedAt: new Date().toISOString()
-  };
-  cache.put('official_live', JSON.stringify(data), 60);
-  return data;
+    var title = pickOfficialLiveTitle(text);
+    var embedUrl = pickOfficialLiveEmbedUrl(text);
+    if (!title || !embedUrl) throw new Error('官方頁面格式解析失敗，取不到標題或影片連結。');
+    var url = embedUrlToPublicUrl(embedUrl);
+    var data = {
+      title: title,
+      embedUrl: embedUrl,
+      url: url,
+      officialPage: OFFICIAL_LIVE_PAGE,
+      source: sourceUrl,
+      updatedAt: new Date().toISOString()
+    };
+    cache.put('official_live', JSON.stringify(data), 60);
+    PROP.setProperty('OFFICIAL_LIVE_LAST_GOOD', JSON.stringify(data));
+    return data;
+  } catch (e) {
+    // 官網暫時連不上或格式變動時，回退到上一次成功抓到的真實資料，而不是讓前台卡住 index.html 內建的舊文字
+    var lastGood = PROP.getProperty('OFFICIAL_LIVE_LAST_GOOD');
+    if (lastGood) {
+      try { return JSON.parse(lastGood); } catch (e2) { }
+    }
+    throw e;
+  }
 }
 
 function cacheBustOfficialUrl(url) {
