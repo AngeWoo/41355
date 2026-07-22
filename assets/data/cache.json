@@ -1,7 +1,7 @@
 {
   "ok": true,
   "mode": "local-json",
-  "savedAt": "2026-07-22T02:02:12.360Z",
+  "savedAt": "2026-07-22T06:23:39.048Z",
   "source": "gas",
   "data": {
     "news": [
@@ -2353,12 +2353,22 @@
     ],
     "talks": [
       {
+        "id": "66fb0555-7580-4396-95b5-a07e1e9b88b6",
+        "title": "真如音檔",
+        "icon": "講20",
+        "desc": "(Joyce聲音) 歡喜世界256 貫井正之 細說真如 即體會尊貴性",
+        "link": "https://angewoo.github.io/41355/assets/audio/20.mp3",
+        "order": 1,
+        "createdAt": "2026-07-22T05:37:53.751Z",
+        "updatedAt": "2026-07-22T05:40:06.098Z"
+      },
+      {
         "id": "69e6d82e-c011-49cf-976d-64f59116626c",
         "title": "真如音檔",
         "icon": "講19",
         "desc": "(Joyce聲音) 歡喜世界256  夏威夷放水燈20週年",
         "link": "https://angewoo.github.io/41355/assets/audio/19.mp3",
-        "order": 1,
+        "order": 2,
         "createdAt": "2026-07-21T00:08:02.369Z",
         "updatedAt": "2026-07-21T00:11:20.873Z"
       },
@@ -2368,7 +2378,7 @@
         "icon": "講18",
         "desc": "(Joyce聲音) 親苑時報 2026年7月 樹立信仰心 護摩",
         "link": "https://angewoo.github.io/41355/assets/audio/18.mp3",
-        "order": 2,
+        "order": 3,
         "createdAt": "2026-07-20T00:34:09.421Z",
         "updatedAt": "2026-07-20T02:09:05.629Z"
       },
@@ -2378,7 +2388,7 @@
         "icon": "講17",
         "desc": "(Joyce聲音) 親苑時報 2026年7月 真如雙親亞洲巡教60週年",
         "link": "https://angewoo.github.io/41355/assets/audio/17.mp3",
-        "order": 3,
+        "order": 4,
         "createdAt": "2026-07-20T00:03:29.269Z",
         "updatedAt": "2026-07-20T02:09:31.306Z"
       },
@@ -2388,7 +2398,7 @@
         "icon": "講16",
         "desc": "(Joyce聲音) 親苑時報 2026年7月 真如雙親亞洲巡教60週年",
         "link": "https://angewoo.github.io/41355/assets/audio/16.mp3",
-        "order": 4,
+        "order": 5,
         "createdAt": "2026-07-18T11:13:01.829Z",
         "updatedAt": "2026-07-20T02:09:44.406Z"
       },
@@ -2398,7 +2408,7 @@
         "icon": "講15",
         "desc": "(Joyce聲音) 親苑時報 2026年7月 親教、瑞教",
         "link": "https://angewoo.github.io/41355/assets/audio/15.mp3",
-        "order": 5,
+        "order": 6,
         "createdAt": "2026-07-16T23:44:50.033Z",
         "updatedAt": "2026-07-20T02:09:57.234Z"
       },
@@ -2408,7 +2418,7 @@
         "icon": "講14",
         "desc": "(Joyce聲音) 歡喜世界255 教化專欄 苑歌 P.58",
         "link": "https://angewoo.github.io/41355/assets/audio/14.mp3",
-        "order": 6,
+        "order": 7,
         "createdAt": "2026-07-16T01:01:42.700Z",
         "updatedAt": "2026-07-20T02:10:10.186Z"
       },
@@ -2418,7 +2428,7 @@
         "icon": "講13",
         "desc": "(Joyce聲音) 歡喜世界255 教化專欄 苑歌 P.54",
         "link": "https://angewoo.github.io/41355/assets/audio/13.mp3",
-        "order": 7,
+        "order": 8,
         "createdAt": "2026-07-15T00:33:41.999Z",
         "updatedAt": "2026-07-20T02:10:24.843Z"
       },
@@ -2428,7 +2438,7 @@
         "icon": "講12",
         "desc": "(Joyce聲音) 歡喜世界255 天音 大乘會2018年2月23日 總結談話 新井修一",
         "link": "https://angewoo.github.io/41355/assets/audio/12.mp3",
-        "order": 8,
+        "order": 9,
         "createdAt": "2026-07-13T23:56:24.828Z",
         "updatedAt": "2026-07-20T02:10:37.559Z"
       },
@@ -2438,7 +2448,7 @@
         "icon": "講11",
         "desc": "(Joyce聲音) 歡喜世界255 天音 大乘會2018年2月23日 P.50",
         "link": "https://angewoo.github.io/41355/assets/audio/11.mp3",
-        "order": 9,
+        "order": 10,
         "createdAt": "2026-07-13T03:40:29.381Z",
         "updatedAt": "2026-07-20T02:10:50.112Z"
       },
@@ -2448,7 +2458,7 @@
         "icon": "講10",
         "desc": "(Joyce聲音) 歡喜世界 255 2018寒修行體驗談 台灣 魏俊哲",
         "link": "https://angewoo.github.io/41355/assets/audio/10.mp3",
-        "order": 10,
+        "order": 11,
         "createdAt": "2026-07-10T00:28:43.270Z",
         "updatedAt": "2026-07-20T02:11:05.405Z"
       },
@@ -2458,7 +2468,7 @@
         "icon": "講9",
         "desc": "(Joyce聲音) 歡喜世界254  開基八十年開基開啟前住節與聖地莊嚴",
         "link": "https://angewoo.github.io/41355/assets/audio/09.mp3",
-        "order": 11,
+        "order": 12,
         "createdAt": "2026-07-09T00:19:14.897Z",
         "updatedAt": "2026-07-20T02:11:20.508Z"
       },
@@ -2468,7 +2478,7 @@
         "icon": "講8",
         "desc": "(Joyce聲音) 歡喜世界255  真如繼主親自介紹真澄寺",
         "link": "https://angewoo.github.io/41355/assets/audio/08.mp3",
-        "order": 12,
+        "order": 13,
         "createdAt": "2026-07-07T23:56:56.838Z",
         "updatedAt": "2026-07-20T02:11:34.036Z"
       },
@@ -2478,7 +2488,7 @@
         "icon": "講7",
         "desc": "(Joyce聲音) 歡喜世界255  真如繼主瑞教 P.12",
         "link": "https://angewoo.github.io/41355/assets/audio/07.mp3",
-        "order": 13,
+        "order": 14,
         "createdAt": "2026-07-07T00:27:41.619Z",
         "updatedAt": "2026-07-20T02:14:11.047Z"
       },
@@ -2488,7 +2498,7 @@
         "icon": "講6",
         "desc": "(Joyce聲音) 歡喜世界254 真如繼主瑞教 2017年10月12日",
         "link": "https://angewoo.github.io/41355/assets/audio/06.mp3",
-        "order": 14,
+        "order": 15,
         "createdAt": "2026-07-06T00:44:01.389Z",
         "updatedAt": "2026-07-20T02:13:44.408Z"
       },
@@ -2498,7 +2508,7 @@
         "icon": "講5",
         "desc": "(Joyce聲音) 一如之道 P 229接心與言語",
         "link": "https://angewoo.github.io/41355/assets/audio/05.mp3",
-        "order": 15,
+        "order": 16,
         "createdAt": "2026-07-05T14:50:52.800Z",
         "updatedAt": "2026-07-20T02:13:28.600Z"
       },
@@ -2508,7 +2518,7 @@
         "icon": "講4",
         "desc": "(Joyce聲音) 歡喜世界255  真如教主親教  1968年3月31日",
         "link": "https://angewoo.github.io/41355/assets/audio/04.mp3",
-        "order": 16,
+        "order": 17,
         "createdAt": "2026-07-04T14:26:50.236Z",
         "updatedAt": "2026-07-20T02:12:49.046Z"
       },
@@ -2518,7 +2528,7 @@
         "icon": "講3",
         "desc": "(Joyce聲音) 歡喜世界254 教化問答專欄 智流學院 p.54",
         "link": "https://angewoo.github.io/41355/assets/audio/03.mp3",
-        "order": 17,
+        "order": 18,
         "createdAt": "2026-07-04T09:42:34.039Z",
         "updatedAt": "2026-07-20T02:12:34.419Z"
       },
@@ -2528,7 +2538,7 @@
         "icon": "講2",
         "desc": "(Joyce聲音) 歡喜世界254 教化問答專欄 智流學院 p.48",
         "link": "https://angewoo.github.io/41355/assets/audio/02.mp3",
-        "order": 18,
+        "order": 19,
         "createdAt": "2026-07-04T08:58:09.786Z",
         "updatedAt": "2026-07-20T02:12:22.412Z"
       },
@@ -2538,7 +2548,7 @@
         "icon": "講1",
         "desc": "(Joyce聲音) 歡喜世界254 教化問答專欄 智流學院 p.52",
         "link": "https://angewoo.github.io/41355/assets/audio/01.mp3",
-        "order": 19,
+        "order": 20,
         "createdAt": "2026-07-04T07:34:28.477Z",
         "updatedAt": "2026-07-20T02:12:10.519Z"
       }
