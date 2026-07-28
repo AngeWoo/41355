@@ -1,21 +1,10 @@
 {
   "ok": true,
   "mode": "local-json",
-  "savedAt": "2026-07-28T11:52:47.535Z",
+  "savedAt": "2026-07-28T13:49:40.824Z",
   "source": "gas",
   "data": {
     "news": [
-      {
-        "id": "d26ced35-07fe-4bcb-9dee-cae15ac3f1ba",
-        "title": "回歸親苑宣傳影片",
-        "date": "2026-07-13T16:00:00.000Z",
-        "body": "回歸親苑宣傳影片第一輯, 預計播放六輯",
-        "link": "https://drive.google.com/file/d/1fpYbqF8hVuDAwRCYLniyKs1nDm452r1q/view",
-        "pinned": "",
-        "order": 1,
-        "createdAt": "2026-07-14T12:56:28.812Z",
-        "updatedAt": "2026-07-14T12:56:28.812Z"
-      },
       {
         "id": "an-2",
         "title": "2026年8月台灣行事曆已更新-0715",
