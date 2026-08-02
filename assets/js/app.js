@@ -76,9 +76,11 @@
     news: '#home',
     podcast: '#podcast',
     calendar: '#calendar',
+    japanCalendar: '#calendar',
     headquarters: '#headquarters',
     newsletter: '#newsletter',
     dharma: '#dharma',
+    iya: '#dharma',
     tools: '#tools',
     talks: '#top'
   };
@@ -86,9 +88,11 @@
     news: '最新消息',
     podcast: 'Podcast',
     calendar: '台灣行事曆',
+    japanCalendar: '日本行事曆',
     headquarters: '總部會聯絡事項',
     newsletter: '親苑時報',
     dharma: '瑞聲法語',
+    iya: '青年iYA報',
     tools: '互動程式',
     talks: '真如開講'
   };
@@ -303,7 +307,8 @@
   function coverMarkup(type, it, label) {
     var urls = [it.cover, seedCover(type, it), driveThumb(it.cover), driveThumb(it.link)];
     var fallback = '<div class="ph"><b>' + esc(label || '') + '</b><span>' + esc(it.title || '') + '</span></div>';
-    return coverImgMarkup(urls, it.title) + fallback;
+    var marker = it.link ? '<span class="cover-resolve" data-cover-link="' + esc(it.link) + '" data-cover-title="' + esc(it.title || '') + '"></span>' : '';
+    return coverImgMarkup(urls, it.title) + fallback + marker;
   }
   function pad(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
 
@@ -329,7 +334,11 @@
   function newsItem(it) {
     var more = it.link ? '<a' + linkAttr(it.link) + ' class="more-link">閱讀更多 →</a>' : '';
     var url = cardShareUrl('news', it);
+    var image = it.imageFileId
+      ? '<div class="news-card-image" data-news-image-id="' + esc(it.imageFileId) + '"><img alt="' + esc(it.imageAlt || it.title || '最新消息圖片') + '" loading="lazy" decoding="async" hidden /><span>圖片載入中…</span></div>'
+      : '';
     return '<div class="card reveal stack">' + newBadge(it) + lineShareButton('news', it, url) +
+      image +
       '<div class="item-date">' + esc(fmtDate(it.date)) + '</div>' +
       '<h3>' + esc(it.title) + '</h3>' +
       (it.body ? '<p class="muted small">' + esc(it.body) + '</p>' : '') + more + '</div>';
@@ -344,17 +353,19 @@
       '<p class="muted small">' + esc(it.desc) + '</p>' +
       '<span class="play"><span class="pbtn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>開啟收聽</span></a>';
   }
-  function calItem(it) {
-    var url = fallbackLink('calendar', it);
+  function calendarItem(type, it) {
+    var url = fallbackLink(type, it);
     var open = url ? '<a class="card reveal stack" style="text-decoration:none"' + linkAttr(url) + '>' : '<div class="card reveal stack">';
     var close = url ? '</a>' : '</div>';
     var meta = '<div class="item-date">' + esc(fmtDate(it.date)) + (it.tag ? ' <span class="tag">' + esc(it.tag) + '</span>' : '') + '</div>';
-    var shareUrl = cardShareUrl('calendar', it);
-    return open + newBadge(it) + lineShareButton('calendar', it, shareUrl) + meta + '<h3>' + esc(it.title) + '</h3>' +
+    var shareUrl = cardShareUrl(type, it);
+    return open + newBadge(it) + lineShareButton(type, it, shareUrl) + meta + '<h3>' + esc(it.title) + '</h3>' +
       (it.location ? '<div class="where"><span>' + esc(it.location) + '</span></div>' : '') +
       (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
       (url ? '<span class="more-link">查看連結 →</span>' : '') + close;
   }
+  function calItem(it) { return calendarItem('calendar', it); }
+  function japanCalItem(it) { return calendarItem('japanCalendar', it); }
   function headquartersItem(it) {
     var url = fallbackLink('headquarters', it);
     var open = url ? '<a class="card reveal stack" style="text-decoration:none"' + linkAttr(url) + '>' : '<div class="card reveal stack">';
@@ -389,6 +400,17 @@
       full +
       (dstr ? '<div class="date">' + dstr + '</div>' : '') + '</div>';
   }
+  function iyaItem(it) {
+    var issueStr = fmtDate(it.issue || it.date);
+    var url = cardShareUrl('iya', it);
+    var open = it.link ? '<a class="card paper iya-item reveal"' + linkAttr(it.link) + '>' : '<div class="card paper iya-item reveal">';
+    var close = it.link ? '</a>' : '</div>';
+    return open + newBadge(it) + lineShareButton('iya', it, url) +
+      '<div class="cover">' + coverMarkup('iya', it, it.issue || '青年iYA報') + '</div>' +
+      '<h3>' + esc(it.title) + '</h3>' +
+      (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
+      (issueStr ? '<div class="issue">' + esc(issueStr) + '</div>' : '') + close;
+  }
   function toolItem(it) {
     var date = fmtDate(it.date);
     var url = cardShareUrl('tools', it);
@@ -407,13 +429,17 @@
     { type: 'news', gridId: 'newsGrid', minW: 330, item: newsItem, empty: '目前沒有最新消息', latestFields: ['date'] },
     { type: 'podcast', gridId: 'podcastGrid', minW: 300, item: podcastItem, empty: '目前沒有 Podcast', latestFields: ['date'] },
     { type: 'calendar', gridId: 'calendarGrid', minW: 320, item: calItem, empty: '目前沒有台灣行事曆', latestFields: ['date'] },
+    { type: 'japanCalendar', gridId: 'japanCalendarGrid', minW: 320, item: japanCalItem, empty: '目前沒有日本行事曆', latestFields: ['date'] },
     { type: 'headquarters', gridId: 'headquartersGrid', minW: 320, item: headquartersItem, empty: '目前沒有總部會聯絡事項', latestFields: ['date'] },
     { type: 'newsletter', gridId: 'newsletterGrid', minW: 210, item: newsletterItem, empty: '目前沒有親苑時報', latestFields: ['date', 'issue'] },
     { type: 'dharma', gridId: 'dharmaGrid', minW: 300, item: dharmaItem, empty: '目前沒有瑞聲法語', latestFields: ['date'] },
+    { type: 'iya', gridId: 'iyaGrid', minW: 250, item: iyaItem, empty: '目前沒有青年iYA報', latestFields: ['date', 'issue'] },
     { type: 'tools', gridId: 'toolsGrid', minW: 260, maxCols: 5, item: toolItem, empty: '目前沒有互動程式', latestFields: ['date'] }
   ];
   var store = {};
   var searchReady = false;
+  var calendarTabsReady = false;
+  var dharmaTabsReady = false;
   var statTimers = {};
   var talkPage = 0;
   var talksReady = false;
@@ -429,10 +455,12 @@
     if (!q) return [];
     var defs = [
       { type: 'news', label: '最新消息', href: '#home', fields: ['title', 'body', 'date'] },
-      { type: 'calendar', label: '台灣行事曆', href: '#calendar', fields: ['title', 'desc', 'location', 'tag', 'date'] },
+      { type: 'calendar', label: '台灣行事曆', href: '#calendar', calendarType: 'calendar', fields: ['title', 'desc', 'location', 'tag', 'date'] },
+      { type: 'japanCalendar', label: '日本行事曆', href: '#calendar', calendarType: 'japanCalendar', fields: ['title', 'desc', 'location', 'tag', 'date'] },
       { type: 'headquarters', label: '總部會聯絡事項', href: '#headquarters', fields: ['title', 'body', 'category', 'date'] },
       { type: 'newsletter', label: '親苑時報', href: '#newsletter', fields: ['title', 'issue', 'date'] },
-      { type: 'dharma', label: '瑞聲法語', href: '#dharma', fields: ['title', 'content', 'category', 'date'] },
+      { type: 'dharma', label: '瑞聲法語', href: '#dharma', dharmaType: 'dharma', fields: ['title', 'content', 'category', 'date'] },
+      { type: 'iya', label: '青年iYA報', href: '#dharma', dharmaType: 'iya', fields: ['title', 'desc', 'issue', 'date'] },
       { type: 'tools', label: '互動程式', href: '#tools', fields: ['title', 'desc', 'date'] },
       { type: 'podcast', label: 'Podcast', href: '#podcast', fields: ['title', 'desc', 'guest', 'ep', 'date'] }
     ];
@@ -444,6 +472,8 @@
         rows.push({
           label: def.label,
           href: it.link || def.href,
+          calendarType: it.link ? '' : (def.calendarType || ''),
+          dharmaType: it.link ? '' : (def.dharmaType || ''),
           title: it.title || it.ep || def.label,
           body: it.body || it.desc || it.content || it.location || fmtDate(it.date || it.issue) || ''
         });
@@ -463,7 +493,7 @@
       return;
     }
     out.innerHTML = rows.map(function (r) {
-      return '<a class="search-result"' + linkAttr(r.href) + '>' +
+      return '<a class="search-result"' + linkAttr(r.href) + (r.calendarType ? ' data-calendar-type="' + esc(r.calendarType) + '"' : '') + (r.dharmaType ? ' data-dharma-type="' + esc(r.dharmaType) + '"' : '') + '>' +
         '<span class="type">' + esc(r.label) + '</span>' +
         '<b>' + esc(r.title) + '</b>' +
         (r.body ? '<p>' + esc(String(r.body).slice(0, 96)) + '</p>' : '') +
@@ -492,7 +522,14 @@
     if (close) close.addEventListener('click', closeSearch);
     pop.addEventListener('click', function (e) {
       if (e.target === pop) closeSearch();
-      if (e.target.closest && e.target.closest('.search-result')) pop.hidden = true;
+      var result = e.target.closest && e.target.closest('.search-result');
+      if (result) {
+        var calendarType = result.getAttribute('data-calendar-type');
+        if (calendarType) activateCalendarTab(calendarType, false);
+        var dharmaType = result.getAttribute('data-dharma-type');
+        if (dharmaType) activateDharmaTab(dharmaType, false);
+        pop.hidden = true;
+      }
     });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !pop.hidden) closeSearch();
@@ -503,6 +540,86 @@
     if (searchReady) return;
     searchReady = true;
     setupSearch();
+  }
+
+  function activateCalendarTab(type, focusTab) {
+    type = type === 'japanCalendar' ? 'japanCalendar' : 'calendar';
+    document.querySelectorAll('[data-calendar-tab]').forEach(function (tab) {
+      var active = tab.getAttribute('data-calendar-tab') === type;
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      tab.tabIndex = active ? 0 : -1;
+      tab.classList.toggle('active', active);
+      if (active && focusTab) tab.focus();
+    });
+    document.querySelectorAll('[data-calendar-panel]').forEach(function (panel) {
+      panel.hidden = panel.getAttribute('data-calendar-panel') !== type;
+    });
+    if (store[type]) window.requestAnimationFrame(function () { draw(type); });
+  }
+
+  function setupCalendarTabsOnce() {
+    if (calendarTabsReady) return;
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('[data-calendar-tab]'));
+    if (!tabs.length) return;
+    calendarTabsReady = true;
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        activateCalendarTab(tab.getAttribute('data-calendar-tab'), false);
+      });
+      tab.addEventListener('keydown', function (e) {
+        var currentIndex = tabs.indexOf(tab);
+        var nextIndex = currentIndex;
+        if (e.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+        else if (e.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        else if (e.key === 'Home') nextIndex = 0;
+        else if (e.key === 'End') nextIndex = tabs.length - 1;
+        else return;
+        e.preventDefault();
+        activateCalendarTab(tabs[nextIndex].getAttribute('data-calendar-tab'), true);
+      });
+    });
+    var selected = tabs.filter(function (tab) { return tab.getAttribute('aria-selected') === 'true'; })[0];
+    activateCalendarTab(selected ? selected.getAttribute('data-calendar-tab') : 'calendar', false);
+  }
+
+  function activateDharmaTab(type, focusTab) {
+    type = type === 'iya' ? 'iya' : 'dharma';
+    document.querySelectorAll('[data-dharma-tab]').forEach(function (tab) {
+      var active = tab.getAttribute('data-dharma-tab') === type;
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      tab.tabIndex = active ? 0 : -1;
+      tab.classList.toggle('active', active);
+      if (active && focusTab) tab.focus();
+    });
+    document.querySelectorAll('[data-dharma-panel]').forEach(function (panel) {
+      panel.hidden = panel.getAttribute('data-dharma-panel') !== type;
+    });
+    if (store[type]) window.requestAnimationFrame(function () { draw(type); });
+  }
+
+  function setupDharmaTabsOnce() {
+    if (dharmaTabsReady) return;
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('[data-dharma-tab]'));
+    if (!tabs.length) return;
+    dharmaTabsReady = true;
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        activateDharmaTab(tab.getAttribute('data-dharma-tab'), false);
+      });
+      tab.addEventListener('keydown', function (e) {
+        var currentIndex = tabs.indexOf(tab);
+        var nextIndex = currentIndex;
+        if (e.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+        else if (e.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        else if (e.key === 'Home') nextIndex = 0;
+        else if (e.key === 'End') nextIndex = tabs.length - 1;
+        else return;
+        e.preventDefault();
+        activateDharmaTab(tabs[nextIndex].getAttribute('data-dharma-tab'), true);
+      });
+    });
+    var selected = tabs.filter(function (tab) { return tab.getAttribute('aria-selected') === 'true'; })[0];
+    activateDharmaTab(selected ? selected.getAttribute('data-dharma-tab') : 'dharma', false);
   }
 
   function colsFor(grid, minW) {
@@ -568,6 +685,7 @@
   }
 
   var coverResolveCache = {};
+  var newsImageCache = {};
   function setCoverImage(cover, urls, title) {
     urls = uniqueUrls(urls);
     if (!cover || !urls.length) return;
@@ -609,6 +727,31 @@
     });
   }
 
+  function hydrateNewsImages(root) {
+    if (!window.API || !API.newsImage) return;
+    var member = storedMemberSession();
+    if (!member || !member.token) return;
+    root.querySelectorAll('.news-card-image[data-news-image-id]:not([data-news-image-done])').forEach(function (marker) {
+      marker.setAttribute('data-news-image-done', '1');
+      var fileId = marker.getAttribute('data-news-image-id') || '';
+      if (!fileId) return;
+      newsImageCache[fileId] = newsImageCache[fileId] || API.newsImage(fileId, member.token).catch(function () { return null; });
+      newsImageCache[fileId].then(function (res) {
+        var img = marker.querySelector('img');
+        var status = marker.querySelector('span');
+        if (!img || !res || !res.ok || !res.data || !res.data.dataUrl) {
+          marker.classList.add('is-error');
+          if (status) status.textContent = '圖片暫時無法載入';
+          return;
+        }
+        img.src = res.data.dataUrl;
+        img.hidden = false;
+        marker.classList.add('is-loaded');
+        if (status) status.remove();
+      });
+    });
+  }
+
   function draw(type, direction) {
     var s = store[type]; if (!s) return;
     var grid = s.grid, items = s.items;
@@ -644,6 +787,7 @@
     for (var i = pageItems.length; i < cols; i++) blanks += '<div class="grid-spacer" aria-hidden="true"></div>';
     grid.innerHTML = pageItems.map(s.cfg.item).join('') + blanks;
     resolveRemoteCovers(grid);
+    if (type === 'news') hydrateNewsImages(grid);
     grid.classList.remove('slide-next', 'slide-prev');
     if (direction === 'next' || direction === 'prev') {
       grid.classList.add(direction === 'next' ? 'slide-next' : 'slide-prev');
@@ -719,6 +863,8 @@
         setupSection(cfg, items);
       }
     });
+    setupCalendarTabsOnce();
+    setupDharmaTabsOnce();
     setupSearchOnce();
     updateStats(d, animateStats);
     observeReveal();
@@ -736,6 +882,7 @@
   function clearProtectedContent() {
     talksReady = false;
     coverResolveCache = {};
+    newsImageCache = {};
     try { localStorage.removeItem(DATA_CACHE_KEY); } catch (e) {}
     renderData(emptyContentData(), false);
   }
@@ -784,8 +931,8 @@
     fn('statPodcast', (d.podcast || []).length);
     fn('statNews', (d.news || []).length);
     fn('statNewsletter', (d.newsletter || []).length);
-    fn('statDharma', (d.dharma || []).length);
-    fn('statCal', (d.calendar || []).length);
+    fn('statDharma', (d.dharma || []).length + (d.iya || []).length);
+    fn('statCal', (d.calendar || []).length + (d.japanCalendar || []).length);
   }
 
   function renderTalkList() {
@@ -1177,6 +1324,7 @@
     var MEMBER_KEY = MEMBER_STORAGE_KEY;
     var LEGACY_MEMBER_KEY = 'shinnyo_member';
     var memberAuthReady = false;
+    var memberAuthChecking = false;
     var memberOpen = document.getElementById('memberOpen');
     var memberPopover = document.getElementById('memberPopover');
     var memberClose = document.getElementById('memberClose');
@@ -1224,7 +1372,10 @@
       return !!(memberAuthReady && m && m.token && m.name);
     }
     function syncMemberGate() {
-      document.documentElement.classList.toggle('member-locked', !isMemberLoggedIn());
+      var root = document.documentElement;
+      root.classList.toggle('member-auth-pending', memberAuthChecking);
+      root.classList.toggle('member-locked', !memberAuthChecking && !isMemberLoggedIn());
+      root.setAttribute('aria-busy', memberAuthChecking ? 'true' : 'false');
     }
     function saveMember(member, token) {
       var session = member && token ? {
@@ -1238,6 +1389,7 @@
       if (session) localStorage.setItem(MEMBER_KEY, JSON.stringify(session));
       else localStorage.removeItem(MEMBER_KEY);
       localStorage.removeItem(LEGACY_MEMBER_KEY);
+      memberAuthChecking = false;
       memberAuthReady = !!session;
       memberProfileLoaded = false;
       syncMemberUi();
@@ -1245,6 +1397,7 @@
     function clearMember() {
       localStorage.removeItem(MEMBER_KEY);
       localStorage.removeItem(LEGACY_MEMBER_KEY);
+      memberAuthChecking = false;
       memberAuthReady = true;
       clearMemberDirectory();
       clearProtectedContent();
@@ -1453,7 +1606,7 @@
     }
     function openMemberPopover(tab, msg) {
       if (tab && tab.type) tab = '';
-      if (!memberPopover) return;
+      if (!memberPopover || memberAuthChecking) return;
       if (memberPopover.hidden) memberReturnFocus = document.activeElement;
       var m = currentMember();
       var loggedIn = isMemberLoggedIn();
@@ -1541,6 +1694,13 @@
       return isProtectedHashLink(a) || !!a.closest('main, .hero-features, .search-results');
     }
     function promptMemberRegistration(e) {
+      if (memberAuthChecking) {
+        if (requiresMember(e.target)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        return;
+      }
       if (isMemberLoggedIn() || !requiresMember(e.target)) return;
       var link = e.target.closest && e.target.closest('a[href^="#"]');
       var section = e.target.closest && e.target.closest('main section.block');
@@ -1766,6 +1926,7 @@
     var storedMember = currentMember();
     if (storedMember && storedMember.token && API.validateMemberToken) {
       var pendingMemberToken = storedMember.token;
+      memberAuthChecking = true;
       memberAuthReady = false;
       syncMemberUi();
       API.validateMemberToken(pendingMemberToken).then(function (res) {
@@ -1775,6 +1936,7 @@
           saveMember(res.data, pendingMemberToken);
           loadProtectedContent(pendingMemberToken).then(function (loaded) {
             if (!loaded) {
+              memberAuthChecking = false;
               memberAuthReady = false;
               syncMemberUi();
               setMemberStatus('會員內容載入失敗，請稍後重試。', 'err');
@@ -1785,12 +1947,14 @@
           setMemberStatus('會員登入已過期，請重新登入。', 'err');
         }
       }).catch(function () {
+        memberAuthChecking = false;
         memberAuthReady = false;
         syncMemberUi();
         setMemberStatus('無法驗證登入狀態，請檢查網路後重試。', 'err');
       });
     } else {
       if (storedMember) localStorage.removeItem(MEMBER_KEY);
+      memberAuthChecking = false;
       memberAuthReady = true;
       syncMemberUi();
     }

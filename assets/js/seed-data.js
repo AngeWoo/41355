@@ -6,6 +6,7 @@ window.SEED_DATA = {
   headquarters: [],
   newsletter: [],
   dharma: [],
+  iya: [],
   tools: [],
   talks: [],
   members: []

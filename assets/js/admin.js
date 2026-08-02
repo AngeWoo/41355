@@ -10,6 +10,10 @@
   var MAIL_MAX_FILE_BYTES = 5 * 1024 * 1024;
   var MAIL_MAX_TOTAL_BYTES = 10 * 1024 * 1024;
   var MAIL_MAX_HTML_BYTES = 160 * 1024;
+  var NEWS_IMAGE_SOURCE_MAX_BYTES = 8 * 1024 * 1024;
+  var NEWS_IMAGE_TARGET_BYTES = 1.25 * 1024 * 1024;
+  var NEWS_IMAGE_MAX_DIMENSION = 1600;
+  var NEWS_IMAGE_TYPES = { 'image/jpeg': true, 'image/png': true, 'image/webp': true };
 
   // 各內容類型的欄位定義（須與 GAS 的 SCHEMA 對應）
   var COLLECTIONS = [
@@ -21,6 +25,7 @@
         { k: 'date', label: '日期', type: 'date', req: true },
         { k: 'body', label: '內容', type: 'textarea' },
         { k: 'link', label: '連結網址（選填）', type: 'url' },
+        { k: 'imageAlt', label: '圖片替代文字（選填）', type: 'text' },
         { k: 'pinned', label: '置頂', type: 'bool' },
         { k: 'order', label: '排序（數字越小越前）', type: 'number' }
       ],
@@ -117,6 +122,21 @@
       sub: function (r) { return [r.category, simpleDate(r.date)].filter(Boolean).join(' · '); }
     },
     {
+      type: 'iya', label: '青年iYA報',
+      icon: '<path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h8M8 17h5"/><circle cx="18" cy="6" r="2"/>',
+      fields: [
+        { k: 'issue', label: '期別（如 2026-08）', type: 'text' },
+        { k: 'title', label: '標題', type: 'text', req: true },
+        { k: 'date', label: '發行日期', type: 'date' },
+        { k: 'desc', label: '內容簡介', type: 'textarea' },
+        { k: 'link', label: 'PDF／閱讀連結', type: 'url' },
+        { k: 'cover', label: '封面縮圖網址（選填）', type: 'url' },
+        { k: 'order', label: '排序', type: 'number' }
+      ],
+      title: function (r) { return r.title; },
+      sub: function (r) { return [r.issue, simpleDate(r.date)].filter(Boolean).join(' · '); }
+    },
+    {
       type: 'tools', label: '互動程式',
       icon: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12h8M12 8v8"/>',
       fields: [
@@ -185,6 +205,8 @@
   var passwordReturnFocus = null;
   var editorInitialState = '';
   var editorFocusTimer = null;
+  var pendingNewsImagePromise = null;
+  var pendingNewsImageData = null;
   var mailAttachments = [];
   var mailInlineImages = [];
   var mailSavedRange = null;
@@ -210,6 +232,7 @@
       ['最新消息', stats.news],
       ['親苑時報', stats.newsletter],
       ['瑞聲法語', stats.dharma],
+      ['青年iYA報', stats.iya],
       ['台灣行事曆', stats.calendar],
       ['日本行事曆', stats.japanCalendar]
     ].map(function (row) {
@@ -226,6 +249,7 @@
       ['聯絡事項', latest.headquarters],
       ['親苑時報', latest.newsletter],
       ['瑞聲法語', latest.dharma],
+      ['青年iYA報', latest.iya],
       ['互動程式', latest.tools]
     ].map(function (row) {
       return row[0] + ' ' + (Number(row[1]) || 0);
@@ -678,6 +702,142 @@
     });
   }
 
+  function loadImageForResize(dataUrl) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error('無法解析這張圖片。')); };
+      img.src = dataUrl;
+    });
+  }
+
+  function canvasToJpeg(canvas, quality) {
+    return new Promise(function (resolve, reject) {
+      canvas.toBlob(function (blob) {
+        if (blob) resolve(blob);
+        else reject(new Error('瀏覽器無法處理這張圖片。'));
+      }, 'image/jpeg', quality);
+    });
+  }
+
+  function encodeNewsCanvas(canvas, quality, attempt) {
+    return canvasToJpeg(canvas, quality).then(function (blob) {
+      if (blob.size <= NEWS_IMAGE_TARGET_BYTES) return blob;
+      if (attempt >= 5 || canvas.width <= 480 || canvas.height <= 480) throw new Error('圖片壓縮後仍超過 1.5 MB，請改用較小的圖片。');
+      var ratio = Math.max(0.68, Math.min(0.86, Math.sqrt(NEWS_IMAGE_TARGET_BYTES / blob.size) * 0.94));
+      var next = document.createElement('canvas');
+      next.width = Math.max(1, Math.round(canvas.width * ratio));
+      next.height = Math.max(1, Math.round(canvas.height * ratio));
+      var ctx = next.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, next.width, next.height);
+      ctx.drawImage(canvas, 0, 0, next.width, next.height);
+      return encodeNewsCanvas(next, Math.max(0.64, quality - 0.07), attempt + 1);
+    });
+  }
+
+  function prepareNewsImage(file) {
+    if (!file || !file.size) return Promise.reject(new Error('圖片內容是空的。'));
+    var mimeType = String(file.type || '').toLowerCase();
+    if (mimeType === 'image/jpg') mimeType = 'image/jpeg';
+    if (!NEWS_IMAGE_TYPES[mimeType]) return Promise.reject(new Error('僅支援 JPG、PNG 或 WebP 圖片。'));
+    if (file.size > NEWS_IMAGE_SOURCE_MAX_BYTES) return Promise.reject(new Error('原始圖片不可超過 8 MB。'));
+
+    return readFileAsDataUrl(file).then(function (dataUrl) {
+      if (file.size <= NEWS_IMAGE_TARGET_BYTES) {
+        return { name: file.name || 'news-image', mimeType: mimeType, base64: dataUrl.split(',')[1] || '', dataUrl: dataUrl, size: file.size };
+      }
+      return loadImageForResize(dataUrl).then(function (img) {
+        var scale = Math.min(1, NEWS_IMAGE_MAX_DIMENSION / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
+        canvas.height = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        return encodeNewsCanvas(canvas, 0.84, 0);
+      }).then(function (blob) {
+        return readFileAsDataUrl(blob).then(function (compressedUrl) {
+          var name = String(file.name || 'news-image').replace(/\.(jpe?g|png|webp)$/i, '') + '.jpg';
+          return { name: name, mimeType: 'image/jpeg', base64: compressedUrl.split(',')[1] || '', dataUrl: compressedUrl, size: blob.size };
+        });
+      });
+    });
+  }
+
+  function newsImageFieldsHtml(record) {
+    var hasCurrent = !!(record && record.imageFileId);
+    return '<section class="news-image-editor" aria-labelledby="newsImageLabel">' +
+      '<div class="field"><label id="newsImageLabel" for="newsImageFile">最新消息圖片</label>' +
+      '<input type="file" id="newsImageFile" accept="image/jpeg,image/png,image/webp" />' +
+      '<div class="hint">支援 JPG、PNG、WebP；原圖最多 8 MB，系統會自動縮圖並壓縮後存入私人 Google Drive 圖庫。</div></div>' +
+      '<div class="news-image-preview-wrap" id="newsImagePreviewWrap"' + (hasCurrent ? '' : ' hidden') + '>' +
+      '<img id="newsImagePreview" alt="圖片預覽" /><span id="newsImageStatus">' + (hasCurrent ? '正在讀取現有圖片…' : '') + '</span></div>' +
+      (hasCurrent ? '<label class="news-image-remove"><input type="checkbox" id="removeNewsImage" /><span>從這則消息移除圖片<small>只會解除消息與圖片的關聯，Drive 原始檔仍會保留。</small></span></label>' : '') +
+      '</section>';
+  }
+
+  function showNewsImagePreview(dataUrl, status) {
+    var wrap = $('#newsImagePreviewWrap'), img = $('#newsImagePreview'), text = $('#newsImageStatus');
+    if (!wrap || !img || !text) return;
+    wrap.hidden = false;
+    if (dataUrl) img.src = dataUrl;
+    else img.removeAttribute('src');
+    img.hidden = !dataUrl;
+    text.textContent = status || '';
+  }
+
+  function bindNewsImageEditor(record) {
+    pendingNewsImagePromise = null;
+    pendingNewsImageData = null;
+    var input = $('#newsImageFile');
+    var remove = $('#removeNewsImage');
+    if (record && record.imageFileId && API.newsImage) {
+      API.newsImage(record.imageFileId, token).then(function (res) {
+        if (!$('#modalMask').classList.contains('open') || current !== 'news' || pendingNewsImagePromise) return;
+        if (res && res.ok && res.data && res.data.dataUrl) showNewsImagePreview(res.data.dataUrl, record.imageName || res.data.name || '目前圖片');
+        else showNewsImagePreview('', (res && res.error) || '目前圖片暫時無法讀取。');
+      }).catch(function () { showNewsImagePreview('', '目前圖片暫時無法讀取。'); });
+    }
+    if (remove) {
+      remove.addEventListener('change', function () {
+        if (remove.checked) {
+          pendingNewsImagePromise = null;
+          pendingNewsImageData = null;
+          if (input) input.value = '';
+          showNewsImagePreview('', '儲存後將從這則消息移除圖片；Drive 原始檔仍保留。');
+        }
+        else if (record && record.imageFileId) {
+          showNewsImagePreview('', '正在重新讀取現有圖片…');
+          API.newsImage(record.imageFileId, token).then(function (res) {
+            if (res && res.ok && res.data && res.data.dataUrl) showNewsImagePreview(res.data.dataUrl, record.imageName || res.data.name || '目前圖片');
+          });
+        }
+      });
+    }
+    if (!input) return;
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      pendingNewsImageData = null;
+      pendingNewsImagePromise = null;
+      if (!file) return;
+      if (remove) remove.checked = false;
+      showNewsImagePreview('', '正在處理圖片…');
+      pendingNewsImagePromise = prepareNewsImage(file).then(function (prepared) {
+        pendingNewsImageData = prepared;
+        showNewsImagePreview(prepared.dataUrl, prepared.name + ' · ' + Math.max(1, Math.round(prepared.size / 1024)) + ' KB');
+        return prepared;
+      }).catch(function (err) {
+        input.value = '';
+        pendingNewsImageData = null;
+        alertBox($('#modalAlert'), err.message || String(err), 'err');
+        showNewsImagePreview('', '圖片處理失敗，請重新選擇。');
+        return null;
+      });
+    });
+  }
+
   function mailPayloadBytes() {
     return mailAttachments.concat(mailInlineImages).reduce(function (sum, file) { return sum + (Number(file.size) || 0); }, 0);
   }
@@ -1001,6 +1161,11 @@
     c.fields.forEach(function (f) {
       if (src[f.k] !== undefined) rec[f.k] = src[f.k];
     });
+    if (type === 'news') {
+      ['imageFileId', 'imageName', 'imageMimeType'].forEach(function (key) {
+        if (src[key] !== undefined) rec[key] = src[key];
+      });
+    }
     if (rec.title !== undefined) rec.title = copyTitle(rec.title);
     else if (rec.name !== undefined) rec.name = copyTitle(rec.name);
     else if (rec.issue !== undefined) rec.issue = copyTitle(rec.issue);
@@ -1152,10 +1317,12 @@
     $('#formFields').innerHTML = c.fields.map(function (f) {
       return '<div class="field"><label for="f_' + esc(f.k) + '">' + esc(f.label) + (f.req ? ' *' : '') + '</label>' +
         fieldHtml(f, record ? record[f.k] : (f.k === 'category' && type === 'dharma' ? '瑞聲法語' : '')) + '</div>';
-    }).join('') + (canNotifyMembers(c)
+    }).join('') + (type === 'news' ? newsImageFieldsHtml(record) : '') + (canNotifyMembers(c)
       ? '<label class="notify-members-toggle"><input type="checkbox" id="notifyMembers" />' +
         '<span><b>發信通知所有會員</b><small>本次儲存後，若有連結網址，寄送新上架通知到會員 Email。</small></span></label>'
       : '');
+    if (type === 'news') bindNewsImageEditor(record);
+    else { pendingNewsImagePromise = null; pendingNewsImageData = null; }
     $('#modalMask').classList.add('open');
     $('#modalMask').setAttribute('aria-hidden', 'false');
     document.documentElement.classList.add('admin-modal-open');
@@ -1189,6 +1356,8 @@
     $('#modalMask').setAttribute('aria-hidden', 'true');
     document.documentElement.classList.remove('admin-modal-open');
     editing = null;
+    pendingNewsImagePromise = null;
+    pendingNewsImageData = null;
     editorInitialState = '';
     if (editorReturnFocus && document.contains(editorReturnFocus)) editorReturnFocus.focus();
     editorReturnFocus = null;
@@ -1206,11 +1375,39 @@
       var el = $('#f_' + f.k);
       if (el) rec[f.k] = f.type === 'url' ? el.value.trim() : el.value;
     });
+    if (current === 'news' && editing) {
+      rec.imageFileId = editing.imageFileId || '';
+      rec.imageName = editing.imageName || '';
+      rec.imageMimeType = editing.imageMimeType || '';
+    }
+    var removeNewsImage = current === 'news' && !!($('#removeNewsImage') && $('#removeNewsImage').checked);
+    if (removeNewsImage) {
+      rec.imageFileId = '';
+      rec.imageName = '';
+      rec.imageMimeType = '';
+      rec.imageAlt = '';
+    }
     var notifyMembers = !!($('#notifyMembers') && $('#notifyMembers').checked);
     if (API.isReadOnly()) { toast(API.mode === 'published' ? '唯讀模式：請在 Google 試算表編輯' : '展示模式無法儲存', true); return; }
     var btn = $('#saveBtn'); btn.disabled = true; btn.textContent = '儲存中…';
-    var op = editing && !seedFallback ? API.update(current, rec, token, { notifyMembers: notifyMembers }) : API.create(current, rec, token, { notifyMembers: notifyMembers });
-    op.then(function (res) {
+    var imageStep = Promise.resolve();
+    if (current === 'news' && pendingNewsImagePromise) {
+      btn.textContent = '處理圖片中…';
+      imageStep = pendingNewsImagePromise.then(function (prepared) {
+        if (!prepared) throw new Error('圖片尚未正確處理，請重新選擇。');
+        btn.textContent = '上傳圖片中…';
+        return API.uploadNewsImage({ name: prepared.name, mimeType: prepared.mimeType, base64: prepared.base64 }, token).then(function (upload) {
+          if (!upload || !upload.ok || !upload.data) throw new Error((upload && upload.error) || '圖片上傳失敗。');
+          rec.imageFileId = upload.data.fileId || '';
+          rec.imageName = upload.data.name || prepared.name;
+          rec.imageMimeType = upload.data.mimeType || prepared.mimeType;
+        });
+      });
+    }
+    imageStep.then(function () {
+      btn.textContent = '儲存中…';
+      return editing && !seedFallback ? API.update(current, rec, token, { notifyMembers: notifyMembers }) : API.create(current, rec, token, { notifyMembers: notifyMembers });
+    }).then(function (res) {
       btn.disabled = false; btn.textContent = '儲存';
       if (res.ok) {
         var wasEditing = !!(editing && !seedFallback);
@@ -1229,7 +1426,11 @@
         alertBox($('#modalAlert'), res.error || '儲存失敗', 'err');
         if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1500);
       }
-    }).catch(function () { btn.disabled = false; btn.textContent = '儲存'; alertBox($('#modalAlert'), '連線失敗', 'err'); });
+    }).catch(function (err) {
+      btn.disabled = false;
+      btn.textContent = '儲存';
+      alertBox($('#modalAlert'), (err && err.message) || '連線失敗', 'err');
+    });
   });
 
   function removeRecord(type, id) {

@@ -11,10 +11,10 @@
   var PUB = null;
 
   var MODE = GAS ? 'gas' : 'demo';
-  var REQUEST_TIMEOUT_MS = 15000;
+  var REQUEST_TIMEOUT_MS = 30000;
 
-  var TYPES = ['news', 'podcast', 'calendar', 'headquarters', 'newsletter', 'dharma', 'tools', 'talks'];
-  var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], headquarters: [], newsletter: [], dharma: [], tools: [], talks: [], members: [] };
+  var TYPES = ['news', 'podcast', 'calendar', 'japanCalendar', 'headquarters', 'newsletter', 'dharma', 'iya', 'tools', 'talks'];
+  var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], japanCalendar: [], headquarters: [], newsletter: [], dharma: [], iya: [], tools: [], talks: [], members: [] };
 
   function requestUrl(url, fresh) {
     if (!fresh) return url;
@@ -183,7 +183,9 @@
       news: (data.news || []).length,
       newsletter: (data.newsletter || []).length,
       dharma: (data.dharma || []).length,
-      calendar: (data.calendar || []).length
+      iya: (data.iya || []).length,
+      calendar: (data.calendar || []).length,
+      japanCalendar: (data.japanCalendar || []).length
     };
   }
 
@@ -220,6 +222,8 @@
     seedAll: seedAll,
     officialLive: officialLive,
     resolveCover: resolveCover,
+    uploadNewsImage: function (file, token) { return post({ action: 'uploadNewsImage', file: file, token: token }); },
+    newsImage: function (fileId, token) { return post({ action: 'newsImage', fileId: fileId, token: token }); },
     login: function (password, account) { return post({ action: 'login', account: account, password: password }); },
     validateToken: function (token) { return post({ action: 'validateToken', token: token }); },
     recalculateStats: recalculateStats,
