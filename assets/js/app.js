@@ -423,8 +423,8 @@
   function toolItem(it) {
     var date = fmtDate(it.date);
     var url = cardShareUrl('tools', it);
-    return '<a class="card tool-card reveal"' + linkAttr(it.link) + '>' + newBadge(it) + lineShareButton('tools', it, url) +
-      '<span class="tool-mark">' + esc(it.icon || '工具') + '</span>' +
+    return '<a class="card tool-card reveal"' + linkAttr(it.link) + '>' + lineShareButton('tools', it, url) +
+      '<span class="tool-mark">' + esc(it.icon || '工具') + '</span>' + newBadge(it) +
       (date ? '<div class="item-date">' + esc(date) + '</div>' : '') +
       '<h3>' + esc(it.title) + '</h3>' +
       (it.desc ? '<p class="muted small">' + esc(it.desc) + '</p>' : '') +
@@ -1390,11 +1390,34 @@
       var m = currentMember();
       return !!(memberAuthReady && m && m.token && m.name);
     }
+    function syncMemberLockBars(isLocked) {
+      document.querySelectorAll('main section.block').forEach(function (section) {
+        var bar = section.querySelector(':scope > .member-lock-bar');
+        if (!bar) {
+          bar = document.createElement('button');
+          bar.type = 'button';
+          bar.className = 'member-lock-bar';
+          bar.setAttribute('data-member-register', '');
+          bar.setAttribute('aria-label', '開啟會員註冊畫面');
+          bar.textContent = '會員限定｜點此註冊後觀看';
+          bar.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            pendingMemberTarget = section.id ? '#' + section.id : '';
+            openMemberPopover('register', '請先註冊會員，完成後即可觀看所有內容。');
+          });
+          section.appendChild(bar);
+        }
+        bar.hidden = !isLocked;
+      });
+    }
     function syncMemberGate() {
       var root = document.documentElement;
+      var isLocked = !memberAuthChecking && !isMemberLoggedIn();
       root.classList.toggle('member-auth-pending', memberAuthChecking);
-      root.classList.toggle('member-locked', !memberAuthChecking && !isMemberLoggedIn());
+      root.classList.toggle('member-locked', isLocked);
       root.setAttribute('aria-busy', memberAuthChecking ? 'true' : 'false');
+      syncMemberLockBars(isLocked);
     }
     function saveMember(member, token) {
       var session = member && token ? {
@@ -1705,6 +1728,7 @@
     }
     function requiresMember(target) {
       if (!target || target.closest('.member-popover') || target.closest('#memberOpen')) return false;
+      if (target.closest('.member-lock-bar')) return false;
       // 頁籤只切換同一區塊的顯示內容，不應被會員限制攔截。
       // 部分行動瀏覽器會把點擊目標回報為頁籤容器，因此一併排除 tablist。
       if (target.closest('[data-calendar-tab], [data-dharma-tab], [role="tablist"], .calendar-tabs, .dharma-tabs')) return false;
