@@ -3,6 +3,15 @@
   var CFG = window.SITE_CONFIG || {};
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var MEMBER_STORAGE_KEY = 'shinnyo_member_v2';
+  // 重新整理時不保留原本捲動位置，固定回到頁面最上方。
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  var navigationEntries = performance.getEntriesByType ? performance.getEntriesByType('navigation') : [];
+  var isPageReload = navigationEntries.length
+    ? navigationEntries[0].type === 'reload'
+    : performance.navigation && performance.navigation.type === 1;
+  if (isPageReload) {
+    window.addEventListener('load', function () { window.scrollTo(0, 0); }, { once: true });
+  }
   function storedMemberSession() {
     try { return JSON.parse(localStorage.getItem(MEMBER_STORAGE_KEY) || 'null'); } catch (e) { return null; }
   }
