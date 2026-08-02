@@ -1,25 +1,14 @@
 /**
  * 全站設定。部署 GAS 後，把 /exec 網址貼到 GAS_URL。
- * 若留空，網站會自動使用內建範例資料 (demo) 以便預覽外觀。
+ * 若留空，會員限定內容不會載入。
  */
 window.SITE_CONFIG = {
   // 例：'https://script.google.com/macros/s/AKfycb..../exec'
   // 設定後＝完整讀寫模式（前台讀取＋後台可新增/修改/刪除）。
   GAS_URL: 'https://script.google.com/macros/s/AKfycbxfKXGxGBOyZlg8cdYRD8ow6Du-C1rZVDqu6WZYpCm113VOLW6XlnsK4OmiYRZZlIxr/exec',
 
-  // 唯讀模式：直接讀取「已發布到網路」的 Google 試算表（CSV）。
-  // 只在 GAS_URL 留空時生效；此模式前台可顯示即時資料，但後台無法寫入
-  //（維護方式＝直接在 Google 試算表編輯）。
-  PUBLISHED_SHEET: {
-    base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjdz0SpM8SQ8J1CE0hL6Nrq9NN748zSdjqYBzk81PBsx7eXgQqWa-M9X_or4HbPsl6POanujjFqFlt/pub',
-    gid: {
-      news: '723478343',
-      podcast: '692613060',
-      calendar: '1512334294',
-      newsletter: '85508596',
-      dharma: '184494417'
-    }
-  },
+  // 會員限定內容不可使用公開 Google 試算表 CSV 備援。
+  PUBLISHED_SHEET: null,
 
   SITE_TITLE: '真如苑資料網站',
   SITE_SUBTITLE: '非官方資訊彙整 · Shinnyo-en Archive',

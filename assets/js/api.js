@@ -1,17 +1,16 @@
 /**
- * API 客戶端：三種資料來源模式
- *  1. gas       —— 設定了 GAS_URL：完整讀寫（前台讀、後台增刪改）。
- *  2. published —— 設定了 PUBLISHED_SHEET：直接讀「已發布」的 Google 試算表 CSV（唯讀）。
- *  3. demo      —— 兩者皆無：使用 seed-data.js 內建資料（唯讀，僅供預覽）。
+ * API 客戶端：
+ *  1. gas  —— 會員與管理員經權杖讀取，管理員可增刪改。
+ *  2. demo —— 未設定 GAS_URL，不載入會員限定內容。
  *
  * 寫入（login/create/update/delete）只有 gas 模式支援。
  */
 (function () {
   var CFG = window.SITE_CONFIG || {};
   var GAS = (CFG.GAS_URL || '').trim();
-  var PUB = CFG.PUBLISHED_SHEET && CFG.PUBLISHED_SHEET.base ? CFG.PUBLISHED_SHEET : null;
+  var PUB = null;
 
-  var MODE = GAS ? 'gas' : (PUB ? 'published' : 'demo');
+  var MODE = GAS ? 'gas' : 'demo';
   var REQUEST_TIMEOUT_MS = 15000;
 
   var TYPES = ['news', 'podcast', 'calendar', 'headquarters', 'newsletter', 'dharma', 'tools', 'talks'];
@@ -145,20 +144,18 @@
     return Promise.resolve({ ok: true, data: seedAll(), mode: 'demo' });
   }
 
-  function officialLive(fresh) {
+  function officialLive() {
     if (MODE === 'gas') {
-      var fetcher = fresh ? fetchFresh : fetchCached;
-      return fetcher(GAS + '?action=officialLive').then(responseJson);
+      return fetchCached(GAS + '?action=officialLive').then(responseJson);
     }
     return Promise.resolve({ ok: false, error: 'officialLive requires GAS mode' });
   }
 
-  function resolveCover(url) {
-    if (MODE === 'gas' && url) {
-      return fetchCached(GAS + '?action=resolveCover&url=' + encodeURIComponent(url))
-        .then(responseJson);
+  function resolveCover(url, token) {
+    if (MODE === 'gas' && url && token) {
+      return post({ action: 'resolveCover', url: url, token: token });
     }
-    return Promise.resolve({ ok: false, error: 'resolveCover requires GAS mode' });
+    return Promise.resolve({ ok: false, error: '封面解析需登入後使用。' });
   }
 
   // ---------- 寫入（僅 gas 模式）----------
@@ -239,16 +236,18 @@
     reorder: function (type, ids, token) { return post({ action: 'reorder', type: type, ids: ids, token: token }); },
     changePassword: function (oldP, newP, token) { return post({ action: 'changePassword', oldPassword: oldP, newPassword: newP, token: token }); }
     ,
-    memberRegister: function (record) { return post({ action: 'memberRegister', record: record }); },
-    memberLogin: function (mobile, legacyMobile) {
-      return post({ action: 'memberLogin', mobile: legacyMobile || mobile });
-    },
+    memberRequestRegisterCode: function (record) { return post({ action: 'memberRequestRegisterCode', record: record }); },
+    memberRegister: function (record, code) { return post({ action: 'memberRegister', record: record, code: code }); },
+    memberLogin: function (mobile) { return post({ action: 'memberLogin', mobile: mobile }); },
     validateMemberToken: function (token) { return post({ action: 'validateMemberToken', token: token }); },
+    memberContent: function (token) { return post({ action: 'memberContent', token: token }); },
     memberDirectory: function (token) { return post({ action: 'memberDirectory', token: token }); },
     memberProfile: function (token) { return post({ action: 'memberProfile', token: token }); },
     memberUpdateProfile: function (record, token) { return post({ action: 'memberUpdateProfile', record: record, token: token }); },
     memberContactAdmin: function (message, token) { return post({ action: 'memberContactAdmin', message: message, token: token }); },
     adminMemberList: function (token) { return post({ action: 'adminMemberList', token: token }); },
+    adminList: function (type, token) { return post({ action: 'adminList', type: type, token: token }); },
+    adminAll: function (token) { return post({ action: 'adminAll', token: token }); },
     getMemberGlobalNote: function (token) { return post({ action: 'getMemberGlobalNote', token: token }); },
     setMemberGlobalNote: function (note, token) { return post({ action: 'setMemberGlobalNote', note: note, token: token }); },
     sendBulkMail: function (message, token) {

@@ -2,6 +2,10 @@
 (function () {
   var CFG = window.SITE_CONFIG || {};
   var $ = function (s, r) { return (r || document).querySelector(s); };
+  var MEMBER_STORAGE_KEY = 'shinnyo_member_v2';
+  function storedMemberSession() {
+    try { return JSON.parse(localStorage.getItem(MEMBER_STORAGE_KEY) || 'null'); } catch (e) { return null; }
+  }
 
   document.getElementById('year').textContent = String(new Date().getFullYear());
   var off = document.getElementById('officialLink');
@@ -81,7 +85,7 @@
   var TYPE_LABEL = {
     news: '最新消息',
     podcast: 'Podcast',
-    calendar: '行事曆',
+    calendar: '台灣行事曆',
     headquarters: '總部會聯絡事項',
     newsletter: '親苑時報',
     dharma: '瑞聲法語',
@@ -402,7 +406,7 @@
   var SECTIONS = [
     { type: 'news', gridId: 'newsGrid', minW: 330, item: newsItem, empty: '目前沒有最新消息', latestFields: ['date'] },
     { type: 'podcast', gridId: 'podcastGrid', minW: 300, item: podcastItem, empty: '目前沒有 Podcast', latestFields: ['date'] },
-    { type: 'calendar', gridId: 'calendarGrid', minW: 320, item: calItem, empty: '目前沒有行事曆', latestFields: ['date'] },
+    { type: 'calendar', gridId: 'calendarGrid', minW: 320, item: calItem, empty: '目前沒有台灣行事曆', latestFields: ['date'] },
     { type: 'headquarters', gridId: 'headquartersGrid', minW: 320, item: headquartersItem, empty: '目前沒有總部會聯絡事項', latestFields: ['date'] },
     { type: 'newsletter', gridId: 'newsletterGrid', minW: 210, item: newsletterItem, empty: '目前沒有親苑時報', latestFields: ['date', 'issue'] },
     { type: 'dharma', gridId: 'dharmaGrid', minW: 300, item: dharmaItem, empty: '目前沒有瑞聲法語', latestFields: ['date'] },
@@ -415,7 +419,6 @@
   var talksReady = false;
   var talksLoading = false;
   var DATA_CACHE_KEY = 'shinnyo_front_data_cache_v1';
-  var DATA_CACHE_MAX_AGE = 30 * 60 * 1000;
 
   function textOf(it, fields) {
     return fields.map(function (f) { return it && it[f] ? String(it[f]) : ''; }).join(' ');
@@ -426,7 +429,7 @@
     if (!q) return [];
     var defs = [
       { type: 'news', label: '最新消息', href: '#home', fields: ['title', 'body', 'date'] },
-      { type: 'calendar', label: '行事曆', href: '#calendar', fields: ['title', 'desc', 'location', 'tag', 'date'] },
+      { type: 'calendar', label: '台灣行事曆', href: '#calendar', fields: ['title', 'desc', 'location', 'tag', 'date'] },
       { type: 'headquarters', label: '總部會聯絡事項', href: '#headquarters', fields: ['title', 'body', 'category', 'date'] },
       { type: 'newsletter', label: '親苑時報', href: '#newsletter', fields: ['title', 'issue', 'date'] },
       { type: 'dharma', label: '瑞聲法語', href: '#dharma', fields: ['title', 'content', 'category', 'date'] },
@@ -590,11 +593,13 @@
 
   function resolveRemoteCovers(root) {
     if (!window.API || !API.resolveCover) return;
+    var member = storedMemberSession();
+    if (!member || !member.token) return;
     root.querySelectorAll('.cover-resolve[data-cover-link]:not([data-cover-done])').forEach(function (marker) {
       marker.setAttribute('data-cover-done', '1');
       var link = marker.getAttribute('data-cover-link') || '';
       if (!link) return;
-      coverResolveCache[link] = coverResolveCache[link] || API.resolveCover(link).catch(function () { return null; });
+      coverResolveCache[link] = coverResolveCache[link] || API.resolveCover(link, member.token).catch(function () { return null; });
       coverResolveCache[link].then(function (res) {
         var data = res && res.data ? res.data : {};
         var coverUrl = data.cover || data.coverUrl || '';
@@ -721,113 +726,34 @@
     if (talkPopover && !talkPopover.hidden) renderTalkListAudio();
   }
 
-  function dataSignature(d) {
-    try { return JSON.stringify(d || {}); } catch (e) { return ''; }
+  function emptyContentData() {
+    var out = {};
+    SECTIONS.forEach(function (cfg) { out[cfg.type] = []; });
+    out.talks = [];
+    return out;
   }
 
-  function readCachedFrontData() {
-    try {
-      var cached = JSON.parse(localStorage.getItem(DATA_CACHE_KEY) || 'null');
-      if (!cached || !cached.data || !cached.savedAt) return null;
-      if (Object.prototype.hasOwnProperty.call(cached.data, 'members')) {
-        delete cached.data.members;
-        localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(cached));
-      }
-      if (Date.now() - Number(cached.savedAt) > DATA_CACHE_MAX_AGE) return null;
-      return cached;
-    } catch (e) {
-      return null;
-    }
+  function clearProtectedContent() {
+    talksReady = false;
+    coverResolveCache = {};
+    try { localStorage.removeItem(DATA_CACHE_KEY); } catch (e) {}
+    renderData(emptyContentData(), false);
   }
 
-  function readLocalJsonCache() {
-    return fetch('assets/data/cache.json?_ts=' + encodeURIComponent(Date.now()), { cache: 'no-cache' })
-      .then(function (r) {
-        if (!r.ok) return null;
-        return r.json();
-      })
-      .then(function (payload) {
-        if (!payload || !payload.data) return null;
-        return {
-          savedAt: payload.savedAt || Date.now(),
-          mode: payload.mode || 'local-json',
-          data: stripPrivateCollections(payload.data)
-        };
-      })
-      .catch(function () { return null; });
-  }
-
-  function writeCachedFrontData(data, mode) {
-    try {
-      localStorage.setItem(DATA_CACHE_KEY, JSON.stringify({
-        savedAt: Date.now(),
-        mode: mode || '',
-        data: stripPrivateCollections(data)
-      }));
-    } catch (e) {}
+  function loadProtectedContent(token) {
+    if (!token || !API.memberContent) return Promise.resolve(false);
+    return API.memberContent(token).then(function (res) {
+      if (!res || !res.ok || !res.data) return false;
+      talksReady = true;
+      renderData(stripPrivateCollections(res.data), true);
+      showModeBanner('<b>會員內容已安全載入</b>');
+      return true;
+    });
   }
 
   function boot() {
-    var seedData = API.seedAll ? API.seedAll() : null;
-    var cachedData = readCachedFrontData();
-    var didRender = false;
-    var renderedSignature = '';
-    function renderFallback() {
-      if (didRender || !seedData) return;
-      didRender = true;
-      renderedSignature = dataSignature(seedData);
-      renderData(seedData, true);
-      showModeBanner('<b>展示模式</b>：目前顯示內建資料');
-    }
-    if (cachedData) {
-      didRender = true;
-      renderedSignature = dataSignature(cachedData.data);
-      renderData(cachedData.data, false);
-      showModeBanner('<b>快取資料</b>：背景同步 Google 試算表中');
-    }
-
-    (cachedData ? Promise.resolve(null) : readLocalJsonCache()).then(function (localJson) {
-      if (localJson) {
-        var localSignature = dataSignature(localJson.data);
-        if (!didRender || localSignature !== renderedSignature) {
-          didRender = true;
-          renderedSignature = localSignature;
-          renderData(localJson.data, false);
-          writeCachedFrontData(localJson.data, localJson.mode);
-        }
-        showModeBanner('<b>本機 JSON 快取</b>：背景同步 Google 試算表中');
-      }
-
-      if (!API.all) {
-        renderFallback();
-        return null;
-      }
-      // 不強制 fresh=1：走 GAS 已預熱的 CacheService 快取（warmDataCache 每 2 小時
-      // 預熱一次，新增/修改/刪除會立即清快取），比每次都重讀整份試算表快很多。
-      return API.all(false);
-    }).then(function (res) {
-      if (!res) return;
-      if (!res || !res.ok) {
-        console.error(res && res.error);
-        renderFallback();
-        return;
-      }
-      writeCachedFrontData(res.data, res.mode);
-      var incomingSignature = dataSignature(res.data);
-      didRender = true;
-      talksReady = true;
-      if (incomingSignature !== renderedSignature) {
-        renderedSignature = incomingSignature;
-        renderData(res.data, !cachedData);
-      }
-      var bannerMsg = res.mode === 'published' ? '<b>資料來源：Google 試算表</b>'
-        : res.mode === 'demo' ? '<b>展示模式</b>：目前顯示內建資料'
-        : '<b>本機資料模式</b>';
-      showModeBanner(bannerMsg);
-    }).catch(function (e) {
-      console.error(e);
-      renderFallback();
-    });
+    clearProtectedContent();
+    showModeBanner('<b>會員限定</b>：登入後載入內容');
   }
 
   function setStat(id, n) {
@@ -918,19 +844,15 @@
   }
 
   function refreshTalks() {
-    if (talksLoading || !API.list) return;
+    if (talksLoading || talksReady) return;
+    var member = storedMemberSession();
+    if (!member || !member.token) return;
     talksLoading = true;
-    API.list('talks').then(function (res) {
+    loadProtectedContent(member.token).then(function () {
       talksLoading = false;
-      if (!res || !res.ok) return;
-      allData = allData || {};
-      allData.talks = res.data || [];
-      talksReady = true;
       var pop = document.getElementById('talkPopover');
       if (pop && !pop.hidden) renderTalkListAudio();
-    }).catch(function () {
-      talksLoading = false;
-    });
+    }).catch(function () { talksLoading = false; });
   }
 
   function renderTalkListAudio() {
@@ -1060,19 +982,21 @@
   var navSections = Array.prototype.slice.call(document.querySelectorAll('main section.block, header.hero, #news'));
   var navAnchors = Array.prototype.slice.call(document.querySelectorAll('.nav-links a'));
   var navUpdatePending = false;
-  function updateNavActive() {
-    nav.classList.toggle('scrolled', window.scrollY > 30);
-    var cur = '';
-    var pos = window.scrollY + 130;
-    navSections.forEach(function (s) { if (pos >= s.offsetTop) cur = s.id; });
-    if (!cur || cur === 'top') cur = 'home';
-    if (cur === 'home' && !document.querySelector('.nav-links a[href="#home"]')) cur = 'news';
+  var activeNavSection = 'news';
+  function applyNavActive(cur) {
+    if (!cur || cur === 'top' || cur === 'home') cur = 'news';
+    activeNavSection = cur;
     navAnchors.forEach(function (a) {
       var isActive = a.getAttribute('href') === '#' + cur;
       a.classList.toggle('active', isActive);
       if (isActive) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     });
+  }
+  function updateNavActive() {
+    var scrollPosition = window.scrollY;
+    nav.classList.toggle('scrolled', scrollPosition > 30);
+    applyNavActive(activeNavSection);
   }
   function scheduleNavUpdate() {
     if (navUpdatePending) return;
@@ -1085,6 +1009,14 @@
   window.addEventListener('scroll', scheduleNavUpdate, { passive: true });
   window.addEventListener('resize', scheduleNavUpdate, { passive: true });
   window.addEventListener('load', updateNavActive);
+  if ('IntersectionObserver' in window) {
+    var navObserver = new IntersectionObserver(function (entries) {
+      var visible = entries.filter(function (entry) { return entry.isIntersecting; })
+        .sort(function (a, b) { return a.boundingClientRect.top - b.boundingClientRect.top; });
+      if (visible.length) applyNavActive(visible[0].target.id);
+    }, { rootMargin: '-120px 0px -65% 0px', threshold: 0 });
+    navSections.forEach(function (section) { navObserver.observe(section); });
+  }
   updateNavActive();
 
   var ham = document.getElementById('hamburger'), navLinks = document.getElementById('navLinks');
@@ -1242,7 +1174,7 @@
   }
 
   function setupMemberAuth() {
-    var MEMBER_KEY = 'shinnyo_member_v2';
+    var MEMBER_KEY = MEMBER_STORAGE_KEY;
     var LEGACY_MEMBER_KEY = 'shinnyo_member';
     var memberAuthReady = false;
     var memberOpen = document.getElementById('memberOpen');
@@ -1266,6 +1198,8 @@
     var memberLoginForm = document.getElementById('memberLoginForm');
     var memberRegisterForm = document.getElementById('memberRegisterForm');
     var memberLoginMobile = document.getElementById('memberLoginMobile');
+    var memberRegisterCode = document.getElementById('memberRegisterCode');
+    var memberRegisterCodeRequest = document.getElementById('memberRegisterCodeRequest');
     var memberSettingsOpen = document.getElementById('memberSettingsOpen');
     var memberSettingsTabs = document.getElementById('memberSettingsTabs');
     var memberProfileForm = document.getElementById('memberProfileForm');
@@ -1283,7 +1217,7 @@
       '#tools': true
     };
     function currentMember() {
-      try { return JSON.parse(localStorage.getItem(MEMBER_KEY) || 'null'); } catch (e) { return null; }
+      return storedMemberSession();
     }
     function isMemberLoggedIn() {
       var m = currentMember();
@@ -1313,8 +1247,9 @@
       localStorage.removeItem(LEGACY_MEMBER_KEY);
       memberAuthReady = true;
       clearMemberDirectory();
+      clearProtectedContent();
       syncMemberUi();
-      setMemberStatus('已登出，請重新輸入手機。', '');
+      setMemberStatus('已登出，請重新登入。', '');
       if (memberLoginMobile) memberLoginMobile.focus();
     }
     function updateMemberButton() {
@@ -1534,7 +1469,10 @@
     }
     function closeMemberPopover() {
       if (memberPopover) memberPopover.hidden = true;
-      if (memberReturnFocus && document.contains(memberReturnFocus)) memberReturnFocus.focus();
+      var canRestore = memberReturnFocus && document.contains(memberReturnFocus) &&
+        !memberReturnFocus.closest('[inert]') && memberReturnFocus.offsetParent !== null;
+      if (canRestore) memberReturnFocus.focus();
+      if ((!canRestore || document.activeElement !== memberReturnFocus) && ham) ham.focus();
       memberReturnFocus = null;
     }
     function finishMemberEntry() {
@@ -1577,7 +1515,7 @@
       btn.addEventListener('click', function () {
         var tab = btn.getAttribute('data-member-tab');
         selectMemberTab(tab);
-        setMemberStatus(tab === 'login' ? '輸入手機即可登入。' : '請填寫會員資料。', '');
+        setMemberStatus(tab === 'login' ? '輸入手機即可登入。' : '請填寫資料並驗證 Email。', '');
         var firstInput = (tab === 'login' ? memberLoginForm : memberRegisterForm).querySelector('input');
         if (firstInput) firstInput.focus();
       });
@@ -1631,6 +1569,32 @@
       if (/^9\d{8}$/.test(mobile)) mobile = '0' + mobile;
       return mobile;
     }
+    function registrationRecord() {
+      return {
+        name: document.getElementById('memberName').value,
+        dharmaName: document.getElementById('memberDharmaName').value,
+        email: document.getElementById('memberEmail').value,
+        mobile: normalizeMemberMobileInput(document.getElementById('memberMobile').value)
+      };
+    }
+    if (memberRegisterCodeRequest) {
+      memberRegisterCodeRequest.addEventListener('click', function () {
+        var record = registrationRecord();
+        document.getElementById('memberMobile').value = record.mobile;
+        memberRegisterCodeRequest.disabled = true;
+        memberRegisterCodeRequest.textContent = '寄送中…';
+        API.memberRequestRegisterCode(record).then(function (res) {
+          memberRegisterCodeRequest.disabled = false;
+          memberRegisterCodeRequest.textContent = '重新寄送註冊驗證碼';
+          setMemberStatus(res && res.ok ? (res.msg || '驗證碼已寄出。') : ((res && res.error) || '驗證碼寄送失敗。'), res && res.ok ? 'ok' : 'err');
+          if (res && res.ok && memberRegisterCode) memberRegisterCode.focus();
+        }).catch(function () {
+          memberRegisterCodeRequest.disabled = false;
+          memberRegisterCodeRequest.textContent = '寄送註冊驗證碼';
+          setMemberStatus('連線失敗，請稍後再試。', 'err');
+        });
+      });
+    }
     if (memberLoginForm) {
       memberLoginForm.addEventListener('submit', function (e) {
         e.preventDefault();
@@ -1642,14 +1606,21 @@
           if (memberLoginMobile) memberLoginMobile.focus();
           return;
         }
-        if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = '登入中...'; }
-        setMemberStatus('登入中...', '');
+        if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = '登入中…'; }
+        setMemberStatus('登入中…', '');
         API.memberLogin(loginMobile).then(function (res) {
           if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = '會員登入'; }
           if (res.ok && res.token) {
             saveMember(res.data, res.token);
-            setMemberStatus('登入成功，歡迎 ' + res.data.name + '。', 'ok');
-            finishMemberEntry();
+            loadProtectedContent(res.token).then(function (loaded) {
+              if (!loaded) {
+                clearMember();
+                setMemberStatus('內容載入失敗，請重新登入。', 'err');
+                return;
+              }
+              setMemberStatus('登入成功，歡迎 ' + res.data.name + '。', 'ok');
+              finishMemberEntry();
+            });
           } else {
             setMemberStatus(res.error || '登入失敗。', 'err');
           }
@@ -1674,17 +1645,18 @@
         e.preventDefault();
         var registerBtn = memberRegisterForm.querySelector('button[type="submit"]');
         if (registerBtn && registerBtn.disabled) return;
-        var record = {
-          name: document.getElementById('memberName').value,
-          dharmaName: document.getElementById('memberDharmaName').value,
-          email: document.getElementById('memberEmail').value,
-          mobile: normalizeMemberMobileInput(document.getElementById('memberMobile').value)
-        };
+        var record = registrationRecord();
+        var registerCode = memberRegisterCode ? memberRegisterCode.value.replace(/\D/g, '') : '';
         document.getElementById('memberMobile').value = record.mobile;
-        if (registerBtn) { registerBtn.disabled = true; registerBtn.textContent = '註冊中...'; }
-        setMemberStatus('註冊中...', '');
-        API.memberRegister(record).then(function (res) {
-          if (registerBtn) { registerBtn.disabled = false; registerBtn.textContent = '完成註冊'; }
+        if (!/^\d{6}$/.test(registerCode)) {
+          setMemberStatus('請輸入 Email 中的六位數驗證碼。', 'err');
+          if (memberRegisterCode) memberRegisterCode.focus();
+          return;
+        }
+        if (registerBtn) { registerBtn.disabled = true; registerBtn.textContent = '驗證中…'; }
+        setMemberStatus('驗證並註冊中…', '');
+        API.memberRegister(record, registerCode).then(function (res) {
+          if (registerBtn) { registerBtn.disabled = false; registerBtn.textContent = '驗證並註冊'; }
           if (res.ok && res.token) {
             saveMember(res.data, res.token);
             var failedMail = (res.mail || []).filter(function (m) { return !m.ok; });
@@ -1700,17 +1672,22 @@
             } else {
               console.warn('會員註冊未回傳郵件通知狀態', res);
             }
-            setMemberStatus(failedMail.length
-              ? '註冊完成，但郵件通知失敗，詳細錯誤已寫入瀏覽器 console。'
-              : '註冊完成，已登入會員。', failedMail.length ? 'err' : 'ok');
-            if (!failedMail.length) {
+            loadProtectedContent(res.token).then(function (loaded) {
+              if (!loaded) {
+                clearMember();
+                setMemberStatus('註冊完成，但內容載入失敗，請重新登入。', 'err');
+                return;
+              }
+              setMemberStatus(failedMail.length
+                ? '註冊完成；管理通知信部分失敗，但會員內容已載入。'
+                : '註冊完成，已登入會員。', failedMail.length ? 'err' : 'ok');
               finishMemberEntry();
-            }
+            });
           } else {
             setMemberStatus(res.error || '註冊失敗。', 'err');
           }
         }).catch(function () {
-          if (registerBtn) { registerBtn.disabled = false; registerBtn.textContent = '完成註冊'; }
+          if (registerBtn) { registerBtn.disabled = false; registerBtn.textContent = '驗證並註冊'; }
           setMemberStatus('連線失敗，請稍後再試。', 'err');
         });
       });
@@ -1789,19 +1766,28 @@
     var storedMember = currentMember();
     if (storedMember && storedMember.token && API.validateMemberToken) {
       var pendingMemberToken = storedMember.token;
-      memberAuthReady = true; // 先信任本機已保存的 session，避免暫時性連線問題把使用者鎖在門外
+      memberAuthReady = false;
       syncMemberUi();
       API.validateMemberToken(pendingMemberToken).then(function (res) {
         var active = currentMember();
         if (!active || active.token !== pendingMemberToken) return; // 驗證期間使用者已登出或切換帳號
         if (res && res.ok && res.data) {
           saveMember(res.data, pendingMemberToken);
+          loadProtectedContent(pendingMemberToken).then(function (loaded) {
+            if (!loaded) {
+              memberAuthReady = false;
+              syncMemberUi();
+              setMemberStatus('會員內容載入失敗，請稍後重試。', 'err');
+            }
+          });
         } else if (res && res.ok === false) {
           clearMember();
           setMemberStatus('會員登入已過期，請重新登入。', 'err');
         }
       }).catch(function () {
-        // 純網路／逾時失敗，不代表 token 失效，維持現有登入狀態即可
+        memberAuthReady = false;
+        syncMemberUi();
+        setMemberStatus('無法驗證登入狀態，請檢查網路後重試。', 'err');
       });
     } else {
       if (storedMember) localStorage.removeItem(MEMBER_KEY);

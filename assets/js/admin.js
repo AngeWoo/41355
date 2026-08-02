@@ -44,8 +44,23 @@
       sub: function (r) { return [r.guest, simpleDate(r.date)].filter(Boolean).join(' · '); }
     },
     {
-      type: 'calendar', label: '行事曆',
+      type: 'calendar', label: '台灣行事曆',
       icon: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>',
+      fields: [
+        { k: 'date', label: '日期', type: 'date', req: true },
+        { k: 'title', label: '活動名稱', type: 'text', req: true },
+        { k: 'location', label: '地點', type: 'text' },
+        { k: 'tag', label: '分類（如 法會／共修／月曆）', type: 'text' },
+        { k: 'desc', label: '說明', type: 'textarea' },
+        { k: 'link', label: '連結網址（PDF／文件）', type: 'url' },
+        { k: 'order', label: '排序', type: 'number' }
+      ],
+      title: function (r) { return r.title; },
+      sub: function (r) { return [simpleDate(r.date), r.location, r.tag].filter(Boolean).join(' · '); }
+    },
+    {
+      type: 'japanCalendar', label: '日本行事曆',
+      icon: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><circle cx="17" cy="16" r="2.5"/>',
       fields: [
         { k: 'date', label: '日期', type: 'date', req: true },
         { k: 'title', label: '活動名稱', type: 'text', req: true },
@@ -195,7 +210,8 @@
       ['最新消息', stats.news],
       ['親苑時報', stats.newsletter],
       ['瑞聲法語', stats.dharma],
-      ['近期活動', stats.calendar]
+      ['台灣行事曆', stats.calendar],
+      ['日本行事曆', stats.japanCalendar]
     ].map(function (row) {
       return row[0] + ' ' + (Number(row[1]) || 0) + '+';
     }).join('、');
@@ -205,7 +221,8 @@
     return [
       ['最新消息', latest.news],
       ['PODCAST', latest.podcast],
-      ['行事曆', latest.calendar],
+      ['台灣行事曆', latest.calendar],
+      ['日本行事曆', latest.japanCalendar],
       ['聯絡事項', latest.headquarters],
       ['親苑時報', latest.newsletter],
       ['瑞聲法語', latest.dharma],
@@ -870,7 +887,9 @@
     });
   }
   function loadType(type) {
-    var request = type === 'members' && API.adminMemberList ? API.adminMemberList(token) : API.list(type);
+    var request = type === 'members' && API.adminMemberList
+      ? API.adminMemberList(token)
+      : API.adminList(type, token);
     request.then(function (res) {
       if (!res.ok) {
         if ((type === 'tools' || type === 'talks') && window.SEED_DATA && window.SEED_DATA[type]) {
@@ -1238,6 +1257,7 @@
     passwordReturnFocus = document.activeElement;
     alertBox($('#pwdAlert'), '', '');
     $('#pwdForm').reset();
+    if ($('#pwdAccount')) $('#pwdAccount').value = ($('#adminAccount') && $('#adminAccount').value.trim()) || savedAccount || 'admin';
     document.querySelectorAll('#pwdForm [data-toggle-password]').forEach(function (btn) {
       setPasswordVisible($('#' + btn.getAttribute('data-toggle-password')), false, btn);
     });
