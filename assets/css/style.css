@@ -873,6 +873,33 @@ section.block {
 .news-date span { font-size: .72rem; color: var(--text-dim); }
 .news-body h3 { font-size: 1.08rem; margin-bottom: 6px; }
 .news-body p { color: var(--text-soft); font-size: .92rem; }
+.news-card-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 13px;
+  background: linear-gradient(135deg, rgba(212,175,104,.12), rgba(255,255,255,.05));
+  display: grid;
+  place-items: center;
+}
+.news-card-image img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.news-card-image img[hidden] { display: none; }
+.news-card-image span {
+  color: var(--text-dim);
+  font-size: .76rem;
+}
+.news-card-image.is-error {
+  aspect-ratio: auto;
+  min-height: 52px;
+}
 /* Podcast */
 .pod { display: flex; flex-direction: column; }
 .pod,
@@ -886,6 +913,51 @@ section.block {
 .pod .play svg { width: 14px; height: 14px; fill: var(--gold-300); }
 
 /* 行事曆 */
+.calendar-tabs,
+.dharma-tabs {
+  width: min(100%, 460px);
+  margin: 0 auto 18px;
+  padding: 5px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 14px;
+  background: rgba(12,24,43,.68);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07);
+}
+.calendar-tabs button,
+.dharma-tabs button {
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-soft);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  transition: color .2s, background .2s, border-color .2s, box-shadow .2s;
+}
+.calendar-tabs button:hover,
+.calendar-tabs button:focus-visible,
+.dharma-tabs button:hover,
+.dharma-tabs button:focus-visible {
+  color: var(--gold-300);
+  border-color: rgba(212,175,104,.34);
+  outline: none;
+}
+.calendar-tabs button[aria-selected="true"],
+.dharma-tabs button[aria-selected="true"] {
+  color: #fff4cf;
+  border-color: rgba(212,175,104,.5);
+  background: linear-gradient(145deg, rgba(212,175,104,.24), rgba(212,175,104,.1));
+  box-shadow: 0 8px 22px -14px rgba(226,189,97,.72), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.calendar-panel,
+.dharma-panel { width: 100%; }
+.calendar-panel[hidden],
+.dharma-panel[hidden] { display: none; }
 .cal-item { display: flex; align-items: center; gap: 18px; }
 .cal-chip {
   flex: 0 0 70px; height: 70px; border-radius: 14px; display: grid; place-items: center; text-align: center;
@@ -904,6 +976,7 @@ section.block {
 /* 親苑時報 */
 .paper { display: flex; flex-direction: column; }
 .paper { min-height: 100%; }
+.iya-item .muted.small { margin: 8px 0 12px; }
 .paper .cover {
   aspect-ratio: 3/4; border-radius: var(--radius-sm); margin-bottom: 16px; overflow: hidden;
   background: linear-gradient(160deg, #30446c, #172641);
@@ -911,7 +984,7 @@ section.block {
   container-type: inline-size;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 14px 24px -18px rgba(0,0,0,.75);
 }
-.paper .cover img { width: 100%; height: 100%; object-fit: cover; }
+.paper .cover img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
 .paper .cover img + .ph { display: none; }
 .paper .cover.no-thumb .ph { display: block; }
 .paper .cover.no-thumb {
@@ -1015,7 +1088,7 @@ section.block {
   border: 1px solid rgba(255,255,255,.14);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 14px 24px -18px rgba(0,0,0,.75);
 }
-.dharma-cover img { width: 100%; height: 100%; object-fit: cover; }
+.dharma-cover img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
 .dharma-cover img + .ph { display: none; }
 .dharma-cover.no-thumb .ph { display: block; }
 .dharma-cover .ph { font-family: var(--serif); color: var(--gold-400); text-align: center; padding: 16px; }
@@ -1473,6 +1546,17 @@ html.talk-open body {
 }
 .member-form { display: none; gap: 12px; }
 .member-form.active { display: grid; }
+.member-register-notice {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(212,175,104,.44);
+  border-radius: 11px;
+  background: rgba(212,175,104,.10);
+  color: #ffe5a0;
+  font-size: .9rem;
+  line-height: 1.65;
+  text-align: left;
+}
 .member-form label {
   display: grid;
   gap: 6px;
@@ -2212,7 +2296,11 @@ html.talk-open body {
     margin-right: calc(50% - 50vw + 10px);
   }
   main section.block > .container > .grid,
-  main section.block > .container > .pager {
+  main section.block > .container > .pager,
+  main section.block .calendar-panel > .grid,
+  main section.block .calendar-panel > .pager,
+  main section.block .dharma-panel > .grid,
+  main section.block .dharma-panel > .pager {
     width: calc(100vw - 20px);
     margin-left: calc(50% - 50vw + 10px);
     margin-right: calc(50% - 50vw + 10px);
