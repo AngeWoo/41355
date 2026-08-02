@@ -1492,6 +1492,11 @@ html.talk-open body {
   font-size: 1.05rem;
 }
 .member-form input::placeholder { color: rgba(216,226,242,.46); }
+.member-form input[readonly] {
+  color: var(--text-dim);
+  background: rgba(18,31,54,.42);
+  cursor: not-allowed;
+}
 .member-form input:focus {
   outline: none;
   border-color: var(--gold-500);
@@ -1539,6 +1544,10 @@ html.talk-open body {
 .member-form .member-submit:disabled {
   opacity: .72;
   cursor: wait;
+}
+.member-form .member-code-request {
+  justify-self: stretch;
+  min-height: 44px;
 }
 @media (max-width: 640px) {
   .talk-popover {
