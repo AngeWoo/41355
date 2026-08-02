@@ -31,6 +31,9 @@ var MEMBER_OTP_MAX_ATTEMPTS = 5;
 var MEMBER_OTP_GLOBAL_MAX_PER_WINDOW = 20;
 var LOGIN_RATE_WINDOW_SECONDS = 60 * 10;
 var LOGIN_RATE_MAX_FAILURES = 5;
+var NEWS_IMAGE_FOLDER_NAME = '真如苑資料網站 — 圖庫';
+var NEWS_IMAGE_MAX_BYTES = 1.5 * 1024 * 1024;
+var NEWS_IMAGE_ALLOWED_MIME = { 'image/jpeg': true, 'image/png': true, 'image/webp': true };
 var OFFICIAL_LIVE_PAGE = 'https://www.shinnyo-en.org.tw/at2026/index2026.html';
 var PROP = PropertiesService.getScriptProperties();
 
@@ -39,7 +42,7 @@ var PROP = PropertiesService.getScriptProperties();
 var SCHEMA = {
   news: {
     sheet: '最新消息',
-    headers: ['id', 'title', 'date', 'body', 'link', 'pinned', 'order', 'createdAt', 'updatedAt']
+    headers: ['id', 'title', 'date', 'body', 'link', 'imageFileId', 'imageName', 'imageMimeType', 'imageAlt', 'pinned', 'order', 'createdAt', 'updatedAt']
   },
   podcast: {
     sheet: 'Podcast',
@@ -64,6 +67,10 @@ var SCHEMA = {
   dharma: {
     sheet: '瑞聲法語',
     headers: ['id', 'title', 'category', 'date', 'content', 'link', 'cover', 'order', 'createdAt', 'updatedAt']
+  },
+  iya: {
+    sheet: '青年iYA報',
+    headers: ['id', 'issue', 'title', 'date', 'desc', 'link', 'cover', 'order', 'createdAt', 'updatedAt']
   },
   tools: {
     sheet: '互動程式',
@@ -172,8 +179,14 @@ function ensureSheet(ss, def) {
 function migrateLegacyCalendarSheet(ss) {
   var targetName = SCHEMA.calendar.sheet;
   var target = ss.getSheetByName(targetName);
-  if (target) return target;
   var legacy = ss.getSheetByName('行事曆');
+  if (target) {
+    // 部署切換期間舊版可能重新建立只有標題列的空白分頁；確認無資料才移除。
+    if (legacy && legacy.getLastRow() <= 1 && ss.getSheets().length > 1) {
+      ss.deleteSheet(legacy);
+    }
+    return target;
+  }
   if (legacy) {
     legacy.setName(targetName);
     return legacy;
@@ -188,6 +201,13 @@ function setupRegionalCalendars() {
   ensureSheet(ss, SCHEMA.japanCalendar);
   clearDataCache();
   return '已完成：台灣行事曆保留既有資料，日本行事曆分頁已建立。';
+}
+
+function setupYouthIya() {
+  var ss = getSpreadsheet();
+  ensureSheet(ss, SCHEMA.iya);
+  clearDataCache();
+  return '已建立或確認「青年iYA報」分頁。';
 }
 
 function syncHeaders(sh, expectedHeaders) {
@@ -307,6 +327,15 @@ function doPost(e) {
     if (action === 'memberContent') {
       return handleMemberContent(body);
     }
+    if (action === 'newsImage') {
+      if (!verifyToken(body.token) && !verifyMemberToken(body.token)) {
+        return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
+      }
+      if (!consumeRateLimit('news_image_read_' + sha256(String(body.token)).slice(0, 32), 80, 600)) {
+        return json({ ok: false, error: '圖片讀取請求過多，請稍後再試。' });
+      }
+      return json(handleNewsImage(body));
+    }
     if (action === 'memberProfile') {
       return handleMemberProfile(body);
     }
@@ -350,6 +379,13 @@ function doPost(e) {
       else PROP.deleteProperty('MEMBER_GLOBAL_NOTE');
       return json({ ok: true, data: globalNote });
     }
+    if (action === 'uploadNewsImage') {
+      if (!verifyToken(body.token)) return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
+      if (!consumeRateLimit('news_image_upload_' + sha256(String(body.token)).slice(0, 32), 20, 600)) {
+        return json({ ok: false, error: '圖片上傳過於頻繁，請稍後再試。' });
+      }
+      return json(handleUploadNewsImage(body));
+    }
 
     // 以下動作需驗證 token
     var mutating = ['create', 'update', 'delete', 'reorder', 'changePassword', 'recalculateStats', 'recalculateLatest', 'sendBulkMail'];
@@ -387,6 +423,155 @@ function doPost(e) {
   } catch (err) {
     console.error('doPost failed: ' + err);
     return json({ ok: false, error: '服務暫時無法處理請求。' });
+  }
+}
+
+// ====================== 最新消息圖片 ======================
+function newsImageFolder() {
+  var storedId = String(PROP.getProperty('NEWS_IMAGE_FOLDER_ID') || '').trim();
+  if (storedId) {
+    try {
+      var storedFolder = DriveApp.getFolderById(storedId);
+      if (!storedFolder.isTrashed() && storedFolder.getName() === NEWS_IMAGE_FOLDER_NAME) return storedFolder;
+    } catch (storedErr) {
+      console.warn('Stored news image folder is unavailable: ' + storedErr);
+    }
+    PROP.deleteProperty('NEWS_IMAGE_FOLDER_ID');
+  }
+
+  var matches = DriveApp.getFoldersByName(NEWS_IMAGE_FOLDER_NAME);
+  var folder = null;
+  var count = 0;
+  while (matches.hasNext() && count < 2) {
+    folder = matches.next();
+    if (!folder.isTrashed()) count++;
+  }
+  if (!count) throw new Error('找不到 Google Drive 資料夾「' + NEWS_IMAGE_FOLDER_NAME + '」。');
+  if (count > 1) throw new Error('找到多個同名圖庫，請刪除重複資料夾，或在 Script Properties 設定 NEWS_IMAGE_FOLDER_ID。');
+  PROP.setProperty('NEWS_IMAGE_FOLDER_ID', folder.getId());
+  return folder;
+}
+
+function setupNewsImageFolder() {
+  var folder = newsImageFolder();
+  return '最新消息圖庫已連線：' + folder.getName() + '（' + folder.getId() + '）';
+}
+
+function safeNewsImageFileName(name, mimeType) {
+  var ext = mimeType === 'image/png' ? '.png' : (mimeType === 'image/webp' ? '.webp' : '.jpg');
+  var cleaned = String(name || 'news-image' + ext)
+    .replace(/[\\\/\x00-\x1f\x7f]+/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) cleaned = 'news-image' + ext;
+  if (!/\.(jpe?g|png|webp)$/i.test(cleaned)) cleaned += ext;
+  return cleaned.slice(0, 120);
+}
+
+function unsignedByte(value) {
+  return Number(value) & 255;
+}
+
+function validNewsImageBytes(bytes, mimeType) {
+  if (!bytes || !bytes.length) return false;
+  var b = function (index) { return unsignedByte(bytes[index]); };
+  if (mimeType === 'image/jpeg') return bytes.length >= 3 && b(0) === 0xff && b(1) === 0xd8 && b(2) === 0xff;
+  if (mimeType === 'image/png') {
+    return bytes.length >= 8 && b(0) === 0x89 && b(1) === 0x50 && b(2) === 0x4e && b(3) === 0x47 &&
+      b(4) === 0x0d && b(5) === 0x0a && b(6) === 0x1a && b(7) === 0x0a;
+  }
+  if (mimeType === 'image/webp') {
+    return bytes.length >= 12 && b(0) === 0x52 && b(1) === 0x49 && b(2) === 0x46 && b(3) === 0x46 &&
+      b(8) === 0x57 && b(9) === 0x45 && b(10) === 0x42 && b(11) === 0x50;
+  }
+  return false;
+}
+
+function newsImageBelongsToFolder(file, folder) {
+  var parents = file.getParents();
+  while (parents.hasNext()) {
+    if (parents.next().getId() === folder.getId()) return true;
+  }
+  return false;
+}
+
+function handleUploadNewsImage(body) {
+  try {
+    var input = body && body.file ? body.file : {};
+    var mimeType = String(input.mimeType || '').trim().toLowerCase();
+    if (!NEWS_IMAGE_ALLOWED_MIME[mimeType]) return { ok: false, error: '僅支援 JPG、PNG 或 WebP 圖片。' };
+    var encoded = String(input.base64 || '').replace(/^data:[^,]+,/, '').replace(/\s/g, '');
+    if (!encoded) return { ok: false, error: '圖片內容是空的。' };
+    var bytes = Utilities.base64Decode(encoded);
+    if (!bytes.length) return { ok: false, error: '圖片內容是空的。' };
+    if (bytes.length > NEWS_IMAGE_MAX_BYTES) return { ok: false, error: '處理後圖片不可超過 1.5 MB。' };
+    if (!validNewsImageBytes(bytes, mimeType)) return { ok: false, error: '圖片內容與檔案格式不符。' };
+
+    var name = safeNewsImageFileName(input.name, mimeType);
+    var folder = newsImageFolder();
+    var file = folder.createFile(Utilities.newBlob(bytes, mimeType, name));
+    file.setDescription('真如苑資料網站最新消息圖片；由後台於 ' + new Date().toISOString() + ' 上傳。');
+    return {
+      ok: true,
+      data: {
+        fileId: file.getId(),
+        name: file.getName(),
+        mimeType: file.getMimeType(),
+        size: file.getSize()
+      }
+    };
+  } catch (err) {
+    console.error('handleUploadNewsImage failed: ' + err);
+    return { ok: false, error: '圖片上傳失敗：' + (err && err.message ? err.message : String(err)) };
+  }
+}
+
+/**
+ * 在 Apps Script 編輯器手動執行一次，可強制要求並確認圖庫的 Drive 寫入權限。
+ * 測試檔會立刻移至垃圾桶，不會出現在圖庫中。
+ */
+function verifyNewsImageDriveAccess() {
+  var folder = newsImageFolder();
+  var probe = folder.createFile(Utilities.newBlob('permission-check', 'text/plain', '.news-image-permission-check.txt'));
+  probe.setTrashed(true);
+  return 'Drive 寫入權限已確認。';
+}
+
+/**
+ * 將後台重新連回原有、含資料的試算表；僅切換資料來源與清除快取，不會覆寫內容。
+ */
+function restoreOriginalDataSpreadsheet() {
+  var originalId = '1tiZYzivlWAF8McLKx9BrQo8fZqzPqKt-zN4EvQ8RYRA';
+  SpreadsheetApp.openById(originalId);
+  PROP.setProperty('SPREADSHEET_ID', originalId);
+  clearDataCache();
+  return whichDatabase();
+}
+
+function handleNewsImage(body) {
+  try {
+    var fileId = String(body && body.fileId || '').trim();
+    if (!/^[A-Za-z0-9_-]{10,}$/.test(fileId)) return { ok: false, error: '圖片識別碼不正確。' };
+    var folder = newsImageFolder();
+    var file = DriveApp.getFileById(fileId);
+    if (file.isTrashed() || !newsImageBelongsToFolder(file, folder)) return { ok: false, error: '找不到可讀取的最新消息圖片。' };
+    var mimeType = String(file.getMimeType() || '').toLowerCase();
+    if (!NEWS_IMAGE_ALLOWED_MIME[mimeType] || file.getSize() > NEWS_IMAGE_MAX_BYTES) return { ok: false, error: '圖片格式或大小不符。' };
+    var bytes = file.getBlob().getBytes();
+    if (!validNewsImageBytes(bytes, mimeType)) return { ok: false, error: '圖片內容驗證失敗。' };
+    return {
+      ok: true,
+      data: {
+        fileId: file.getId(),
+        name: file.getName(),
+        mimeType: mimeType,
+        size: bytes.length,
+        dataUrl: 'data:' + mimeType + ';base64,' + Utilities.base64Encode(bytes)
+      }
+    };
+  } catch (err) {
+    console.error('handleNewsImage failed: ' + err);
+    return { ok: false, error: '圖片暫時無法讀取。' };
   }
 }
 
@@ -433,13 +618,14 @@ function recalculateStats() {
     news: listRecords('news').length,
     newsletter: listRecords('newsletter').length,
     dharma: listRecords('dharma').length,
+    iya: listRecords('iya').length,
     calendar: listRecords('calendar').length,
     japanCalendar: listRecords('japanCalendar').length
   };
 }
 
 function latestDateFields(type) {
-  if (type === 'newsletter') return ['date', 'issue'];
+  if (type === 'newsletter' || type === 'iya') return ['date', 'issue'];
   return ['date'];
 }
 
@@ -469,7 +655,7 @@ function isLatestRecord(row, type) {
 
 function recalculateLatest() {
   clearDataCache();
-  var types = ['news', 'podcast', 'calendar', 'japanCalendar', 'headquarters', 'newsletter', 'dharma', 'tools'];
+  var types = ['news', 'podcast', 'calendar', 'japanCalendar', 'headquarters', 'newsletter', 'dharma', 'iya', 'tools'];
   var out = {};
   types.forEach(function (type) {
     out[type] = listRecords(type).filter(function (row) {
@@ -543,7 +729,7 @@ function isAllowedCoverUrl(value) {
   }).filter(Boolean);
   var allowed = configured.concat([
     'drive.google.com', 'docs.google.com', 'lh3.googleusercontent.com',
-    'meee.ing', 'twgo.io', 'srt.tw', 'bely.cc', 'supr.link'
+    'meee.ing', 'meee.com.tw', 'twgo.io', 'srt.tw', 'bely.cc', 'supr.link'
   ]);
   return allowed.some(function (domain) {
     return host === domain || host.slice(-(domain.length + 1)) === '.' + domain;
@@ -561,6 +747,90 @@ function extractDriveFileId(value) {
 
 function driveThumbnailUrl(fileId) {
   return fileId ? 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(fileId) + '=w480' : '';
+}
+
+var DOCUMENT_COVER_TYPES = { newsletter: true, dharma: true, iya: true };
+
+function resolveRecordCover(type, record) {
+  record = record || {};
+  if (!DOCUMENT_COVER_TYPES[type] || record.cover || !record.link) return record;
+  try {
+    var resolved = resolveCoverInfo(record.link);
+    if (resolved && resolved.cover) record.cover = resolved.cover;
+  } catch (err) {
+    console.warn('Cover resolution failed for ' + type + ' ' + (record.id || record.title || '') + ': ' + err);
+  }
+  return record;
+}
+
+// 將既有親苑時報與瑞聲法語的 PDF 封面網址寫回試算表，避免前台每次逐張解析。
+// 每次最多處理 60 筆；如未完成可再次執行，會從上次位置繼續。
+function syncDocumentCovers() {
+  var types = ['newsletter', 'dharma'];
+  var propertyKey = 'DOCUMENT_COVER_SYNC_CURSOR';
+  var cursor = Number(PROP.getProperty(propertyKey) || 0);
+  var queue = [];
+  types.forEach(function (type) {
+    var sh = sheetFor(type);
+    var headers = readHeaders(sh);
+    var linkIdx = headers.indexOf('link');
+    var coverIdx = headers.indexOf('cover');
+    var idIdx = headers.indexOf('id');
+    var titleIdx = headers.indexOf('title');
+    if (linkIdx === -1 || coverIdx === -1 || sh.getLastRow() < 2) return;
+    var values = sh.getRange(2, 1, sh.getLastRow() - 1, headers.length).getValues();
+    values.forEach(function (row, index) {
+      queue.push({
+        type: type,
+        sheet: sh,
+        row: index + 2,
+        linkColumn: linkIdx + 1,
+        coverColumn: coverIdx + 1,
+        id: idIdx >= 0 ? row[idIdx] : '',
+        title: titleIdx >= 0 ? row[titleIdx] : '',
+        link: row[linkIdx],
+        cover: row[coverIdx]
+      });
+    });
+  });
+
+  if (cursor < 0 || cursor >= queue.length) cursor = 0;
+  var attempts = 0;
+  var updated = 0;
+  var failed = [];
+  var maxAttempts = 60;
+  while (cursor < queue.length && attempts < maxAttempts) {
+    var item = queue[cursor++];
+    if (!item.cover && item.link) {
+      attempts++;
+      try {
+        var info = resolveCoverInfo(item.link);
+        if (info && info.cover) {
+          item.sheet.getRange(item.row, item.coverColumn).setValue(info.cover);
+          updated++;
+        } else {
+          failed.push(item.title || item.id || item.link);
+        }
+      } catch (err) {
+        failed.push((item.title || item.id || item.link) + '：' + err.message);
+      }
+    }
+  }
+
+  var done = cursor >= queue.length;
+  if (done) PROP.deleteProperty(propertyKey);
+  else PROP.setProperty(propertyKey, String(cursor));
+  if (updated) clearDataCache();
+  var summary = {
+    done: done,
+    cursor: done ? queue.length : cursor,
+    total: queue.length,
+    attempts: attempts,
+    updated: updated,
+    failed: failed.slice(0, 20)
+  };
+  console.log(JSON.stringify(summary));
+  return summary;
 }
 
 function pickMetaRefreshUrl(text) {
@@ -1081,13 +1351,29 @@ function handleMemberRegister(body) {
   });
   if (registration.error) return json({ ok: false, error: registration.error });
   var created = registration.data;
-  var mail = notifyMemberRegistered(created);
-  return jsonWithFreshCache({
+  // 會員資料已成功寫入後，通知信或快取失敗不應讓前台誤判整筆註冊失敗。
+  // 這類非核心後續作業改為記錄警告，仍回傳可直接登入的成功結果。
+  var mail = [];
+  var warning = '';
+  try {
+    mail = notifyMemberRegistered(created);
+  } catch (mailErr) {
+    console.error('member registration notification failed: ' + mailErr);
+    warning = '會員已完成註冊，但通知信暫時無法寄送。';
+  }
+  try {
+    clearDataCache();
+  } catch (cacheErr) {
+    console.error('member registration cache refresh failed: ' + cacheErr);
+    warning = warning || '會員已完成註冊，但資料快取更新延遲。';
+  }
+  return json({
     ok: true,
     data: memberSessionData(created),
     token: createMemberToken(created),
     ttl: MEMBER_TOKEN_TTL_SECONDS,
-    mail: mail
+    mail: mail,
+    warning: warning
   });
 }
 
@@ -1532,6 +1818,7 @@ function createRecord(type, record) {
   if (record.order === undefined || record.order === '') {
     record.order = sh.getLastRow(); // 預設排在最後
   }
+  record = resolveRecordCover(type, record);
   var row = headers.map(function (h) { return record[h] !== undefined ? record[h] : ''; });
   sh.appendRow(row);
   return record;
@@ -1542,11 +1829,14 @@ function updateRecord(type, record) {
   var headers = readHeaders(sh);
   var rowNum = findRowById(sh, record.id);
   if (rowNum === -1) throw new Error('找不到資料 id: ' + record.id);
-  record.updatedAt = new Date().toISOString();
   var existing = sh.getRange(rowNum, 1, 1, headers.length).getValues()[0];
-  var row = headers.map(function (h, i) {
-    return record[h] !== undefined ? record[h] : existing[i];
+  var candidate = {};
+  headers.forEach(function (h, i) {
+    candidate[h] = record[h] !== undefined ? record[h] : existing[i];
   });
+  candidate.updatedAt = new Date().toISOString();
+  candidate = resolveRecordCover(type, candidate);
+  var row = headers.map(function (h) { return candidate[h] !== undefined ? candidate[h] : ''; });
   sh.getRange(rowNum, 1, 1, headers.length).setValues([row]);
   var obj = {};
   headers.forEach(function (h, i) { obj[h] = row[i]; });
