@@ -60,7 +60,6 @@ html.modal-open body { overflow: hidden; }
 html.member-locked main section.block {
   min-height: 260px;
   isolation: isolate;
-  cursor: pointer;
 }
 html.member-locked main section.block > .container {
   filter: blur(7px);
@@ -68,24 +67,30 @@ html.member-locked main section.block > .container {
   pointer-events: none;
   user-select: none;
 }
-html.member-locked main section.block::after {
-  content: '會員限定｜請先註冊或登入後觀看';
+.member-lock-bar {
   position: absolute;
   left: 50%;
   top: 50%;
-  z-index: 8;
+  z-index: 9;
   transform: translate(-50%, -50%);
-  width: min(420px, calc(100% - 36px));
-  padding: 18px 22px;
-  border: 1px solid rgba(255,255,255,.34);
-  border-radius: 16px;
+  width: min(620px, calc(100% - 32px));
+  min-height: 54px;
+  padding: 12px 22px;
+  border: 1px solid rgba(255, 244, 190, .92);
+  border-radius: 999px;
   color: var(--ink-900);
-  background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(243,217,143,.94));
-  box-shadow: 0 24px 64px -30px rgba(0,0,0,.82), inset 0 1px 0 rgba(255,255,255,.9);
+  background: linear-gradient(135deg, #ffe999, #e6ba48 56%, #f7d46d);
+  box-shadow: 0 16px 42px -22px rgba(0,0,0,.88), inset 0 1px 0 rgba(255,255,255,.88);
+  cursor: pointer;
+  font: inherit;
   font-weight: 800;
   text-align: center;
   letter-spacing: .02em;
+  transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
 }
+.member-lock-bar:hover { filter: brightness(1.05); transform: translate(-50%, -50%) translateY(-2px); }
+.member-lock-bar:focus-visible { outline: 3px solid rgba(255,255,255,.92); outline-offset: 3px; }
+.member-lock-bar[hidden] { display: none; }
 
 /* 背景氛圍：深藍墨色 + 金色光暈 */
 .bg-aura {
@@ -1127,6 +1132,11 @@ section.block {
   color: var(--ink-900);
   background: linear-gradient(135deg, var(--gold-300), var(--gold-600));
   font-weight: 700;
+}
+.tool-card .latest-badge {
+  position: static;
+  align-self: flex-start;
+  margin: -8px 0 12px;
 }
 .tool-card h3 {
   font-family: var(--serif);
