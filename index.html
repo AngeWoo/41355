@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#0d1728" />
   <meta name="color-scheme" content="dark" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <link rel="stylesheet" href="assets/css/style.css?v=106" />
+  <link rel="stylesheet" href="assets/css/style.css?v=111" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -35,7 +35,7 @@
         <a href="#calendar">行事曆</a>
         <a href="#headquarters">聯絡事項</a>
         <a href="#newsletter">親苑時報</a>
-        <a href="#dharma">瑞聲法語</a>
+        <a href="#dharma">瑞聲/iYA報</a>
         <a href="#tools">互動程式</a>
         <button type="button" class="member-nav-btn" id="memberOpen">會員登入</button>
         <button type="button" class="member-nav-btn member-settings-nav-btn" id="memberSettingsOpen" hidden>個人設定</button>
@@ -64,7 +64,7 @@
       <p class="lead">親苑時報、聯絡事項、行事曆與瑞聲法語，<br/>為苑信徒提供清晰、即時的數位資料園地。</p>
       <form class="hero-search" id="siteSearch" role="search">
         <label class="sr-only" for="siteSearchInput">搜尋網站內容</label>
-        <input id="siteSearchInput" type="search" autocomplete="off" placeholder="搜尋親苑時報、行事曆、聯絡事項、瑞聲法語..." />
+        <input id="siteSearchInput" type="search" autocomplete="off" placeholder="搜尋親苑時報、行事曆、瑞聲法語、青年iYA報..." />
         <button type="submit" aria-label="搜尋">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
         </button>
@@ -73,7 +73,7 @@
         <div class="stat"><b id="statPodcast">—</b><span>PODCAST</span></div>
         <div class="stat"><b id="statNews">—</b><span>最新消息</span></div>
         <div class="stat"><b id="statNewsletter">—</b><span>親苑時報</span></div>
-        <div class="stat"><b id="statDharma">—</b><span>瑞聲法語</span></div>
+        <div class="stat"><b id="statDharma">—</b><span>法語/iYA報</span></div>
         <div class="stat"><b id="statCal">—</b><span>近期活動</span></div>
       </div>
     </div>
@@ -85,8 +85,8 @@
       </a>
       <a href="#calendar" class="hero-feature hero-feature-2 reveal">
         <span class="mini-kicker">CALENDAR</span>
-        <b>台灣行事曆</b>
-        <span>查看近期活動與安排</span>
+        <b>台灣/日本行事曆</b>
+        <span>查看兩地近期活動與安排</span>
       </a>
       <a href="#newsletter" class="hero-feature hero-feature-3 reveal">
         <span class="mini-kicker">NEWSLETTER</span>
@@ -94,9 +94,9 @@
         <span>翻閱最新與歷期時報</span>
       </a>
       <a href="#dharma" class="hero-feature hero-feature-4 reveal">
-        <span class="mini-kicker">DHARMA</span>
-        <b>瑞聲法語</b>
-        <span>研讀法語與法母十七訓</span>
+        <span class="mini-kicker">DHARMA &amp; YOUTH</span>
+        <b>瑞聲法語/青年iYA報</b>
+        <span>研讀法語與青年資訊</span>
       </a>
     </div>
   </header>
@@ -145,9 +145,9 @@
       <form class="member-form" id="memberProfileForm">
         <label>姓名<input type="text" id="profileName" autocomplete="name" maxlength="50" required /></label>
         <label>經名<input type="text" id="profileDharmaName" autocomplete="off" maxlength="50" required /></label>
-        <label>Email<input type="email" id="profileEmail" autocomplete="email" maxlength="120" required /></label>
-        <label>手機<input type="tel" id="profileMobile" autocomplete="tel" inputmode="tel" maxlength="10" pattern="09[0-9]{8}" required /></label>
-        <div class="member-hint">修改後將以新資料登入，並通知管理員。</div>
+        <label>Email<input type="email" id="profileEmail" autocomplete="email" maxlength="120" readonly required /></label>
+        <label>手機<input type="tel" id="profileMobile" autocomplete="tel" inputmode="tel" maxlength="10" pattern="09[0-9]{8}" readonly required /></label>
+        <div class="member-hint">Email 或手機如需變更，請使用「聯絡管理員」，避免略過身分驗證。</div>
         <button type="submit" class="btn btn-gold member-submit">儲存修改</button>
       </form>
       <form class="member-form" id="memberContactForm">
@@ -161,6 +161,7 @@
         <button type="button" data-member-tab="register">註冊</button>
       </div>
       <form class="member-form active" id="memberLoginForm">
+        <p class="member-register-notice" role="note">敬愛的會員：舊有會員因程式更新錯誤，先前會員資料必須重新註冊。再請大家協助重新註冊，抱歉。</p>
         <label>手機<input type="tel" id="memberLoginMobile" autocomplete="tel" inputmode="tel" maxlength="10" pattern="09[0-9]{8}" placeholder="例：0968711059" required /></label>
         <div class="member-hint">請輸入註冊時填寫的手機號碼。</div>
         <button type="submit" class="btn btn-gold member-submit">會員登入</button>
@@ -170,7 +171,9 @@
         <label>經名<input type="text" id="memberDharmaName" autocomplete="off" maxlength="50" placeholder="請輸入經名" required /></label>
         <label>Email<input type="email" id="memberEmail" autocomplete="email" maxlength="120" placeholder="name@example.com" required /></label>
         <label>手機<input type="tel" id="memberMobile" autocomplete="tel" inputmode="tel" maxlength="10" pattern="09[0-9]{8}" placeholder="例：0968711059" required /></label>
-        <button type="submit" class="btn btn-gold member-submit">註冊會員</button>
+        <button type="button" class="btn btn-ghost member-code-request" id="memberRegisterCodeRequest">寄送註冊驗證碼</button>
+        <label>六位數驗證碼<input type="text" id="memberRegisterCode" autocomplete="one-time-code" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="123456" required /></label>
+        <button type="submit" class="btn btn-gold member-submit">驗證並註冊</button>
       </form>
     </section>
   </div>
@@ -203,8 +206,8 @@
           </a>
           <a href="#calendar" class="card feature reveal">
             <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></div>
-            <h3>台灣行事曆</h3>
-            <p>法會、共修與志工服務日程，活動安排一目了然。</p>
+            <h3>台灣/日本行事曆</h3>
+            <p>切換查看台灣與日本的法會、共修及活動安排。</p>
             <span class="more">查看行事曆 →</span>
           </a>
           <a href="#newsletter" class="card feature reveal">
@@ -215,9 +218,9 @@
           </a>
           <a href="#dharma" class="card feature reveal">
             <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3c4 4 4 8 0 12-4-4-4-8 0-12z"/><path d="M5 21c3-4 11-4 14 0"/></svg></div>
-            <h3>瑞聲法語</h3>
-            <p>瑞聲法語全集與法母十七訓，於字句間體會法味。</p>
-            <span class="more">研讀法語 →</span>
+            <h3>瑞聲法語/青年iYA報</h3>
+            <p>切換研讀瑞聲法語、法母十七訓與青年資訊。</p>
+            <span class="more">查看內容 →</span>
           </a>
         </div>
 
@@ -258,14 +261,24 @@
       </div>
     </section>
 
-    <!-- 行事曆 -->
+    <!-- 台灣/日本行事曆 -->
     <section class="block" id="calendar">
       <div class="container">
         <div class="section-head reveal">
           <span class="kicker">CALENDAR</span>
-          <h2>台灣行事曆</h2>
+          <h2>行事曆</h2>
+          <p>切換查看台灣與日本的近期活動。</p>
         </div>
-        <div class="grid cols-2" id="calendarGrid"><div class="skeleton">載入中…</div></div>
+        <div class="calendar-tabs" role="tablist" aria-label="選擇行事曆地區">
+          <button type="button" id="calendarTaiwanTab" role="tab" aria-selected="true" aria-controls="calendarTaiwanPanel" data-calendar-tab="calendar">台灣行事曆</button>
+          <button type="button" id="calendarJapanTab" role="tab" aria-selected="false" aria-controls="calendarJapanPanel" data-calendar-tab="japanCalendar" tabindex="-1">日本行事曆</button>
+        </div>
+        <div class="calendar-panel" id="calendarTaiwanPanel" role="tabpanel" aria-labelledby="calendarTaiwanTab" data-calendar-panel="calendar">
+          <div class="grid cols-2" id="calendarGrid"><div class="skeleton">載入中…</div></div>
+        </div>
+        <div class="calendar-panel" id="calendarJapanPanel" role="tabpanel" aria-labelledby="calendarJapanTab" data-calendar-panel="japanCalendar" hidden>
+          <div class="grid cols-2" id="japanCalendarGrid"><div class="skeleton">載入中…</div></div>
+        </div>
       </div>
     </section>
 
@@ -291,15 +304,24 @@
       </div>
     </section>
 
-    <!-- 瑞聲法語 -->
+    <!-- 瑞聲法語／青年iYA報 -->
     <section class="block" id="dharma">
       <div class="container">
         <div class="section-head reveal">
-          <span class="kicker">DHARMA</span>
-          <h2>瑞聲法語</h2>
+          <span class="kicker">DHARMA &amp; YOUTH</span>
+          <h2>瑞聲法語／青年iYA報</h2>
+          <p>切換閱讀瑞聲法語與青年iYA報。</p>
         </div>
-        <div class="grid cols-3" id="dharmaGrid"><div class="skeleton">載入中…</div></div>
-
+        <div class="dharma-tabs" role="tablist" aria-label="選擇瑞聲法語或青年iYA報">
+          <button type="button" id="dharmaTab" role="tab" aria-selected="true" aria-controls="dharmaPanel" data-dharma-tab="dharma">瑞聲法語</button>
+          <button type="button" id="iyaTab" role="tab" aria-selected="false" aria-controls="iyaPanel" data-dharma-tab="iya" tabindex="-1">青年iYA報</button>
+        </div>
+        <div class="dharma-panel" id="dharmaPanel" role="tabpanel" aria-labelledby="dharmaTab" data-dharma-panel="dharma">
+          <div class="grid cols-3" id="dharmaGrid"><div class="skeleton">載入中…</div></div>
+        </div>
+        <div class="dharma-panel" id="iyaPanel" role="tabpanel" aria-labelledby="iyaTab" data-dharma-panel="iya" hidden>
+          <div class="grid cols-3" id="iyaGrid"><div class="skeleton">載入中…</div></div>
+        </div>
       </div>
     </section>
     <!-- 互動程式 -->
@@ -378,9 +400,8 @@
     </div>
   </footer>
 
-  <script src="assets/js/config.js?v=5"></script>
-  <script src="assets/js/seed-data.js?v=12"></script>
-  <script src="assets/js/api.js?v=32"></script>
-  <script src="assets/js/app.js?v=109"></script>
+  <script src="assets/js/config.js?v=6"></script>
+  <script src="assets/js/api.js?v=37"></script>
+  <script src="assets/js/app.js?v=117"></script>
 </body>
 </html>
