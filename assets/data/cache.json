@@ -1,20 +1,20 @@
 {
   "ok": true,
   "mode": "local-json",
-  "savedAt": "2026-08-01T22:47:58.345Z",
+  "savedAt": "2026-08-02T02:08:11.748Z",
   "source": "gas",
   "data": {
     "news": [
       {
         "id": "an-2",
-        "title": "2026年8月台灣行事曆已更新-0715",
-        "date": "2026-07-14T16:00:00.000Z",
+        "title": "2026年8月台灣行事曆已更新",
+        "date": "2026-07-12T16:00:00.000Z",
         "body": "最新台灣行事曆已公布，請查閱本月活動安排。",
         "link": "https://meee.ing/a6546d",
         "pinned": "",
-        "order": 2,
+        "order": 1,
         "createdAt": "2026-06-27T11:28:24.699Z",
-        "updatedAt": "2026-07-15T12:33:03.331Z"
+        "updatedAt": "2026-08-02T01:29:59.049Z"
       },
       {
         "id": "d1201571-b4e2-4487-bcec-58a8414a36fd",
@@ -23,7 +23,7 @@
         "body": "⭐️主題：【立教90年—台灣喜迎新尊像】\n💎將於今晚21:00上映\n💎來賓：藍振祐 先生",
         "link": "https://www.youtube.com/watch?v=rDPoi4WZLwM",
         "pinned": true,
-        "order": 3,
+        "order": 2,
         "createdAt": "2026-07-06T00:02:13.275Z",
         "updatedAt": "2026-07-07T14:23:37.735Z"
       },
@@ -34,7 +34,7 @@
         "body": "瑞聲法語全集持續整理上架。",
         "link": "https://srt.tw/k9pLsY",
         "pinned": "",
-        "order": 4,
+        "order": 3,
         "createdAt": "2026-06-27T11:28:25.759Z",
         "updatedAt": "2026-07-09T15:23:13.591Z"
       },
@@ -45,7 +45,7 @@
         "body": "回歸親苑指南",
         "link": "https://recom.pages.dev/",
         "pinned": "",
-        "order": 5,
+        "order": 4,
         "createdAt": "2026-07-09T15:56:23.309Z",
         "updatedAt": "2026-07-09T15:57:05.354Z"
       },
@@ -56,7 +56,7 @@
         "body": "Facebook 上 真如苑黃琦芳經41355 網址\n會員限制, 其他經法友無法加入",
         "link": "https://www.facebook.com/groups/shinnyo41355",
         "pinned": "",
-        "order": 6,
+        "order": 5,
         "createdAt": "2026-07-11T14:14:32.885Z",
         "updatedAt": "2026-07-11T14:14:32.885Z"
       }
@@ -273,20 +273,20 @@
     ],
     "calendar": [
       {
-        "id": "cal-202607",
-        "date": "2026-07-03T16:00:00.000Z",
-        "title": "2026年7月 台灣行事曆",
+        "id": "cal-202608",
+        "date": "2026-07-16T16:00:00.000Z",
+        "title": "2026年8月 台灣行事曆",
         "location": "",
         "desc": "本月台灣地區行事曆",
         "tag": "月曆",
-        "link": "https://bely.cc/PqPMTE",
+        "link": "https://meee.ing/a6546d",
         "order": 1,
-        "createdAt": "2026-06-27T11:28:35.496Z",
-        "updatedAt": "2026-07-19T02:48:12.138Z"
+        "createdAt": "2026-06-27T11:28:34.955Z",
+        "updatedAt": "2026-08-02T01:26:46.742Z"
       },
       {
         "id": "e0532230-775b-40bf-8309-2a56aa80b448",
-        "date": "2026-07-14T16:00:00.000Z",
+        "date": "2026-07-13T16:00:00.000Z",
         "title": "2026年9月 台灣行事曆",
         "location": "",
         "desc": "本月台灣地區行事曆",
@@ -294,19 +294,19 @@
         "link": "https://meee.ing/618fb0",
         "order": 2,
         "createdAt": "2026-07-15T12:27:54.872Z",
-        "updatedAt": "2026-07-15T12:29:53.646Z"
+        "updatedAt": "2026-08-02T01:27:03.055Z"
       },
       {
-        "id": "cal-202608",
-        "date": "2026-07-17T16:00:00.000Z",
-        "title": "2026年8月 台灣行事曆",
+        "id": "cal-202607",
+        "date": "2026-07-03T16:00:00.000Z",
+        "title": "2026年7月 台灣行事曆",
         "location": "",
         "desc": "本月台灣地區行事曆",
         "tag": "月曆",
-        "link": "https://meee.ing/a6546d",
+        "link": "https://bely.cc/PqPMTE",
         "order": 3,
-        "createdAt": "2026-06-27T11:28:34.955Z",
-        "updatedAt": "2026-07-18T11:26:04.362Z"
+        "createdAt": "2026-06-27T11:28:35.496Z",
+        "updatedAt": "2026-07-19T02:48:12.138Z"
       },
       {
         "id": "cal-202606",
