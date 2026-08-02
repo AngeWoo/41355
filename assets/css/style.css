@@ -1529,20 +1529,35 @@ html.talk-open body {
 .member-status { margin: 0 0 14px; color: var(--text-soft); line-height: 1.55; font-weight: 600; }
 .member-status.ok { color: #b6e6c7; }
 .member-status.err { color: #f0b9b9; }
-.member-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.member-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: min(100%, 420px);
+  margin: 0 auto 16px;
+}
 .member-tabs[hidden] { display: none; }
+.member-tabs:not(.member-settings-tabs) {
+  padding: 5px;
+  gap: 5px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 14px;
+  background: rgba(12,24,43,.68);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07);
+}
 .member-tabs button {
   height: 44px;
-  border: 1px solid rgba(255,255,255,.14);
+  border: 1px solid transparent;
   border-radius: 10px;
-  background: rgba(255,255,255,.06);
+  background: transparent;
   color: var(--text-soft);
   cursor: pointer;
 }
 .member-tabs button.active {
   border-color: rgba(212,175,104,.52);
-  color: var(--gold-300);
-  background: rgba(212,175,104,.12);
+  color: #fff4cf;
+  background: linear-gradient(145deg, rgba(212,175,104,.24), rgba(212,175,104,.1));
+  box-shadow: 0 8px 22px -14px rgba(226,189,97,.72), inset 0 1px 0 rgba(255,255,255,.12);
 }
 .member-form { display: none; gap: 12px; }
 .member-form.active { display: grid; }
