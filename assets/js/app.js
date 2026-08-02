@@ -563,9 +563,12 @@
     if (!tabs.length) return;
     calendarTabsReady = true;
     tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
+      function selectTab(e) {
+        e.stopPropagation();
         activateCalendarTab(tab.getAttribute('data-calendar-tab'), false);
-      });
+      }
+      tab.addEventListener('pointerup', selectTab);
+      tab.addEventListener('click', selectTab);
       tab.addEventListener('keydown', function (e) {
         var currentIndex = tabs.indexOf(tab);
         var nextIndex = currentIndex;
@@ -603,9 +606,12 @@
     if (!tabs.length) return;
     dharmaTabsReady = true;
     tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
+      function selectTab(e) {
+        e.stopPropagation();
         activateDharmaTab(tab.getAttribute('data-dharma-tab'), false);
-      });
+      }
+      tab.addEventListener('pointerup', selectTab);
+      tab.addEventListener('click', selectTab);
       tab.addEventListener('keydown', function (e) {
         var currentIndex = tabs.indexOf(tab);
         var nextIndex = currentIndex;
@@ -621,6 +627,10 @@
     var selected = tabs.filter(function (tab) { return tab.getAttribute('aria-selected') === 'true'; })[0];
     activateDharmaTab(selected ? selected.getAttribute('data-dharma-tab') : 'dharma', false);
   }
+
+  // 頁籤互動不依賴資料 API；即使資料尚在載入或暫時失敗，仍可自由切換。
+  setupCalendarTabsOnce();
+  setupDharmaTabsOnce();
 
   function colsFor(grid, minW) {
     var w = grid.clientWidth || (grid.parentElement && grid.parentElement.clientWidth) || 1000;
@@ -1686,14 +1696,29 @@
     }
     function requiresMember(target) {
       if (!target || target.closest('.member-popover') || target.closest('#memberOpen')) return false;
+      // 頁籤只切換同一區塊的顯示內容，不應被會員限制攔截。
+      // 部分行動瀏覽器會把點擊目標回報為頁籤容器，因此一併排除 tablist。
+      if (target.closest('[data-calendar-tab], [data-dharma-tab], [role="tablist"], .calendar-tabs, .dharma-tabs')) return false;
       if (target.closest('#jumpBottom') || target.closest('#liveVideoOpen')) return true;
       var a = target.closest('a');
-      if (!a) return !!target.closest('main section.block');
+      // 非連結的區塊、按鈕與頁籤不導向受保護內容，不能強制開啟註冊視窗。
+      if (!a) return false;
       if (a.closest('.brand') || a.closest('.member-panel')) return false;
       if (/admin\.html/i.test(a.getAttribute('href') || '')) return false;
       return isProtectedHashLink(a) || !!a.closest('main, .hero-features, .search-results');
     }
+    function isContentTabEvent(e) {
+      var selector = '[data-calendar-tab], [data-dharma-tab], [role="tablist"], .calendar-tabs, .dharma-tabs';
+      var target = e && e.target;
+      if (target && target.closest && target.closest(selector)) return true;
+      var path = e && e.composedPath ? e.composedPath() : [];
+      return path.some(function (node) {
+        return node && node.nodeType === 1 && node.matches && node.matches(selector);
+      });
+    }
     function promptMemberRegistration(e) {
+      // 頁籤可在未登入時自由切換，不能觸發會員註冊視窗。
+      if (isContentTabEvent(e)) return;
       if (memberAuthChecking) {
         if (requiresMember(e.target)) {
           e.preventDefault();
@@ -1710,7 +1735,7 @@
       if (typeof closeNavMenu === 'function') closeNavMenu();
       openMemberPopover('register', '請先註冊會員，完成後即可觀看所有內容。');
     }
-    document.addEventListener('click', promptMemberRegistration, true);
+    document.addEventListener('click', promptMemberRegistration);
     var siteSearch = document.getElementById('siteSearch');
     if (siteSearch) {
       siteSearch.addEventListener('submit', function (e) {
