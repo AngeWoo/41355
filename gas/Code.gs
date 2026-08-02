@@ -22,13 +22,16 @@
 
 // ====================== 設定 ======================
 var ADMIN_ACCOUNT_DEFAULT = 'admin';
-var TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;  // token 有效 30 天
-var MEMBER_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 會員 token 有效 30 天
-var DATA_CACHE_SECONDS = 60 * 60 * 2;       // 前台公開資料快取 2 小時（與 CACHE_WARM_INTERVAL_HOURS 排程對齊，新增/修改/刪除仍會立即清快取）
+var TOKEN_TTL_SECONDS = 60 * 60 * 6;        // 管理員 token 有效 6 小時
+var MEMBER_TOKEN_TTL_SECONDS = 60 * 60 * 6; // 會員 token 有效 6 小時
+var DATA_CACHE_SECONDS = 60 * 60 * 2;       // 後端受保護資料快取 2 小時（新增/修改/刪除仍會立即清快取）
 var CACHE_WARM_INTERVAL_HOURS = 2;          // 快取預熱觸發器執行間隔
+var MEMBER_OTP_TTL_SECONDS = 60 * 10;
+var MEMBER_OTP_MAX_ATTEMPTS = 5;
+var MEMBER_OTP_GLOBAL_MAX_PER_WINDOW = 20;
+var LOGIN_RATE_WINDOW_SECONDS = 60 * 10;
+var LOGIN_RATE_MAX_FAILURES = 5;
 var OFFICIAL_LIVE_PAGE = 'https://www.shinnyo-en.org.tw/at2026/index2026.html';
-var MEMBER_NOTIFY_EMAIL = 'angewu@hotmail.com';
-var ADMIN_MEMBER_MOBILE = '0935251820';
 var PROP = PropertiesService.getScriptProperties();
 
 // 每個內容類型對應的分頁與預設欄位（標頭）。
@@ -43,7 +46,11 @@ var SCHEMA = {
     headers: ['id', 'ep', 'title', 'guest', 'date', 'desc', 'link', 'cover', 'order', 'createdAt', 'updatedAt']
   },
   calendar: {
-    sheet: '行事曆',
+    sheet: '台灣行事曆',
+    headers: ['id', 'date', 'title', 'location', 'desc', 'tag', 'link', 'order', 'createdAt', 'updatedAt']
+  },
+  japanCalendar: {
+    sheet: '日本行事曆',
     headers: ['id', 'date', 'title', 'location', 'desc', 'tag', 'link', 'order', 'createdAt', 'updatedAt']
   },
   headquarters: {
@@ -76,6 +83,7 @@ var SCHEMA = {
 function setup() {
   var ss = getSpreadsheet();
   var initialPassword = '';
+  migrateLegacyCalendarSheet(ss);
   Object.keys(SCHEMA).forEach(function (type) {
     ensureSheet(ss, SCHEMA[type]);
   });
@@ -92,8 +100,8 @@ function setup() {
     (initialPassword ? '\n後台暫時密碼：' + initialPassword + '\n請登入後立即修改。' : '');
 }
 
-// 將所有內容類型重新讀取一次並寫回 CacheService，讓 action=list / action=all
-// 的回應不用等快取過期後再現讀試算表。由 setupCacheWarmTrigger() 排程呼叫，
+// 將所有內容類型重新讀取一次並寫回 CacheService，讓授權後的內容 API
+// 不用等快取過期後再現讀試算表。由 setupCacheWarmTrigger() 排程呼叫，
 // 也可在編輯器手動執行一次立即預熱。
 function warmDataCache() {
   var cache = CacheService.getScriptCache();
@@ -121,8 +129,10 @@ function setupCacheWarmTrigger() {
 }
 
 function authorizeMailPermission() {
+  var target = memberNotifyEmail();
+  if (!target) throw new Error('請先在 Script Properties 設定 MEMBER_NOTIFY_EMAIL。');
   MailApp.sendEmail({
-    to: MEMBER_NOTIFY_EMAIL,
+    to: target,
     subject: '會員註冊郵件權限測試',
     body: '如果收到這封信，代表 Apps Script 已取得 MailApp.sendEmail 權限。'
   });
@@ -156,6 +166,28 @@ function ensureSheet(ss, def) {
   syncHeaders(sh, def.headers);
   applyTextColumns(sh, ['mobile']);
   return sh;
+}
+
+// 將舊版「行事曆」分頁就地改名，保留既有台灣資料；日本行事曆為獨立新分頁。
+function migrateLegacyCalendarSheet(ss) {
+  var targetName = SCHEMA.calendar.sheet;
+  var target = ss.getSheetByName(targetName);
+  if (target) return target;
+  var legacy = ss.getSheetByName('行事曆');
+  if (legacy) {
+    legacy.setName(targetName);
+    return legacy;
+  }
+  return null;
+}
+
+function setupRegionalCalendars() {
+  var ss = getSpreadsheet();
+  migrateLegacyCalendarSheet(ss);
+  ensureSheet(ss, SCHEMA.calendar);
+  ensureSheet(ss, SCHEMA.japanCalendar);
+  clearDataCache();
+  return '已完成：台灣行事曆保留既有資料，日本行事曆分頁已建立。';
 }
 
 function syncHeaders(sh, expectedHeaders) {
@@ -198,37 +230,43 @@ function withWriteLock(work) {
   }
 }
 
+function consumeRateLimit(key, maxCount, ttlSeconds) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(1500)) return false;
+  try {
+    var cache = CacheService.getScriptCache();
+    var count = Number(cache.get(key) || 0);
+    if (count >= maxCount) return false;
+    cache.put(key, String(count + 1), ttlSeconds);
+    return true;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function doGet(e) {
   try {
     var params = (e && e.parameter) || {};
     var action = params.action || 'list';
-    var fresh = params.fresh === '1' || params.nocache === '1';
     if (action === 'list') {
-      if (params.type === 'members') return json({ ok: false, error: '會員資料需登入後讀取。' });
-      var rows = fresh ? listRecords(params.type) : cachedListRecords(params.type);
-      return json({ ok: true, data: rows });
+      return json({ ok: false, error: '內容需登入後讀取。' });
     }
     if (action === 'all') {
-      var out = {};
-      Object.keys(SCHEMA).forEach(function (t) {
-        if (t === 'members') { out[t] = []; return; }
-        var rows = fresh ? listRecords(t) : cachedListRecords(t);
-        out[t] = rows;
-      });
-      return json({ ok: true, data: out });
+      return json({ ok: false, error: '內容需登入後讀取。' });
     }
     if (action === 'resolveCover') {
-      return json({ ok: true, data: resolveCoverInfo(params.url) });
+      return json({ ok: false, error: '封面解析需登入後使用。' });
     }
     if (action === 'ping') {
       return json({ ok: true, msg: 'pong' });
     }
     if (action === 'officialLive') {
-      return json({ ok: true, data: officialLiveInfo(fresh) });
+      return json({ ok: true, data: officialLiveInfo(false) });
     }
     return json({ ok: false, error: '未知的 action: ' + action });
   } catch (err) {
-    return json({ ok: false, error: String(err) });
+    console.error('doGet failed: ' + err);
+    return json({ ok: false, error: '服務暫時無法處理請求。' });
   }
 }
 
@@ -249,6 +287,9 @@ function doPost(e) {
     if (action === 'memberRegister') {
       return handleMemberRegister(body);
     }
+    if (action === 'memberRequestRegisterCode') {
+      return handleMemberRequestRegisterCode(body);
+    }
     if (action === 'memberLogin') {
       return handleMemberLogin(body);
     }
@@ -263,6 +304,9 @@ function doPost(e) {
     if (action === 'memberDirectory') {
       return handleMemberDirectory(body);
     }
+    if (action === 'memberContent') {
+      return handleMemberContent(body);
+    }
     if (action === 'memberProfile') {
       return handleMemberProfile(body);
     }
@@ -275,6 +319,24 @@ function doPost(e) {
     if (action === 'adminMemberList') {
       if (!verifyToken(body.token)) return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
       return json({ ok: true, data: listRecords('members'), scope: 'all' });
+    }
+    if (action === 'adminList') {
+      if (!verifyToken(body.token)) return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
+      if (body.type === 'members') return json({ ok: false, error: '請使用會員管理介面讀取。' });
+      return json({ ok: true, data: cachedListRecords(body.type) });
+    }
+    if (action === 'adminAll') {
+      if (!verifyToken(body.token)) return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
+      return json({ ok: true, data: contentData(false) });
+    }
+    if (action === 'resolveCover') {
+      if (!verifyToken(body.token) && !verifyMemberToken(body.token)) {
+        return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
+      }
+      if (!consumeRateLimit('cover_resolve_' + sha256(String(body.token)).slice(0, 32), 30, 600)) {
+        return json({ ok: false, error: '封面解析請求過多，請稍後再試。' });
+      }
+      return json({ ok: true, data: resolveCoverInfo(body.url) });
     }
     if (action === 'getMemberGlobalNote') {
       if (!verifyToken(body.token)) return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
@@ -323,7 +385,8 @@ function doPost(e) {
       default:               return json({ ok: false, error: '未知的 action: ' + action });
     }
   } catch (err) {
-    return json({ ok: false, error: String(err) });
+    console.error('doPost failed: ' + err);
+    return json({ ok: false, error: '服務暫時無法處理請求。' });
   }
 }
 
@@ -370,7 +433,8 @@ function recalculateStats() {
     news: listRecords('news').length,
     newsletter: listRecords('newsletter').length,
     dharma: listRecords('dharma').length,
-    calendar: listRecords('calendar').length
+    calendar: listRecords('calendar').length,
+    japanCalendar: listRecords('japanCalendar').length
   };
 }
 
@@ -405,7 +469,7 @@ function isLatestRecord(row, type) {
 
 function recalculateLatest() {
   clearDataCache();
-  var types = ['news', 'podcast', 'calendar', 'headquarters', 'newsletter', 'dharma', 'tools'];
+  var types = ['news', 'podcast', 'calendar', 'japanCalendar', 'headquarters', 'newsletter', 'dharma', 'tools'];
   var out = {};
   types.forEach(function (type) {
     out[type] = listRecords(type).filter(function (row) {
@@ -418,6 +482,7 @@ function recalculateLatest() {
 function resolveCoverInfo(url) {
   url = String(url || '').trim();
   if (!url) return { source: '', finalUrl: '', fileId: '', cover: '' };
+  if (!isAllowedCoverUrl(url)) throw new Error('不允許解析此網址。');
 
   var cache = CacheService.getScriptCache();
   var key = 'cover_' + Utilities.base64EncodeWebSafe(
@@ -441,7 +506,9 @@ function resolveCoverInfo(url) {
     var headers = res.getAllHeaders();
     var location = headers.Location || headers.location || '';
     if (code >= 300 && code < 400 && location) {
-      finalUrl = resolveRelativeUrl(finalUrl, location);
+      var nextUrl = resolveRelativeUrl(finalUrl, location);
+      if (!isAllowedCoverUrl(nextUrl)) throw new Error('重新導向至未允許的網域。');
+      finalUrl = nextUrl;
       continue;
     }
     contentType = String(headers['Content-Type'] || headers['content-type'] || '');
@@ -465,6 +532,22 @@ function resolveCoverInfo(url) {
   var out = { source: url, finalUrl: finalUrl, fileId: fileId || '', cover: cover };
   cache.put(key, JSON.stringify(out), 60 * 60 * 6);
   return out;
+}
+
+function isAllowedCoverUrl(value) {
+  var match = String(value || '').trim().match(/^https:\/\/([^\/?#]+)(?:[\/?#]|$)/i);
+  if (!match) return false;
+  var host = match[1].toLowerCase().replace(/:\d+$/, '');
+  var configured = String(PROP.getProperty('COVER_ALLOWED_HOSTS') || '').split(',').map(function (item) {
+    return item.trim().toLowerCase();
+  }).filter(Boolean);
+  var allowed = configured.concat([
+    'drive.google.com', 'docs.google.com', 'lh3.googleusercontent.com',
+    'meee.ing', 'twgo.io', 'srt.tw', 'bely.cc', 'supr.link'
+  ]);
+  return allowed.some(function (domain) {
+    return host === domain || host.slice(-(domain.length + 1)) === '.' + domain;
+  });
 }
 
 function extractDriveFileId(value) {
@@ -647,14 +730,24 @@ function createAdminToken() {
 
 function handleLogin(body) {
   var account = PROP.getProperty('ADMIN_ACCOUNT') || ADMIN_ACCOUNT_DEFAULT;
+  var cache = CacheService.getScriptCache();
+  var rateKey = 'admin_login_fail_' + sha256(String(body.account || account)).slice(0, 32);
+  var failures = Number(cache.get(rateKey) || 0);
+  if (failures >= LOGIN_RATE_MAX_FAILURES) {
+    Utilities.sleep(600);
+    return json({ ok: false, error: '登入嘗試過多，請 10 分鐘後再試。' });
+  }
   if (body.account && String(body.account).trim() !== account) {
+    cache.put(rateKey, String(failures + 1), LOGIN_RATE_WINDOW_SECONDS);
     Utilities.sleep(600);
     return json({ ok: false, error: '帳號或密碼錯誤。' });
   }
   if (!checkPassword(body.password || '')) {
+    cache.put(rateKey, String(failures + 1), LOGIN_RATE_WINDOW_SECONDS);
     Utilities.sleep(600); // 簡單防爆破
     return json({ ok: false, error: '帳號或密碼錯誤。' });
   }
+  cache.remove(rateKey);
   var token = createAdminToken();
   return json({ ok: true, token: token, ttl: TOKEN_TTL_SECONDS });
 }
@@ -763,8 +856,17 @@ function normalizeMobile(mobile) {
   return value;
 }
 
+function memberNotifyEmail() {
+  return normalizeEmail(PROP.getProperty('MEMBER_NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail() || '');
+}
+
+function adminMemberMobile() {
+  return normalizeMobile(PROP.getProperty('ADMIN_MEMBER_MOBILE') || '');
+}
+
 function isMemberDirectoryAdmin(mobile) {
-  return normalizeMobile(mobile) === normalizeMobile(ADMIN_MEMBER_MOBILE);
+  var configured = adminMemberMobile();
+  return !!configured && normalizeMobile(mobile) === configured;
 }
 
 function memberDirectoryRow(row) {
@@ -812,7 +914,7 @@ function sendMemberMail(label, mail) {
 }
 
 function notifyMemberRegistered(member) {
-  var adminEmail = normalizeEmail(MEMBER_NOTIFY_EMAIL);
+  var adminEmail = memberNotifyEmail();
   var memberEmail = normalizeEmail(member.email);
   var results = [];
   var createdAt = member.createdAt
@@ -884,6 +986,81 @@ function notifyMemberRegistered(member) {
   return results;
 }
 
+function memberOtpCacheKey(purpose, identity) {
+  return 'member_otp_' + sha256(String(purpose) + ':' + String(identity)).slice(0, 40);
+}
+
+function memberOtpThrottleKey(purpose, identity) {
+  return 'member_otp_wait_' + sha256(String(purpose) + ':' + String(identity)).slice(0, 40);
+}
+
+function memberOtpHash(purpose, identity, code) {
+  return sha256(memberTokenSecret() + ':' + purpose + ':' + identity + ':' + code);
+}
+
+function generateMemberOtp() {
+  var entropy = sha256(Utilities.getUuid() + ':' + Utilities.getUuid() + ':' + Date.now());
+  return String(100000 + (parseInt(entropy.slice(0, 12), 16) % 900000));
+}
+
+function issueMemberOtp(purpose, identity, email, label) {
+  var cache = CacheService.getScriptCache();
+  var throttleKey = memberOtpThrottleKey(purpose, identity);
+  if (cache.get(throttleKey)) return { ok: false, error: '驗證碼寄送太頻繁，請一分鐘後再試。' };
+  if (!consumeRateLimit('member_otp_global', MEMBER_OTP_GLOBAL_MAX_PER_WINDOW, LOGIN_RATE_WINDOW_SECONDS)) {
+    return { ok: false, error: '驗證碼服務目前忙碌，請 10 分鐘後再試。' };
+  }
+  var code = generateMemberOtp();
+  var otpKey = memberOtpCacheKey(purpose, identity);
+  cache.put(otpKey, JSON.stringify({ hash: memberOtpHash(purpose, identity, code), attempts: 0 }), MEMBER_OTP_TTL_SECONDS);
+  var result = sendMemberMail('member-otp-' + purpose, {
+    to: email,
+    subject: '真如苑資料網站' + label + '驗證碼',
+    body: [
+      '您的' + label + '驗證碼為：' + code,
+      '',
+      '驗證碼 10 分鐘內有效，最多可嘗試 ' + MEMBER_OTP_MAX_ATTEMPTS + ' 次。',
+      '若非本人操作，請忽略此信。'
+    ].join('\n')
+  });
+  if (!result.ok) {
+    cache.remove(otpKey);
+    return { ok: false, error: '驗證碼寄送失敗，請稍後再試。' };
+  }
+  cache.put(throttleKey, '1', 60);
+  return { ok: true, msg: '驗證碼已寄出，請檢查 Email。', ttl: MEMBER_OTP_TTL_SECONDS };
+}
+
+function verifyMemberOtp(purpose, identity, code) {
+  var cache = CacheService.getScriptCache();
+  var key = memberOtpCacheKey(purpose, identity);
+  var raw = cache.get(key);
+  if (!raw) return { ok: false, error: '驗證碼已過期，請重新取得。' };
+  var stored;
+  try { stored = JSON.parse(raw); } catch (e) { stored = null; }
+  if (!stored || Number(stored.attempts || 0) >= MEMBER_OTP_MAX_ATTEMPTS) {
+    cache.remove(key);
+    return { ok: false, error: '驗證碼嘗試次數過多，請重新取得。' };
+  }
+  var normalizedCode = String(code || '').replace(/\D/g, '');
+  if (!/^\d{6}$/.test(normalizedCode) || stored.hash !== memberOtpHash(purpose, identity, normalizedCode)) {
+    stored.attempts = Number(stored.attempts || 0) + 1;
+    if (stored.attempts >= MEMBER_OTP_MAX_ATTEMPTS) cache.remove(key);
+    else cache.put(key, JSON.stringify(stored), MEMBER_OTP_TTL_SECONDS);
+    return { ok: false, error: '驗證碼錯誤。' };
+  }
+  cache.remove(key);
+  return { ok: true };
+}
+
+function handleMemberRequestRegisterCode(body) {
+  var fields = validateMemberFields(body.record || {});
+  if (fields.error) return json({ ok: false, error: fields.error });
+  if (findMemberByEmail(fields.email)) return json({ ok: false, error: '此 Email 已註冊。' });
+  if (findMemberByMobile(fields.mobile)) return json({ ok: false, error: '此手機已註冊。' });
+  return json(issueMemberOtp('register', fields.email + '|' + fields.mobile, fields.email, '會員註冊'));
+}
+
 function handleMemberRegister(body) {
   var record = body.record || {};
   var name = String(record.name || '').trim();
@@ -895,6 +1072,8 @@ function handleMemberRegister(body) {
   if (name.length > 50 || dharmaName.length > 50) return json({ ok: false, error: '姓名與經名不可超過 50 字。' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok: false, error: '請輸入有效的 Email。' });
   if (!/^09\d{8}$/.test(mobile)) return json({ ok: false, error: '請輸入有效的台灣手機號碼。' });
+  var otp = verifyMemberOtp('register', email + '|' + mobile, body.code);
+  if (!otp.ok) return json(otp);
   var registration = withWriteLock(function () {
     if (findMemberByEmail(email)) return { error: '此 Email 已註冊。' };
     if (findMemberByMobile(mobile)) return { error: '此手機已註冊。' };
@@ -961,7 +1140,7 @@ function validateMemberFields(record) {
 }
 
 function notifyMemberProfileUpdated(before, after) {
-  var adminEmail = normalizeEmail(MEMBER_NOTIFY_EMAIL);
+  var adminEmail = memberNotifyEmail();
   if (!adminEmail) return null;
   function diffLine(label, oldV, newV) {
     oldV = String(oldV || '');
@@ -990,6 +1169,9 @@ function handleMemberUpdateProfile(body) {
   if (!member) return json({ ok: false, error: '會員登入已過期，請重新登入。' });
   var fields = validateMemberFields(body.record || {});
   if (fields.error) return json({ ok: false, error: fields.error });
+  if (normalizeEmail(fields.email) !== normalizeEmail(member.email) || normalizeMobile(fields.mobile) !== normalizeMobile(member.mobile)) {
+    return json({ ok: false, error: 'Email 或手機如需變更，請使用「聯絡管理員」，以免略過身分驗證。' });
+  }
   var result = withWriteLock(function () {
     var byEmail = findMemberByEmail(fields.email);
     if (byEmail && String(byEmail.id) !== String(member.id)) return { error: '此 Email 已被其他會員使用。' };
@@ -1016,7 +1198,7 @@ function handleMemberContactAdmin(body) {
   var message = String(body.message || '').trim();
   if (!message) return json({ ok: false, error: '請輸入訊息內容。' });
   if (message.length > 2000) return json({ ok: false, error: '訊息不可超過 2000 字。' });
-  var adminEmail = normalizeEmail(MEMBER_NOTIFY_EMAIL);
+  var adminEmail = memberNotifyEmail();
   if (!adminEmail) return json({ ok: false, error: '管理員信箱尚未設定，無法送出。' });
   var cache = CacheService.getScriptCache();
   var rateKey = 'member_contact_' + String(member.id || '');
@@ -1043,6 +1225,36 @@ function handleMemberContactAdmin(body) {
   if (!result.ok) return json({ ok: false, error: '訊息寄送失敗，請稍後再試。' });
   cache.put(rateKey, '1', 60);
   return json({ ok: true, msg: '訊息已送出，管理員會盡快回覆。' });
+}
+
+function isMemberVisibleRecord(type, row) {
+  var status = String((row && row.status) || '').trim().toLowerCase();
+  if (status === 'draft' || status === 'hidden' || status === 'private') return false;
+  var publishAt = parseLatestDate(row && row.publishAt);
+  if (publishAt && publishAt.getTime() > Date.now()) return false;
+  if (type === 'podcast') {
+    var episodeDate = parseLatestDate(row && row.date);
+    if (episodeDate && episodeDate.getTime() > Date.now()) return false;
+  }
+  return true;
+}
+
+function contentData(publishedOnly) {
+  var out = {};
+  Object.keys(SCHEMA).forEach(function (type) {
+    if (type === 'members') return;
+    var rows = cachedListRecords(type);
+    out[type] = publishedOnly ? rows.filter(function (row) {
+      return isMemberVisibleRecord(type, row);
+    }) : rows;
+  });
+  return out;
+}
+
+function handleMemberContent(body) {
+  var member = verifyMemberToken(body.token);
+  if (!member) return json({ ok: false, error: '會員登入已過期，請重新登入。' });
+  return json({ ok: true, data: contentData(true), mode: 'member' });
 }
 
 function handleMemberDirectory(body) {
@@ -1111,7 +1323,7 @@ function notifyMembersForRecord(type, record, enabled) {
     '</table>' +
     '<p>此信由真如苑資料網站後台寄出。</p>';
 
-  var adminEmail = normalizeEmail(MEMBER_NOTIFY_EMAIL);
+  var adminEmail = memberNotifyEmail();
   var results = [];
   var sent = 0;
   for (var i = 0; i < emails.length; i += 50) {
@@ -1263,7 +1475,9 @@ function handleBulkMail(body) {
 function sheetFor(type) {
   var def = SCHEMA[type];
   if (!def) throw new Error('未知的資料類型: ' + type);
-  return ensureSheet(getSpreadsheet(), def);
+  var ss = getSpreadsheet();
+  if (type === 'calendar') migrateLegacyCalendarSheet(ss);
+  return ensureSheet(ss, def);
 }
 
 function readHeaders(sh) {
