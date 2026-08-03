@@ -1302,9 +1302,8 @@ html.talk-open body {
   font-size: .88rem;
 }
 .talk-item {
-  position: relative;
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   padding: 18px;
@@ -1313,11 +1312,15 @@ html.talk-open body {
   background: rgba(255,255,255,.055);
 }
 .talk-item .line-card-share {
-  top: 10px;
-  right: 10px;
-  bottom: auto;
+  position: static;
+  grid-column: 3;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
 }
 .talk-icon {
+  grid-column: 1;
+  grid-row: 1;
   width: 44px;
   height: 44px;
   display: grid;
@@ -1328,6 +1331,8 @@ html.talk-open body {
   font-weight: 700;
 }
 .talk-item > div {
+  grid-column: 2;
+  grid-row: 1;
   display: grid;
   gap: 6px;
   min-width: 0;
@@ -1339,6 +1344,7 @@ html.talk-open body {
 .talk-audio {
   display: block;
   grid-column: 1 / -1;
+  grid-row: 2;
   width: 100%;
   max-width: 528px;
   margin: 12px auto 0;
