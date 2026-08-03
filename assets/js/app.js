@@ -465,6 +465,7 @@
   var talksReady = false;
   var talksLoading = false;
   var DATA_CACHE_KEY = 'shinnyo_front_data_cache_v1';
+  var DATA_CACHE_MAX_AGE_MS = 15 * 60 * 1000;
 
   function textOf(it, fields) {
     return fields.map(function (f) { return it && it[f] ? String(it[f]) : ''; }).join(' ');
@@ -917,11 +918,37 @@
     renderData(emptyContentData(), false);
   }
 
+  function loadCachedProtectedContent(token) {
+    try {
+      var cached = JSON.parse(localStorage.getItem(DATA_CACHE_KEY) || 'null');
+      if (!cached || cached.token !== token || !cached.data || Date.now() - Number(cached.savedAt || 0) > DATA_CACHE_MAX_AGE_MS) {
+        if (cached) localStorage.removeItem(DATA_CACHE_KEY);
+        return false;
+      }
+      talksReady = true;
+      renderData(stripPrivateCollections(cached.data), false);
+      showModeBanner('<b>會員內容已從本機快取載入</b> · 正在同步最新資料');
+      return true;
+    } catch (e) {
+      try { localStorage.removeItem(DATA_CACHE_KEY); } catch (ignore) {}
+      return false;
+    }
+  }
+
+  function cacheProtectedContent(token, data) {
+    try {
+      localStorage.setItem(DATA_CACHE_KEY, JSON.stringify({ token: token, data: data, savedAt: Date.now() }));
+    } catch (e) {
+      // 快取空間不足時不影響正常的資料載入。
+    }
+  }
+
   function loadProtectedContent(token) {
     if (!token || !API.memberContent) return Promise.resolve(false);
     return API.memberContent(token).then(function (res) {
       if (!res || !res.ok || !res.data) return false;
       talksReady = true;
+      cacheProtectedContent(token, res.data);
       renderData(stripPrivateCollections(res.data), true);
       showModeBanner('<b>會員內容已安全載入</b>');
       return true;
@@ -929,6 +956,8 @@
   }
 
   function boot() {
+    var member = storedMemberSession();
+    if (member && member.token && loadCachedProtectedContent(member.token)) return;
     clearProtectedContent();
     showModeBanner('<b>會員限定</b>：登入後載入內容');
   }
