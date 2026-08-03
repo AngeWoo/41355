@@ -25,7 +25,7 @@ var ADMIN_ACCOUNT_DEFAULT = 'admin';
 // 登入 token 不設到期時間；既有含 exp 的 token 也會持續接受，讓部署新版後不需重新登入。
 var TOKEN_TTL_SECONDS = null;
 var MEMBER_TOKEN_TTL_SECONDS = null;
-var DATA_CACHE_SECONDS = 60 * 60 * 2;       // 後端受保護資料快取 2 小時（新增/修改/刪除仍會立即清快取）
+var DATA_CACHE_SECONDS = 60 * 60 * 6;       // 後端受保護資料快取 6 小時（新增/修改/刪除仍會立即清快取）
 var CACHE_WARM_INTERVAL_HOURS = 2;          // 快取預熱觸發器執行間隔
 var MEMBER_OTP_TTL_SECONDS = 60 * 10;
 var MEMBER_OTP_MAX_ATTEMPTS = 5;
@@ -113,8 +113,9 @@ function setup() {
 // 也可在編輯器手動執行一次立即預熱。
 function warmDataCache() {
   var cache = CacheService.getScriptCache();
+  var ss = getSpreadsheet();
   Object.keys(SCHEMA).forEach(function (type) {
-    var rows = listRecords(type);
+    var rows = listRecords(type, ss);
     var payload = JSON.stringify(rows);
     if (payload.length < 95000) {
       cache.put(dataCacheKey(type), payload, DATA_CACHE_SECONDS);
@@ -1527,10 +1528,36 @@ function isMemberVisibleRecord(type, row) {
 }
 
 function contentData(publishedOnly) {
+  var types = Object.keys(SCHEMA).filter(function (type) { return type !== 'members'; });
+  var cache = CacheService.getScriptCache();
+  var cached = cache.getAll(types.map(dataCacheKey));
   var out = {};
-  Object.keys(SCHEMA).forEach(function (type) {
-    if (type === 'members') return;
-    var rows = cachedListRecords(type);
+  var missing = [];
+
+  types.forEach(function (type) {
+    var raw = cached[dataCacheKey(type)];
+    if (raw) {
+      try {
+        out[type] = JSON.parse(raw);
+        return;
+      } catch (e) { }
+    }
+    missing.push(type);
+  });
+
+  // 快取失效時，所有分頁共用一次 Spreadsheet 開啟作業，避免逐類型重複開啟造成等待。
+  if (missing.length) {
+    var ss = getSpreadsheet();
+    missing.forEach(function (type) {
+      var rows = listRecords(type, ss);
+      out[type] = rows;
+      var payload = JSON.stringify(rows);
+      if (payload.length < 95000) cache.put(dataCacheKey(type), payload, DATA_CACHE_SECONDS);
+    });
+  }
+
+  types.forEach(function (type) {
+    var rows = out[type] || [];
     out[type] = publishedOnly ? rows.filter(function (row) {
       return isMemberVisibleRecord(type, row);
     }) : rows;
@@ -1759,12 +1786,12 @@ function handleBulkMail(body) {
 }
 
 // ====================== 資料操作 ======================
-function sheetFor(type) {
+function sheetFor(type, ss) {
   var def = SCHEMA[type];
   if (!def) throw new Error('未知的資料類型: ' + type);
-  var ss = getSpreadsheet();
-  if (type === 'calendar') migrateLegacyCalendarSheet(ss);
-  return ensureSheet(ss, def);
+  var spreadsheet = ss || getSpreadsheet();
+  if (type === 'calendar') migrateLegacyCalendarSheet(spreadsheet);
+  return ensureSheet(spreadsheet, def);
 }
 
 function readHeaders(sh) {
@@ -1775,8 +1802,8 @@ function readHeaders(sh) {
   });
 }
 
-function listRecords(type) {
-  var sh = sheetFor(type);
+function listRecords(type, ss) {
+  var sh = sheetFor(type, ss);
   var headers = readHeaders(sh);
   var lastRow = sh.getLastRow();
   if (lastRow < 2) return [];
