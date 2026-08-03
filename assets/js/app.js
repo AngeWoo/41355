@@ -1007,11 +1007,12 @@
     out.innerHTML = rows.map(function (it) {
       var src = talkAudioSrc(it.link);
       var url = cardShareUrl('talks', it);
-      return '<article class="talk-item">' + lineShareButton('talks', it, url) +
-        '<span class="talk-icon">' + esc(it.icon || '講') + '</span>' +
+      return '<article class="talk-item">' +
+        '<span class="talk-icon">' + esc(it.icon || '音') + '</span>' +
         '<div><h3>' + esc(it.title || '真如音檔') + '</h3>' +
         (it.desc ? '<p>' + esc(it.desc) + '</p>' : '') +
         '</div>' +
+        lineShareButton('talks', it, url) +
         (src ? '<audio class="talk-audio" controls preload="none" src="' + esc(src) + '">您的瀏覽器不支援音訊播放。</audio>' : '') +
         '</article>';
     }).join('');
@@ -1083,11 +1084,12 @@
     out.innerHTML = (function () {
       var src = talkAudioSrc(it.link);
       var url = cardShareUrl('talks', it);
-      return '<article class="talk-item">' + lineShareButton('talks', it, url) +
-        '<span class="talk-icon">' + esc(it.icon || '講') + '</span>' +
+      return '<article class="talk-item">' +
+        '<span class="talk-icon">' + esc(it.icon || '音') + '</span>' +
         '<div><h3>' + esc(it.title || '真如音檔') + '</h3>' +
         (it.desc ? '<p>' + esc(it.desc) + '</p>' : '') +
         '</div>' +
+        lineShareButton('talks', it, url) +
         (src ? '<audio class="talk-audio" controls preload="none" src="' + esc(src) + '">您的瀏覽器不支援音訊播放。</audio>' : '') +
         '</article>';
     })();
