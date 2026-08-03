@@ -114,7 +114,7 @@
     dharma: '瑞聲法語',
     iya: '青年iYA報',
     tools: '互動程式',
-    talks: '真如開講'
+    talks: '真如音檔'
   };
   function absoluteUrl(url) {
     var s = String(url || '').trim();
@@ -1001,7 +1001,7 @@
       return (Number(a.order || 0) - Number(b.order || 0)) || String(a.title || '').localeCompare(String(b.title || ''));
     });
     if (!rows.length) {
-      out.innerHTML = '<div class="search-empty">目前沒有真如開講資料</div>';
+      out.innerHTML = '<div class="search-empty">目前沒有真如音檔資料</div>';
       return;
     }
     out.innerHTML = rows.map(function (it) {
@@ -1009,7 +1009,7 @@
       var url = cardShareUrl('talks', it);
       return '<article class="talk-item">' + lineShareButton('talks', it, url) +
         '<span class="talk-icon">' + esc(it.icon || '講') + '</span>' +
-        '<div><h3>' + esc(it.title || '真如開講') + '</h3>' +
+        '<div><h3>' + esc(it.title || '真如音檔') + '</h3>' +
         (it.desc ? '<p>' + esc(it.desc) + '</p>' : '') +
         '</div>' +
         (src ? '<audio class="talk-audio" controls preload="none" src="' + esc(src) + '">您的瀏覽器不支援音訊播放。</audio>' : '') +
@@ -1069,7 +1069,7 @@
       return (Number(a.order || 0) - Number(b.order || 0)) || String(a.title || '').localeCompare(String(b.title || ''));
     });
     if (!rows.length) {
-      out.innerHTML = '<div class="search-empty">目前沒有真如開講資料</div>';
+      out.innerHTML = '<div class="search-empty">目前沒有真如音檔資料</div>';
       out.classList.remove('can-swipe', 'can-swipe-prev', 'can-swipe-next');
       if (pager) pager.innerHTML = '';
       return;
@@ -1085,7 +1085,7 @@
       var url = cardShareUrl('talks', it);
       return '<article class="talk-item">' + lineShareButton('talks', it, url) +
         '<span class="talk-icon">' + esc(it.icon || '講') + '</span>' +
-        '<div><h3>' + esc(it.title || '真如開講') + '</h3>' +
+        '<div><h3>' + esc(it.title || '真如音檔') + '</h3>' +
         (it.desc ? '<p>' + esc(it.desc) + '</p>' : '') +
         '</div>' +
         (src ? '<audio class="talk-audio" controls preload="none" src="' + esc(src) + '">您的瀏覽器不支援音訊播放。</audio>' : '') +

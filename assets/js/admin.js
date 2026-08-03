@@ -151,7 +151,7 @@
       sub: function (r) { return [simpleDate(r.date), r.desc, r.link].filter(Boolean).join(' · '); }
     },
     {
-      type: 'talks', label: '真如開講',
+      type: 'talks', label: '真如音檔',
       icon: '<path d="M4 6h16v9H8l-4 4z"/><path d="M8 10h8M8 13h5"/>',
       fields: [
         { k: 'title', label: '標題', type: 'text', req: true },
