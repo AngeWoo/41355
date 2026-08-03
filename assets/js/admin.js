@@ -193,6 +193,17 @@
   }
 
   var token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || '';
+  // 升版前使用舊儲存鍵的登入狀態，遷移到目前的鍵名以免被要求重新登入。
+  if (!token) {
+    var legacyPersistentToken = localStorage.getItem(LEGACY_TOKEN_KEY) || '';
+    var legacySessionToken = sessionStorage.getItem(LEGACY_TOKEN_KEY) || '';
+    token = legacyPersistentToken || legacySessionToken;
+    if (token) {
+      var targetStorage = legacyPersistentToken ? localStorage : sessionStorage;
+      targetStorage.setItem(TOKEN_KEY, token);
+      targetStorage.removeItem(LEGACY_TOKEN_KEY);
+    }
+  }
   var savedAccount = localStorage.getItem(ACCOUNT_KEY) || '';
   var rememberLogin = localStorage.getItem(REMEMBER_KEY) !== '0';
   var cache = {};        // type -> records

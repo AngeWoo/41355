@@ -13,7 +13,18 @@
     window.addEventListener('load', function () { window.scrollTo(0, 0); }, { once: true });
   }
   function storedMemberSession() {
-    try { return JSON.parse(localStorage.getItem(MEMBER_STORAGE_KEY) || 'null'); } catch (e) { return null; }
+    try {
+      var current = JSON.parse(localStorage.getItem(MEMBER_STORAGE_KEY) || 'null');
+      if (current) return current;
+      // 將升版前的會員登入資料遷移到目前鍵名，保留既有 token。
+      var legacy = JSON.parse(localStorage.getItem('shinnyo_member') || 'null');
+      if (legacy && legacy.token) {
+        localStorage.setItem(MEMBER_STORAGE_KEY, JSON.stringify(legacy));
+        localStorage.removeItem('shinnyo_member');
+        return legacy;
+      }
+      return null;
+    } catch (e) { return null; }
   }
 
   document.getElementById('year').textContent = String(new Date().getFullYear());
@@ -1980,7 +1991,6 @@
         });
       });
     }
-    localStorage.removeItem(LEGACY_MEMBER_KEY);
     var storedMember = currentMember();
     if (storedMember && storedMember.token && API.validateMemberToken) {
       var pendingMemberToken = storedMember.token;
