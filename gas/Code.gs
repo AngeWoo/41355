@@ -22,8 +22,9 @@
 
 // ====================== 設定 ======================
 var ADMIN_ACCOUNT_DEFAULT = 'admin';
-var TOKEN_TTL_SECONDS = 60 * 60 * 6;        // 管理員 token 有效 6 小時
-var MEMBER_TOKEN_TTL_SECONDS = 60 * 60 * 6; // 會員 token 有效 6 小時
+// 登入 token 不設到期時間；既有含 exp 的 token 也會持續接受，讓部署新版後不需重新登入。
+var TOKEN_TTL_SECONDS = null;
+var MEMBER_TOKEN_TTL_SECONDS = null;
 var DATA_CACHE_SECONDS = 60 * 60 * 2;       // 後端受保護資料快取 2 小時（新增/修改/刪除仍會立即清快取）
 var CACHE_WARM_INTERVAL_HOURS = 2;          // 快取預熱觸發器執行間隔
 var MEMBER_OTP_TTL_SECONDS = 60 * 10;
@@ -992,7 +993,6 @@ function signAdminTokenPayload(payload) {
 function createAdminToken() {
   var payload = base64UrlEncode(JSON.stringify({
     v: 2,
-    exp: Date.now() + TOKEN_TTL_SECONDS * 1000,
     nonce: Utilities.getUuid()
   }));
   return payload + '.' + signAdminTokenPayload(payload);
@@ -1028,8 +1028,9 @@ function verifyToken(token) {
   if (parts.length !== 2) return false;
   if (signAdminTokenPayload(parts[0]) !== parts[1]) return false;
   try {
-    var payload = JSON.parse(base64UrlDecodeText(parts[0]));
-    return Number(payload.exp || 0) > Date.now();
+    JSON.parse(base64UrlDecodeText(parts[0]));
+    // 新舊 token 的簽章均以目前的管理員設定驗證；不再檢查舊版的 exp，保留既有登入狀態。
+    return true;
   } catch (e) {
     return false;
   }
@@ -1053,7 +1054,6 @@ function createMemberToken(member) {
     v: 1,
     type: 'member',
     sub: String(member.id || ''),
-    exp: Date.now() + MEMBER_TOKEN_TTL_SECONDS * 1000,
     nonce: Utilities.getUuid()
   }));
   return payload + '.' + signMemberTokenPayload(payload);
@@ -1065,7 +1065,8 @@ function verifyMemberToken(token) {
   if (parts.length !== 2 || signMemberTokenPayload(parts[0]) !== parts[1]) return null;
   try {
     var payload = JSON.parse(base64UrlDecodeText(parts[0]));
-    if (payload.type !== 'member' || Number(payload.exp || 0) <= Date.now() || !payload.sub) return null;
+    // 相容舊版含 exp 的 token；只要簽章正確且會員帳號仍存在，即保持登入有效。
+    if (payload.type !== 'member' || !payload.sub) return null;
     return findMemberById(payload.sub);
   } catch (e) {
     return null;
