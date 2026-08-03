@@ -78,7 +78,7 @@ var SCHEMA = {
     headers: ['id', 'title', 'date', 'desc', 'link', 'icon', 'order', 'createdAt', 'updatedAt']
   },
   talks: {
-    sheet: '真如開講',
+    sheet: '真如音檔',
     headers: ['id', 'title', 'icon', 'desc', 'link', 'order', 'createdAt', 'updatedAt']
   },
   members: {
@@ -92,6 +92,7 @@ function setup() {
   var ss = getSpreadsheet();
   var initialPassword = '';
   migrateLegacyCalendarSheet(ss);
+  migrateLegacyTalksSheet(ss);
   Object.keys(SCHEMA).forEach(function (type) {
     ensureSheet(ss, SCHEMA[type]);
   });
@@ -187,6 +188,22 @@ function migrateLegacyCalendarSheet(ss) {
     if (legacy && legacy.getLastRow() <= 1 && ss.getSheets().length > 1) {
       ss.deleteSheet(legacy);
     }
+    return target;
+  }
+  if (legacy) {
+    legacy.setName(targetName);
+    return legacy;
+  }
+  return null;
+}
+
+// 將舊版「真如開講」分頁改名，保留既有音檔資料。
+function migrateLegacyTalksSheet(ss) {
+  var targetName = SCHEMA.talks.sheet;
+  var target = ss.getSheetByName(targetName);
+  var legacy = ss.getSheetByName('真如開講');
+  if (target) {
+    if (legacy && legacy.getLastRow() <= 1 && ss.getSheets().length > 1) ss.deleteSheet(legacy);
     return target;
   }
   if (legacy) {
@@ -1791,6 +1808,7 @@ function sheetFor(type, ss) {
   if (!def) throw new Error('未知的資料類型: ' + type);
   var spreadsheet = ss || getSpreadsheet();
   if (type === 'calendar') migrateLegacyCalendarSheet(spreadsheet);
+  if (type === 'talks') migrateLegacyTalksSheet(spreadsheet);
   return ensureSheet(spreadsheet, def);
 }
 
@@ -1812,6 +1830,10 @@ function listRecords(type, ss) {
     var obj = {};
     headers.forEach(function (h, i) { obj[h] = row[i]; });
     if (type === 'members' && obj.mobile) obj.mobile = normalizeMobile(obj.mobile);
+    if (type === 'talks') {
+      obj.title = String(obj.title || '').replace(/真如開講/g, '真如音檔');
+      obj.desc = String(obj.desc || '').replace(/真如開講/g, '真如音檔');
+    }
     return obj;
   }).filter(function (o) { return String(o.id || '').length > 0; });
 
@@ -3722,9 +3744,9 @@ function seedSampleData() {
     "talks": [
       {
         "id": "talk-default",
-        "title": "真如開講",
+        "title": "真如音檔",
         "icon": "講",
-        "desc": "開啟真如開講相關內容。",
+        "desc": "開啟真如音檔相關內容。",
         "link": "../assets/audio/01.mp3",
         "order": 1
       }
