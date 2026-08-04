@@ -465,7 +465,9 @@
   var talksReady = false;
   var talksLoading = false;
   var DATA_CACHE_KEY = 'shinnyo_front_data_cache_v1';
-  var DATA_CACHE_MAX_AGE_MS = 15 * 60 * 1000;
+  // 本機快取只用來「先把畫面顯示出來」，每次開站仍會向後端重新取一次並覆蓋（stale-while-revalidate）。
+  // 舊值 15 分鐘會讓稍後回訪的會員又對著空白畫面等 GAS 回應，這裡放寬到 24 小時。
+  var DATA_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
   function textOf(it, fields) {
     return fields.map(function (f) { return it && it[f] ? String(it[f]) : ''; }).join(' ');
@@ -943,10 +945,17 @@
     }
   }
 
-  function loadProtectedContent(token) {
+  // handlers.onMember：memberContent 本身就會驗證 token 並一併回傳會員資料，
+  // 開站時可藉此省去一次 validateMemberToken 往返。handlers.onFail 用來區分「token 過期」與「暫時性失敗」。
+  function loadProtectedContent(token, handlers) {
+    handlers = handlers || {};
     if (!token || !API.memberContent) return Promise.resolve(false);
     return API.memberContent(token).then(function (res) {
-      if (!res || !res.ok || !res.data) return false;
+      if (!res || !res.ok || !res.data) {
+        if (handlers.onFail) handlers.onFail(res || null);
+        return false;
+      }
+      if (handlers.onMember) handlers.onMember(res.member || null);
       talksReady = true;
       cacheProtectedContent(token, res.data);
       renderData(stripPrivateCollections(res.data), true);
@@ -2023,27 +2032,33 @@
       });
     }
     var storedMember = currentMember();
-    if (storedMember && storedMember.token && API.validateMemberToken) {
+    if (storedMember && storedMember.token && API.memberContent) {
       var pendingMemberToken = storedMember.token;
       memberAuthChecking = true;
       memberAuthReady = false;
       syncMemberUi();
-      API.validateMemberToken(pendingMemberToken).then(function (res) {
-        var active = currentMember();
-        if (!active || active.token !== pendingMemberToken) return; // 驗證期間使用者已登出或切換帳號
-        if (res && res.ok && res.data) {
-          saveMember(res.data, pendingMemberToken);
-          loadProtectedContent(pendingMemberToken).then(function (loaded) {
-            if (!loaded) {
-              memberAuthChecking = false;
-              memberAuthReady = false;
-              syncMemberUi();
-              setMemberStatus('會員內容載入失敗，請稍後重試。', 'err');
-            }
-          });
-        } else if (res && res.ok === false) {
-          clearMember();
-          setMemberStatus('會員登入已過期，請重新登入。', 'err');
+      // 只打一次 memberContent：它會驗證 token、回傳會員資料與內容。
+      // 舊寫法要先 validateMemberToken 再 memberContent，兩次 GAS 往返是序列的，開站等待時間直接翻倍。
+      loadProtectedContent(pendingMemberToken, {
+        onMember: function (member) {
+          var active = currentMember();
+          if (!active || active.token !== pendingMemberToken) return; // 載入期間使用者已登出或切換帳號
+          // 舊版後端尚未回傳 member 時，沿用本機既有 session，避免看起來被登出。
+          saveMember(member || active, pendingMemberToken);
+        },
+        onFail: function (res) {
+          var active = currentMember();
+          if (!active || active.token !== pendingMemberToken) return;
+          if (res && /登入已過期|未授權/.test(res.error || '')) {
+            clearMember();
+            setMemberStatus('會員登入已過期，請重新登入。', 'err');
+            return;
+          }
+          // 純網路／伺服器暫時性失敗，不代表 token 失效，維持現有登入狀態
+          memberAuthChecking = false;
+          memberAuthReady = false;
+          syncMemberUi();
+          setMemberStatus('會員內容載入失敗，請稍後重試。', 'err');
         }
       }).catch(function () {
         memberAuthChecking = false;
@@ -2063,5 +2078,7 @@
   hydrateStaticCardShares();
   setupMemberAuth();
   boot();
-  refreshOfficialLive(true);
+  // 開站時走後端快取即可；fresh=1 會強制重抓兩次外站（官網慢且憑證有問題），
+  // 讓每位訪客都付出數秒等待。使用者實際打開影片視窗時才需要即時值。
+  refreshOfficialLive(false);
 })();
