@@ -151,6 +151,29 @@
   background: rgba(13,23,40,.9); border-bottom: 1px solid var(--line-soft);
 }
 .topbar .container { display: flex; align-items: center; gap: 16px; min-height: 64px; padding-top: 8px; padding-bottom: 8px; }
+/* 頂欄下緣的細載入進度條（由 api.js 依實際請求驅動） */
+.load-progress {
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;   /* 疊在 border-bottom 上，貼齊下緣 */
+  height: 2px;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+.load-progress.is-active { opacity: 1; }
+.load-progress-fill {
+  display: block;
+  width: 0; height: 100%;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(90deg, #c81e2d, #ff3b30 45%, #ff6b4a);
+  box-shadow: 0 0 8px rgba(255,59,48,.8);
+  transition: width .25s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .load-progress-fill { transition: none; }
+}
 .topbar .brand b { font-size: 1.02rem; }
 .topbar .right { margin-left: auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .pill { font-size: .76rem; color: var(--gold-300); border: 1px solid var(--gold-500); border-radius: 999px; padding: 5px 12px; }

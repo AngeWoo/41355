@@ -130,6 +130,29 @@ img { max-width: 100%; display: block; }
   transition: box-shadow .3s;
 }
 .nav.scrolled { box-shadow: 0 14px 34px -20px rgba(0,0,0,.55); }
+/* 頂欄下緣的細載入進度條（由 api.js 依實際請求驅動） */
+.load-progress {
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;   /* 疊在 border-bottom 上，貼齊下緣 */
+  height: 2px;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+.load-progress.is-active { opacity: 1; }
+.load-progress-fill {
+  display: block;
+  width: 0; height: 100%;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(90deg, #c81e2d, #ff3b30 45%, #ff6b4a);
+  box-shadow: 0 0 8px rgba(255,59,48,.8);
+  transition: width .25s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .load-progress-fill { transition: none; }
+}
 .nav .brand b, .nav .brand small { color: #fff !important; }
 .nav .nav-links a { color: #fff; background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.28); }
 .nav .nav-links a:hover, .nav .nav-links a:focus-visible, .nav .nav-links a.active {
