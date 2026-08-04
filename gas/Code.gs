@@ -27,6 +27,7 @@ var TOKEN_TTL_SECONDS = null;
 var MEMBER_TOKEN_TTL_SECONDS = null;
 var DATA_CACHE_SECONDS = 60 * 60 * 6;       // 後端受保護資料快取 6 小時（新增/修改/刪除仍會立即清快取）
 var CACHE_WARM_INTERVAL_HOURS = 2;          // 快取預熱觸發器執行間隔
+var OFFICIAL_LIVE_CACHE_SECONDS = 60 * 10;  // 官方即時影片資訊快取 10 分鐘（每次未命中都要抓兩次外站，成本高）
 var MEMBER_OTP_TTL_SECONDS = 60 * 10;
 var MEMBER_OTP_MAX_ATTEMPTS = 5;
 var MEMBER_OTP_GLOBAL_MAX_PER_WINDOW = 20;
@@ -901,7 +902,8 @@ function officialLiveInfo(fresh) {
       source: sourceUrl,
       updatedAt: new Date().toISOString()
     };
-    cache.put('official_live', JSON.stringify(data), 60);
+    // 官方法會標題通常以天為單位變動，快取 10 分鐘即可；60 秒會讓多數訪客都撞上一次昂貴的外站抓取。
+    cache.put('official_live', JSON.stringify(data), OFFICIAL_LIVE_CACHE_SECONDS);
     PROP.setProperty('OFFICIAL_LIVE_LAST_GOOD', JSON.stringify(data));
     return data;
   } catch (e) {
@@ -1585,7 +1587,14 @@ function contentData(publishedOnly) {
 function handleMemberContent(body) {
   var member = verifyMemberToken(body.token);
   if (!member) return json({ ok: false, error: '會員登入已過期，請重新登入。' });
-  return json({ ok: true, data: contentData(true), mode: 'member' });
+  // 一併回傳會員資料，前台開站時就不必再多打一次 validateMemberToken（省下一次 GAS 往返）。
+  return json({
+    ok: true,
+    data: contentData(true),
+    member: memberSessionData(member),
+    ttl: MEMBER_TOKEN_TTL_SECONDS,
+    mode: 'member'
+  });
 }
 
 function handleMemberDirectory(body) {
