@@ -22,6 +22,113 @@
     return url + sep + 'fresh=1&_ts=' + encodeURIComponent(Date.now());
   }
 
+  // ---------- 頂欄載入進度條 ----------
+  // 前台掛在 .nav 下緣、後台掛在 .topbar 下緣。放在 api.js 是因為兩個頁面都會載入它，
+  // 且所有網路請求都經過下面的 fetchWithTimeout，進度條因此能自動反映每一頁的載入狀態。
+  var Progress = (function () {
+    var bar = null, fill = null, pending = 0, value = 0, trickleTimer = null, hideTimer = null, finishTimer = null;
+    var FINISH_GRACE_MS = 200;
+
+    function isVisible(el) {
+      // 不能用 offsetParent 判斷：position:fixed 的 .nav 永遠回傳 null。
+      return !!el && el.getClientRects().length > 0;
+    }
+
+    function pickHost() {
+      // 只掛在頂欄下緣。後台尚未登入時 .topbar 藏在 display:none 的 .admin-shell 裡，
+      // 這時不顯示進度條——早期版本改掛 body 當浮動條，結果登入前後位置不同，
+      // 看起來像是「出現兩條、跑兩次」。
+      var nav = document.querySelector('.nav');
+      if (isVisible(nav)) return nav;
+      var topbar = document.querySelector('.topbar');
+      if (isVisible(topbar)) return topbar;
+      return null;
+    }
+
+    function ensureBar() {
+      var host = pickHost();
+      if (!host) return null;
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.className = 'load-progress';
+        bar.setAttribute('aria-hidden', 'true');
+        fill = document.createElement('span');
+        fill.className = 'load-progress-fill';
+        bar.appendChild(fill);
+      }
+      if (bar.parentNode !== host) host.appendChild(bar);
+      return bar;
+    }
+
+    function paint() {
+      if (fill) fill.style.width = value.toFixed(1) + '%';
+    }
+
+    function resetInstantly() {
+      if (!fill) return;
+      fill.style.transition = 'none';
+      value = 0;
+      paint();
+      void fill.offsetWidth;   // 強制重排，讓上面的 width 立刻生效而不產生倒退動畫
+      fill.style.transition = '';
+    }
+
+    function begin() {
+      pending++;
+      if (finishTimer) { clearTimeout(finishTimer); finishTimer = null; }  // 收尾緩衝期內又有新請求，併入同一條進度
+      var el = ensureBar();
+      if (!el) return;                    // 沒有可掛載的頂欄（例如後台登入畫面）
+      // 用 trickleTimer 而非 pending 判斷「已經在跑」：這樣即使先前的請求是在頂欄
+      // 還不可見時開始的，等頂欄出現後仍能正常接上進度。
+      if (trickleTimer) return;
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      resetInstantly();
+      el.classList.add('is-active');
+      value = 8;
+      paint();
+      trickleTimer = setInterval(function () {
+        // 逼近 92% 就趨緩並停住，真正完成時才走完最後一段
+        if (value >= 92) return;
+        value += Math.max(0.5, (92 - value) * 0.08);
+        paint();
+      }, 200);
+    }
+
+    function finish() {
+      if (trickleTimer) { clearInterval(trickleTimer); trickleTimer = null; }
+      var el = ensureBar();
+      if (!el) return;
+      value = 100;
+      paint();
+      hideTimer = setTimeout(function () {
+        el.classList.remove('is-active');
+        hideTimer = null;
+      }, 260);
+    }
+
+    function end() {
+      pending = Math.max(0, pending - 1);
+      if (pending > 0) return;
+      // 後續請求常接在前一個請求的 .then() 裡（例如後台讀完會員後才去讀全員訊息、
+      // 或 tools 為空時補寫預設值後重讀）。若 pending 一歸零就立刻收尾，
+      // 進度條會先跑完再馬上重跑一次。留一小段緩衝把這些併成同一條進度。
+      if (finishTimer) clearTimeout(finishTimer);
+      finishTimer = setTimeout(function () {
+        finishTimer = null;
+        if (pending > 0) return;
+        finish();
+      }, FINISH_GRACE_MS);
+    }
+
+    // 文件本身的載入也算一段進度
+    if (document.readyState !== 'complete') {
+      begin();
+      window.addEventListener('load', function () { end(); }, { once: true });
+    }
+
+    return { begin: begin, end: end };
+  })();
+
   function fetchWithTimeout(url, options) {
     options = Object.assign({}, options || {});
     var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -30,6 +137,7 @@
       options.signal = controller.signal;
       timer = setTimeout(function () { controller.abort(); }, REQUEST_TIMEOUT_MS);
     }
+    Progress.begin();
     return fetch(url, options).then(function (response) {
       if (!response.ok) throw new Error('HTTP ' + response.status + '：' + response.statusText);
       return response;
@@ -38,6 +146,7 @@
       throw error;
     }).finally(function () {
       if (timer) clearTimeout(timer);
+      Progress.end();
     });
   }
 
