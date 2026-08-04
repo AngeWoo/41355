@@ -290,6 +290,8 @@
     }
     if (cover) cover.classList.add('no-thumb');
     img.remove();
+    // 候選網址都失敗了，這時才值得花一次後端解析把真正的封面找回來。
+    if (cover) resolveCoverFor(cover);
   };
   document.addEventListener('error', function (e) {
     var img = e.target;
@@ -742,21 +744,42 @@
     cover.classList.remove('no-thumb');
   }
 
-  function resolveRemoteCovers(root) {
-    if (!window.API || !API.resolveCover) return;
+  // 後端 resolveCover 有速率限制（每個會員 10 分鐘 30 次），親苑時報＋瑞聲法語動輒上百筆，
+  // 若每張卡片都打一次會瞬間耗盡額度，之後的封面就全部靜默失敗——這正是「封面時有時無」的成因。
+  // 因此只在候選封面網址全部載入失敗時，才針對那張卡片去後端解析。
+  function resolveCoverFor(cover) {
+    if (!cover || !window.API || !API.resolveCover) return;
+    var marker = cover.querySelector('.cover-resolve[data-cover-link]');
+    if (!marker || marker.getAttribute('data-cover-done')) return;
     var member = storedMemberSession();
     if (!member || !member.token) return;
+    var link = marker.getAttribute('data-cover-link') || '';
+    if (!link) return;
+    marker.setAttribute('data-cover-done', '1');
+    if (!coverResolveCache[link]) {
+      coverResolveCache[link] = API.resolveCover(link, member.token).catch(function () { return null; });
+    }
+    coverResolveCache[link].then(function (res) {
+      var data = res && res.data ? res.data : {};
+      var coverUrl = data.cover || data.coverUrl || '';
+      if (!coverUrl) {
+        // 解析失敗（含撞到速率限制）不留下永久失敗紀錄，下次重新渲染仍可再試一次。
+        delete coverResolveCache[link];
+        marker.removeAttribute('data-cover-done');
+        return;
+      }
+      setCoverImage(cover, [coverUrl, driveThumb(data.finalUrl)], marker.getAttribute('data-cover-title') || '');
+    });
+  }
+
+  function resolveRemoteCovers(root) {
+    if (!window.API || !API.resolveCover) return;
+    // 只主動處理「連一個候選封面網址都沒有」的卡片；有候選圖的等它實際載入失敗，
+    // 再由 __tryNextCover 觸發解析。
     root.querySelectorAll('.cover-resolve[data-cover-link]:not([data-cover-done])').forEach(function (marker) {
-      marker.setAttribute('data-cover-done', '1');
-      var link = marker.getAttribute('data-cover-link') || '';
-      if (!link) return;
-      coverResolveCache[link] = coverResolveCache[link] || API.resolveCover(link, member.token).catch(function () { return null; });
-      coverResolveCache[link].then(function (res) {
-        var data = res && res.data ? res.data : {};
-        var coverUrl = data.cover || data.coverUrl || '';
-        if (!coverUrl) return;
-        setCoverImage(marker.closest('.cover'), [coverUrl, driveThumb(data.finalUrl)], marker.getAttribute('data-cover-title') || '');
-      });
+      var cover = marker.closest('.cover');
+      if (!cover || cover.querySelector('img[data-cover-image]')) return;
+      resolveCoverFor(cover);
     });
   }
 
@@ -768,13 +791,18 @@
       marker.setAttribute('data-news-image-done', '1');
       var fileId = marker.getAttribute('data-news-image-id') || '';
       if (!fileId) return;
-      newsImageCache[fileId] = newsImageCache[fileId] || API.newsImage(fileId, member.token).catch(function () { return null; });
+      if (!newsImageCache[fileId]) {
+        newsImageCache[fileId] = API.newsImage(fileId, member.token).catch(function () { return null; });
+      }
       newsImageCache[fileId].then(function (res) {
         var img = marker.querySelector('img');
         var status = marker.querySelector('span');
         if (!img || !res || !res.ok || !res.data || !res.data.dataUrl) {
           marker.classList.add('is-error');
           if (status) status.textContent = '圖片暫時無法載入';
+          // 暫時性失敗不留下永久紀錄，下次重新渲染仍可再試。
+          delete newsImageCache[fileId];
+          marker.removeAttribute('data-news-image-done');
           return;
         }
         img.src = res.data.dataUrl;

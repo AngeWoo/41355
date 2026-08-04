@@ -5,6 +5,7 @@
   var LEGACY_TOKEN_KEY = 'shinnyo_admin_token';
   var ACCOUNT_KEY = 'shinnyo_admin_account_v1';
   var REMEMBER_KEY = 'shinnyo_admin_remember_v1';
+  var TAB_KEY = 'shinnyo_admin_tab_v1';
   var PAGE_SIZE = 10;
   var BULK_MAIL_TYPE = 'bulk-mail';
   var MAIL_MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -207,7 +208,19 @@
   var savedAccount = localStorage.getItem(ACCOUNT_KEY) || '';
   var rememberLogin = localStorage.getItem(REMEMBER_KEY) !== '0';
   var cache = {};        // type -> records
-  var current = COLLECTIONS[0].type;
+  // 重新整理後要留在原本的分頁：網址 hash 優先（可直接分享／加書籤），其次是上次選擇的紀錄。
+  function validTabType(type) {
+    type = String(type || '').trim();
+    if (!type) return '';
+    if (type === BULK_MAIL_TYPE) return type;
+    return byType(type) ? type : '';
+  }
+  function initialTabType() {
+    var fromHash = validTabType(decodeURIComponent(String(location.hash || '').replace(/^#/, '')));
+    if (fromHash) return fromHash;
+    try { return validTabType(localStorage.getItem(TAB_KEY)); } catch (e) { return ''; }
+  }
+  var current = initialTabType() || COLLECTIONS[0].type;
   var editing = null;    // 正在編輯的紀錄（null = 新增）
   var seedingTools = false;
   var savingSort = {};
@@ -540,6 +553,12 @@
   }
   function selectTab(type) {
     current = type;
+    // 記住目前分頁，讓重新整理停在原地。用 replaceState 而非改寫 location.hash，
+    // 避免每次切換分頁都塞一筆瀏覽紀錄、導致上一頁要按很多次。
+    try { localStorage.setItem(TAB_KEY, type); } catch (e) {}
+    try {
+      if (window.history && history.replaceState) history.replaceState(null, '', '#' + encodeURIComponent(type));
+    } catch (e) {}
     $('#tabs').querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('active', t.dataset.type === type); });
     $('#panels').querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('active', p.dataset.type === type); });
     var currentLabel = $('#mobileTabCurrent'), collection = byType(type);
