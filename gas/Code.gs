@@ -422,7 +422,7 @@ function doPost(e) {
           record = normalizeRecordOrder(body.type, record.id, record.order) || record;
           return record;
         });
-        return jsonWithFreshCache({ ok: true, data: created, memberNotify: notifyMembersForRecord(body.type, created, body.notifyMembers) });
+        return jsonWithFreshCache({ ok: true, data: created, memberNotify: safeNotifyMembersForRecord(body.type, created, body.notifyMembers) });
       }
       case 'update': {
         var updated = withWriteLock(function () {
@@ -430,7 +430,7 @@ function doPost(e) {
           record = normalizeRecordOrder(body.type, record.id, record.order) || record;
           return record;
         });
-        return jsonWithFreshCache({ ok: true, data: updated, memberNotify: notifyMembersForRecord(body.type, updated, body.notifyMembers) });
+        return jsonWithFreshCache({ ok: true, data: updated, memberNotify: safeNotifyMembersForRecord(body.type, updated, body.notifyMembers) });
       }
       case 'delete':         return withWriteLock(function () { return jsonWithFreshCache({ ok: true, data: deleteRecord(body.type, body.id) }); });
       case 'reorder':        return withWriteLock(function () { return jsonWithFreshCache({ ok: true, data: reorder(body.type, body.ids) }); });
@@ -1689,6 +1689,17 @@ function notifyMembersForRecord(type, record, enabled) {
     error: failed.map(function (r) { return r.error; }).filter(Boolean).join('；'),
     results: results
   };
+}
+
+// 資料已成功寫入試算表後才呼叫本函式；寄信過程中的例外（例如帳號權限、外部服務異常）
+// 不應讓前台誤判整筆新增/修改失敗，因此在此攔截並回傳警告，而非讓例外往外拋到 doPost 的通用錯誤。
+function safeNotifyMembersForRecord(type, record, enabled) {
+  try {
+    return notifyMembersForRecord(type, record, enabled);
+  } catch (err) {
+    console.error('notifyMembersForRecord failed: ' + err);
+    return { ok: false, error: '資料已儲存，但發信通知會員時發生錯誤：' + (err && err.message ? err.message : String(err)), sent: 0, results: [] };
+  }
 }
 
 // ====================== 後台群組發信 ======================
