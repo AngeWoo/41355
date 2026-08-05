@@ -1148,7 +1148,16 @@ function normalizeMobile(mobile) {
 }
 
 function memberNotifyEmail() {
-  return normalizeEmail(PROP.getProperty('MEMBER_NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail() || '');
+  var configured = PROP.getProperty('MEMBER_NOTIFY_EMAIL');
+  if (configured) return normalizeEmail(configured);
+  // 部署設定若缺少 userinfo.email 授權範圍，Session.getEffectiveUser().getEmail() 會直接丟出例外；
+  // 這裡視同「管理員信箱未設定」優雅降級，避免中斷呼叫端的寄信流程。
+  try {
+    return normalizeEmail(Session.getEffectiveUser().getEmail() || '');
+  } catch (err) {
+    console.warn('Session.getEffectiveUser().getEmail() unavailable: ' + err);
+    return '';
+  }
 }
 
 function adminMemberMobile() {
