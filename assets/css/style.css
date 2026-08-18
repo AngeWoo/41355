@@ -271,6 +271,17 @@ img { max-width: 100%; display: block; }
 .talk-nav-btn span { display: block; letter-spacing: 0; }
 /* 線上法會：桌機放在畫面右側，與「真如音檔」左右對稱 */
 .live-nav-btn { left: auto; right: 18px; }
+/* 未登入時標示為會員限定 */
+.live-nav-btn.is-locked::after {
+  content: '🔒';
+  position: absolute;
+  right: 5px;
+  bottom: 4px;
+  font-size: .62rem;
+  line-height: 1;
+  filter: grayscale(1);
+  opacity: .78;
+}
 .talk-nav-btn:hover,
 .talk-nav-btn:focus-visible {
   border-color: rgba(255,255,255,.55);
@@ -2221,7 +2232,7 @@ html.talk-open body {
     font-weight: 700;
   }
   .talk-nav-btn {
-    position: static;
+    position: relative;
     width: 48px;
     height: 48px;
     flex: 0 0 48px;
@@ -2793,6 +2804,17 @@ html[data-theme="light"] .card::before {
   background: linear-gradient(150deg, rgba(255, 255, 255, .98), rgba(120, 150, 196, .32) 18%, rgba(176, 128, 31, .42) 42%, transparent 72%);
 }
 html[data-theme="light"] .card::after { opacity: .45; }
+/* 咖啡杯與摩天輪原圖是淺金色，日間模式下只留圖層並加深，才不會糊在白卡片上 */
+html[data-theme="light"] .cafe-card::after {
+  opacity: 1;
+  background: url("../img/coffee-steam.gif") no-repeat calc(100% - 16px) 14px / 44px 44px;
+  filter: brightness(.55) saturate(2) contrast(1.18);
+}
+html[data-theme="light"] .tool-card::after {
+  opacity: 1;
+  background: url("../img/ferris-wheel.gif") no-repeat calc(100% - 14px) 12px / 46px 46px;
+  filter: brightness(.55) saturate(2) contrast(1.18);
+}
 html[data-theme="light"] .card:hover {
   border-color: rgba(28, 42, 66, .24);
   box-shadow:
@@ -3055,5 +3077,14 @@ html[data-theme="light"] .foot-links a { background: rgba(255, 255, 255, .60); }
     opacity: .95;
     mix-blend-mode: multiply;
     filter: saturate(1.14) brightness(.87);
+  }
+}
+
+@media (max-width: 560px) {
+  html[data-theme="light"] .cafe-card::after {
+    background: url("../img/coffee-steam.gif") no-repeat calc(100% - 12px) 12px / 34px 34px;
+  }
+  html[data-theme="light"] .tool-card::after {
+    background: url("../img/ferris-wheel.gif") no-repeat calc(100% - 11px) 11px / 36px 36px;
   }
 }
