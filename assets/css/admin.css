@@ -768,3 +768,180 @@ html.admin-modal-open body {
 }
 .global-note-status { font-size: .8rem; color: var(--text-dim); }
 .global-note-status.err { color: #f0b9b9; }
+
+/* ============================================================
+   後台 — 日間（白天）模式
+   ============================================================ */
+html[data-theme="light"] .topbar {
+  background: rgba(255, 255, 255, .92);
+  border-bottom-color: rgba(28, 42, 66, .14);
+}
+html[data-theme="light"] .topbar .right .btn-ghost { background: rgba(226, 189, 97, .16); }
+
+html[data-theme="light"] .field input,
+html[data-theme="light"] .field textarea,
+html[data-theme="light"] .field select,
+html[data-theme="light"] .mail-recipient-tools input,
+html[data-theme="light"] .global-note-box textarea {
+  background: #fff;
+  border-color: rgba(28, 42, 66, .20);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .92);
+}
+html[data-theme="light"] .field input::placeholder,
+html[data-theme="light"] .field textarea::placeholder { color: #93a0b2; }
+html[data-theme="light"] .field input[type="date"],
+html[data-theme="light"] .field input.date-picker { color-scheme: light; }
+html[data-theme="light"] .field input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: .68;
+}
+html[data-theme="light"] .password-toggle {
+  border-color: rgba(28, 42, 66, .18);
+  background: rgba(28, 42, 66, .05);
+}
+html[data-theme="light"] .alert.err {
+  background: rgba(190, 60, 60, .10);
+  border-color: rgba(190, 60, 60, .38);
+  color: #9b1c1c;
+}
+html[data-theme="light"] .alert.ok {
+  background: rgba(46, 124, 80, .10);
+  border-color: rgba(46, 124, 80, .36);
+  color: #1f6b45;
+}
+
+/* 側邊分類 */
+html[data-theme="light"] .side .tab {
+  color: #16233a;
+  background: rgba(var(--c), .20);
+  border-color: rgba(var(--c), .55);
+}
+html[data-theme="light"] .side .tab:hover {
+  color: #101c30;
+  background: rgba(var(--c), .34);
+  border-color: rgba(var(--c), .85);
+  box-shadow: 0 0 10px rgba(var(--c), .40);
+}
+html[data-theme="light"] .side .tab.active {
+  color: #101c30;
+  background: rgba(var(--c), .46);
+  border-color: rgba(var(--c), 1);
+  box-shadow: 0 0 12px rgba(var(--c), .50), 0 6px 16px -12px rgba(30, 45, 72, .55);
+}
+html[data-theme="light"] .side .tab .badge { color: rgba(22, 35, 58, .66); }
+html[data-theme="light"] .side .tab.active .badge { color: #101c30; }
+
+/* 資料列 */
+html[data-theme="light"] .rec {
+  border-color: rgba(28, 42, 66, .12);
+  background:
+    radial-gradient(420px 160px at 14% 0%, rgba(255, 255, 255, .98), transparent 64%),
+    linear-gradient(155deg, rgba(255, 255, 255, .97), rgba(240, 244, 250, .96));
+  box-shadow: 0 16px 34px -28px rgba(38, 52, 84, .42), inset 0 1px 0 rgba(255, 255, 255, .95);
+}
+html[data-theme="light"] .rec:hover {
+  border-color: rgba(28, 42, 66, .26);
+  box-shadow: 0 20px 42px -30px rgba(38, 52, 84, .48), 0 10px 24px -22px rgba(176, 128, 31, .35);
+}
+html[data-theme="light"] .rec.dragging { border-color: rgba(176, 128, 31, .62); }
+html[data-theme="light"] .rec-order {
+  border-color: rgba(176, 128, 31, .40);
+  background: rgba(226, 189, 97, .22);
+}
+html[data-theme="light"] .icon-btn { background: rgba(28, 42, 66, .04); }
+html[data-theme="light"] .icon-btn.danger:hover { color: #b02a2a; border-color: rgba(180, 60, 60, .5); }
+
+/* 清單分頁 */
+html[data-theme="light"] .pagination {
+  border-color: rgba(28, 42, 66, .12);
+  background: rgba(255, 255, 255, .80);
+}
+html[data-theme="light"] .page-btn { background: rgba(226, 189, 97, .18); }
+html[data-theme="light"] .page-btn:hover:not(:disabled),
+html[data-theme="light"] .page-btn:focus-visible { background: rgba(226, 189, 97, .32); }
+
+/* 彈窗 */
+html[data-theme="light"] .modal-mask { background: rgba(24, 36, 58, .55); }
+html[data-theme="light"] .modal-close {
+  border-color: rgba(28, 42, 66, .18);
+  background: rgba(28, 42, 66, .05);
+}
+html[data-theme="light"] .notify-members-toggle {
+  border-color: rgba(176, 128, 31, .32);
+  background: rgba(226, 189, 97, .14);
+}
+
+/* 最新消息圖片編輯 */
+html[data-theme="light"] .news-image-editor {
+  border-color: rgba(176, 128, 31, .28);
+  background: rgba(255, 255, 255, .70);
+}
+html[data-theme="light"] .news-image-editor input[type="file"]::file-selector-button {
+  border-color: rgba(176, 128, 31, .42);
+  background: rgba(226, 189, 97, .22);
+}
+html[data-theme="light"] .news-image-preview-wrap { background: rgba(28, 42, 66, .05); }
+html[data-theme="light"] .news-image-preview-wrap img { border-color: rgba(28, 42, 66, .14); }
+
+/* 群組發信 */
+html[data-theme="light"] .mail-section,
+html[data-theme="light"] .global-note-box {
+  border-color: rgba(28, 42, 66, .12);
+  background: linear-gradient(155deg, rgba(255, 255, 255, .97), rgba(240, 244, 250, .95));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .92);
+}
+html[data-theme="light"] .mail-recipient-list {
+  border-color: rgba(28, 42, 66, .12);
+  background: rgba(28, 42, 66, .035);
+}
+html[data-theme="light"] .mail-recipient {
+  border-color: rgba(28, 42, 66, .12);
+  background: rgba(255, 255, 255, .92);
+}
+html[data-theme="light"] .mail-recipient:has(input:checked) {
+  border-color: rgba(20, 150, 140, .58);
+  background: rgba(20, 150, 140, .12);
+}
+html[data-theme="light"] .mail-editor-toolbar {
+  border-color: rgba(28, 42, 66, .14);
+  background: rgba(28, 42, 66, .05);
+}
+html[data-theme="light"] .mail-editor-toolbar button {
+  border-color: rgba(28, 42, 66, .14);
+  background: rgba(255, 255, 255, .92);
+}
+html[data-theme="light"] .mail-html-editor { border-color: rgba(28, 42, 66, .18); }
+html[data-theme="light"] .mail-source-wrap {
+  border-color: rgba(176, 128, 31, .30);
+  background: rgba(255, 255, 255, .70);
+}
+html[data-theme="light"] .mail-file-chip {
+  border-color: rgba(176, 128, 31, .34);
+  background: rgba(226, 189, 97, .18);
+}
+html[data-theme="light"] .mail-file-chip button { color: #a32828; }
+html[data-theme="light"] .mail-send-bar {
+  border-color: rgba(176, 128, 31, .45);
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 14px 30px rgba(38, 52, 84, .16);
+}
+html[data-theme="light"] .global-note-status.err { color: #a32828; }
+
+/* 提示訊息 */
+html[data-theme="light"] .toast {
+  background: rgba(255, 255, 255, .98);
+  border-color: var(--gold-500);
+  color: #111827;
+  box-shadow: 0 18px 42px -24px rgba(38, 52, 84, .55);
+}
+
+@media (max-width: 760px) {
+  html[data-theme="light"] .side {
+    background: rgba(255, 255, 255, .98);
+    box-shadow: 0 22px 46px -28px rgba(38, 52, 84, .5);
+  }
+  html[data-theme="light"] .mobile-tab-toggle {
+    background: linear-gradient(155deg, rgba(255, 255, 255, .97), rgba(238, 243, 250, .96));
+    box-shadow: 0 12px 26px -24px rgba(38, 52, 84, .5), inset 0 1px 0 rgba(255, 255, 255, .95);
+  }
+}
