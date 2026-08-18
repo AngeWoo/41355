@@ -6,7 +6,7 @@
   var ACCOUNT_KEY = 'shinnyo_admin_account_v1';
   var REMEMBER_KEY = 'shinnyo_admin_remember_v1';
   var TAB_KEY = 'shinnyo_admin_tab_v1';
-  var PAGE_SIZE = 10;
+  var PAGE_SIZE = 20;
   var BULK_MAIL_TYPE = 'bulk-mail';
   var MAIL_MAX_FILE_BYTES = 5 * 1024 * 1024;
   var MAIL_MAX_TOTAL_BYTES = 10 * 1024 * 1024;
