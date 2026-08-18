@@ -447,6 +447,8 @@
   // Internal section.
   var GAP = 22;
   var allData = {};
+  // setupMemberAuth() 內部才有登入狀態，透過這個掛勾給其他區塊查詢／叫出登入視窗
+  var memberGate = null;
   var SECTIONS = [
     { type: 'news', gridId: 'newsGrid', minW: 330, item: newsItem, empty: '目前沒有最新消息', latestFields: ['date'] },
     { type: 'podcast', gridId: 'podcastGrid', minW: 300, item: podcastItem, empty: '目前沒有 Podcast', latestFields: ['date'] },
@@ -1413,6 +1415,13 @@
 
   function openLiveVideo() {
     if (!liveModal) return;
+    // 線上法會為會員限定
+    if (memberGate && !memberGate.isLoggedIn()) {
+      if (!memberGate.isChecking()) {
+        memberGate.prompt('register', '線上法會為會員限定，請先註冊或登入會員。');
+      }
+      return;
+    }
     refreshOfficialLive(true);
     liveModal.hidden = false;
     document.documentElement.classList.add('modal-open');
@@ -1539,6 +1548,11 @@
       var m = currentMember();
       return !!(memberAuthReady && m && m.token && m.name);
     }
+    memberGate = {
+      isLoggedIn: isMemberLoggedIn,
+      isChecking: function () { return memberAuthChecking; },
+      prompt: function (tab, msg) { openMemberPopover(tab, msg); }
+    };
     function syncMemberLockBars(isLocked) {
       document.querySelectorAll('main section.block').forEach(function (section) {
         var bar = section.querySelector(':scope > .member-lock-bar');
@@ -1604,6 +1618,9 @@
       memberOpen.classList.toggle('is-logged-in', loggedIn);
       memberOpen.setAttribute('aria-pressed', loggedIn ? 'true' : 'false');
       if (memberSettingsOpen) memberSettingsOpen.hidden = !loggedIn;
+      // 線上法會為會員限定，未登入時標示為鎖定
+      var liveBtn = document.getElementById('liveVideoOpen');
+      if (liveBtn) liveBtn.classList.toggle('is-locked', !loggedIn);
       if (ham) {
         ham.classList.toggle('member-logged-in', loggedIn);
         ham.setAttribute('data-member-state', loggedIn ? '會員登入' : '會員未登入');
@@ -1881,7 +1898,7 @@
       // 頁籤只切換同一區塊的顯示內容，不應被會員限制攔截。
       // 部分行動瀏覽器會把點擊目標回報為頁籤容器，因此一併排除 tablist。
       if (target.closest('[data-calendar-tab], [data-dharma-tab], [role="tablist"], .calendar-tabs, .dharma-tabs')) return false;
-      if (target.closest('#jumpBottom') || target.closest('#liveVideoOpen')) return true;
+      if (target.closest('#jumpBottom')) return true;
       var a = target.closest('a');
       // 非連結的區塊、按鈕與頁籤不導向受保護內容，不能強制開啟註冊視窗。
       if (!a) return false;
