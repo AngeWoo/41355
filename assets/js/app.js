@@ -455,7 +455,7 @@
     { type: 'headquarters', gridId: 'headquartersGrid', minW: 320, item: headquartersItem, empty: '目前沒有總部會聯絡事項', latestFields: ['date'] },
     { type: 'newsletter', gridId: 'newsletterGrid', minW: 210, item: newsletterItem, empty: '目前沒有親苑時報', latestFields: ['date', 'issue'] },
     { type: 'dharma', gridId: 'dharmaGrid', minW: 300, item: dharmaItem, empty: '目前沒有瑞聲法語', latestFields: ['date'] },
-    { type: 'iya', gridId: 'iyaGrid', minW: 250, item: iyaItem, empty: '目前沒有青年iYA報', latestFields: ['date', 'issue'] },
+    { type: 'iya', gridId: 'iyaGrid', minW: 120, maxCols: 8, item: iyaItem, empty: '目前沒有青年iYA報', latestFields: ['date', 'issue'] },
     { type: 'tools', gridId: 'toolsGrid', minW: 260, maxCols: 5, item: toolItem, empty: '目前沒有互動程式', latestFields: ['date'] }
   ];
   var store = {};
@@ -475,9 +475,23 @@
     return fields.map(function (f) { return it && it[f] ? String(it[f]) : ''; }).join(' ');
   }
 
+  // 全形英數轉半形、全形空白轉半形，讓「１２」也能對到「12」
+  function normalizeSearchText(s) {
+    return String(s || '')
+      .replace(/[！-～]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xfee0); })
+      .replace(/　/g, ' ')
+      .toLowerCase();
+  }
+
   function searchRows(q) {
-    q = String(q || '').trim().toLowerCase();
-    if (!q) return [];
+    // 拆成多個關鍵字，全部命中才算符合（順序不拘）：
+    // 「瑞聲法語 12」「瑞聲法語12」都能找到「瑞聲法語第12號」。
+    // 中文與數字交界處也視為分隔，避免中間夾了「第」「號」就找不到。
+    var terms = normalizeSearchText(q)
+      .replace(/([一-鿿])(\d)/g, '$1 $2')
+      .replace(/(\d)([一-鿿])/g, '$1 $2')
+      .trim().split(/\s+/).filter(Boolean);
+    if (!terms.length) return [];
     var defs = [
       { type: 'news', label: '最新消息', href: '#home', fields: ['title', 'body', 'date'] },
       { type: 'calendar', label: '台灣行事曆', href: '#calendar', calendarType: 'calendar', fields: ['title', 'desc', 'location', 'tag', 'date'] },
@@ -492,8 +506,9 @@
     var rows = [];
     defs.forEach(function (def) {
       (allData[def.type] || []).forEach(function (it) {
-        var hay = textOf(it, def.fields).toLowerCase();
-        if (hay.indexOf(q) === -1) return;
+        var hay = normalizeSearchText(textOf(it, def.fields));
+        var hit = terms.every(function (t) { return hay.indexOf(t) !== -1; });
+        if (!hit) return;
         rows.push({
           label: def.label,
           href: it.link || def.href,
@@ -540,9 +555,9 @@
       e.preventDefault();
       renderSearch(input.value);
     });
+    // 只在按下搜尋鈕（或 Enter 送出）時才查詢；清空欄位則收起結果
     input.addEventListener('input', function () {
-      if (input.value.trim().length >= 2) renderSearch(input.value);
-      else pop.hidden = true;
+      if (!input.value.trim()) pop.hidden = true;
     });
     if (close) close.addEventListener('click', closeSearch);
     pop.addEventListener('click', function (e) {
@@ -1099,17 +1114,56 @@
     }).catch(function () { talksLoading = false; });
   }
 
+  var talkFilterText = '';
+
+  function talkRows() {
+    return ((allData && allData.talks) || (window.SEED_DATA && window.SEED_DATA.talks) || []).slice().sort(function (a, b) {
+      return (Number(a.order || 0) - Number(b.order || 0)) || String(a.title || '').localeCompare(String(b.title || ''));
+    });
+  }
+
+  // 音檔清單：可直接點選任一則，不必一頁一頁翻
+  function renderTalkPicker(rows) {
+    var picker = document.getElementById('talkPicker');
+    var list = document.getElementById('talkPickerList');
+    var count = document.getElementById('talkPickerCount');
+    if (!picker || !list) return;
+    rows = rows || talkRows();
+    picker.hidden = rows.length < 2;
+    if (picker.hidden) { list.innerHTML = ''; return; }
+    var q = talkFilterText.trim().toLowerCase();
+    var shown = 0;
+    var html = rows.map(function (it, i) {
+      var title = String(it.title || '真如音檔');
+      var desc = String(it.desc || '');
+      if (q && (title + ' ' + desc).toLowerCase().indexOf(q) === -1) return '';
+      shown++;
+      var active = i === talkPage;
+      return '<li role="presentation">' +
+        '<button type="button" class="talk-pick' + (active ? ' is-active' : '') + '"' +
+        ' role="option" aria-selected="' + (active ? 'true' : 'false') + '" data-talk-index="' + i + '">' +
+        '<span class="talk-pick-no">' + ('0' + (i + 1)).slice(-2) + '</span>' +
+        '<span class="talk-pick-body"><b>' + esc(title) + '</b>' +
+        (desc ? '<small>' + esc(desc) + '</small>' : '') + '</span>' +
+        '<span class="talk-pick-state">' + (active ? '播放中' : '') + '</span>' +
+        '</button></li>';
+    }).join('');
+    list.innerHTML = html || '<li class="talk-pick-empty">找不到符合的音檔</li>';
+    if (count) count.textContent = q ? (shown + ' / ' + rows.length) : (rows.length + ' 則');
+    var active = list.querySelector('.talk-pick.is-active');
+    if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
+  }
+
   function renderTalkListAudio() {
     var out = document.getElementById('talkList');
     var pager = document.getElementById('talkPager');
     if (!out) return;
-    var rows = ((allData && allData.talks) || (window.SEED_DATA && window.SEED_DATA.talks) || []).slice().sort(function (a, b) {
-      return (Number(a.order || 0) - Number(b.order || 0)) || String(a.title || '').localeCompare(String(b.title || ''));
-    });
+    var rows = talkRows();
     if (!rows.length) {
       out.innerHTML = '<div class="search-empty">目前沒有真如音檔資料</div>';
       out.classList.remove('can-swipe', 'can-swipe-prev', 'can-swipe-next');
       if (pager) pager.innerHTML = '';
+      renderTalkPicker(rows);
       return;
     }
     out.classList.toggle('can-swipe', rows.length > 1);
@@ -1140,6 +1194,7 @@
           '<button type="button" class="talk-page-btn" data-talk-page="' + (talkPage + 1) + '"' + (talkPage === rows.length - 1 ? ' disabled' : '') + '>下一頁</button>';
       }
     }
+    renderTalkPicker(rows);
   }
 
   function setTalkPage(next) {
@@ -1190,6 +1245,21 @@
       var btn = e.target.closest('button[data-talk-page]');
       if (!btn || btn.disabled) return;
       setTalkPage(btn.getAttribute('data-talk-page'));
+    });
+  }
+  var talkPickerList = document.getElementById('talkPickerList');
+  if (talkPickerList) {
+    talkPickerList.addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-talk-index]');
+      if (!btn) return;
+      setTalkPage(btn.getAttribute('data-talk-index'));
+    });
+  }
+  var talkFilterInput = document.getElementById('talkFilter');
+  if (talkFilterInput) {
+    talkFilterInput.addEventListener('input', function () {
+      talkFilterText = talkFilterInput.value || '';
+      renderTalkPicker();
     });
   }
   if (talkList) {
@@ -1374,14 +1444,14 @@
 
   function setLiveText(text) {
     var title = document.getElementById('liveVideoTitle');
-    var tabText = document.getElementById('liveVideoTabText');
+    var openBtn = document.getElementById('liveVideoOpen');
     if (!text) return;
     currentLiveTitle = String(text).replace(/\s+/g, ' ').trim();
     if (title) title.textContent = text;
-    if (tabText) {
-      var normalized = currentLiveTitle;
-      var parts = normalized.match(/^(\d{4}\/\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2})\s+(.+)$/);
-      tabText.innerHTML = parts ? esc(parts[1]) + '<br/>' + esc(parts[2]) : esc(normalized);
+    // 導覽列按鈕只放「線上法會」四個字，場次資訊改放提示文字
+    if (openBtn) {
+      openBtn.title = '線上法會：' + currentLiveTitle;
+      openBtn.setAttribute('aria-label', '線上法會：' + currentLiveTitle);
     }
     updateLiveLineShare();
   }
