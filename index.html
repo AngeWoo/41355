@@ -8,7 +8,8 @@
   <meta name="theme-color" content="#0d1728" />
   <meta name="color-scheme" content="dark" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <link rel="stylesheet" href="assets/css/style.css?v=118" />
+  <link rel="stylesheet" href="assets/css/style.css?v=133" />
+  <script src="assets/js/theme.js?v=2"></script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -21,10 +22,13 @@
     <div class="container nav-inner">
       <a class="brand" href="index.html">
         <img class="mark" src="assets/img/slogo.png" width="42" height="42" alt="" aria-hidden="true" decoding="async" />
-        <span><b>真如苑資料網站</b><small>SHINNYO ARCHIVE</small></span>
+        <span><b>真如苑資料網站</b><small>SHINNYO-EN</small></span>
       </a>
       <button type="button" class="talk-nav-btn" id="talkFloatBtn" aria-label="真如音檔：開啟真如音檔">
         <span>真如</span><span>音檔</span>
+      </button>
+      <button type="button" class="talk-nav-btn live-nav-btn" id="liveVideoOpen" aria-label="線上法會：開啟線上法會影片">
+        <span>線上</span><span>法會</span>
       </button>
       <button type="button" class="hamburger" id="hamburger" aria-label="開啟導覽選單" aria-controls="navLinks" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
@@ -40,6 +44,11 @@
         <button type="button" class="member-nav-btn" id="memberOpen">會員登入</button>
         <button type="button" class="member-nav-btn member-settings-nav-btn" id="memberSettingsOpen" hidden>個人設定</button>
         <a href="admin.html" class="nav-cta">後台維護</a>
+        <button type="button" class="member-nav-btn theme-toggle" id="themeToggle" data-theme-toggle aria-label="切換日間／夜間模式" title="切換日間／夜間模式">
+          <svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.4"/><path d="M12 2.2v2.6M12 18.8v2.6M2.2 12h2.6M19.2 12h2.6M5.1 5.1l1.9 1.9M17 17l1.9 1.9M18.9 5.1L17 7M7 17l-1.9 1.9"/></svg>
+          <svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 14.6A8.6 8.6 0 0 1 9.4 3.6a8.8 8.8 0 1 0 11 11z"/></svg>
+          <span class="theme-auto-dot" aria-hidden="true"></span><span class="theme-toggle-text">日間模式</span>
+        </button>
       </div>
     </div>
   </nav>
@@ -47,7 +56,7 @@
   <!-- Hero -->
   <header class="hero" id="top">
     <svg class="ensou" viewBox="0 0 100 100" aria-hidden="true">
-      <circle cx="50" cy="50" r="40" fill="none" stroke="url(#g)" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="232 28"/>
+      <circle cx="50" cy="50" r="38.8" fill="none" stroke="url(#g)" stroke-width="5.6" stroke-linecap="round" stroke-dasharray="225 27"/>
       <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#ff4040"/>
         <stop offset=".17" stop-color="#ff9a2e"/>
@@ -60,8 +69,13 @@
     </svg>
     <div class="container hero-content">
       <span class="eyebrow">真如資訊 · SHINNYO-EN</span>
+      <div class="motif-row" aria-hidden="true">
+        <img class="motif" src="assets/img/motif-sun.svg?v=3" width="48" height="48" alt="" decoding="async" />
+        <img class="motif" src="assets/img/motif-moon.svg?v=2" width="48" height="48" alt="" decoding="async" />
+        <img class="motif" src="assets/img/motif-star-blue.svg?v=2" width="48" height="48" alt="" decoding="async" />
+        <img class="motif" src="assets/img/motif-star-green.svg?v=2" width="48" height="48" alt="" decoding="async" />
+      </div>
       <h1>相信常住<br/>絕不氣餒</h1>
-      <p class="lead">親苑時報、聯絡事項、行事曆與瑞聲法語，<br/>為苑信徒提供清晰、即時的數位資料園地。</p>
       <form class="hero-search" id="siteSearch" role="search">
         <label class="sr-only" for="siteSearchInput">搜尋網站內容</label>
         <input id="siteSearchInput" type="search" autocomplete="off" placeholder="搜尋親苑時報、行事曆、瑞聲法語、青年iYA報..." />
@@ -119,6 +133,14 @@
         <button type="button" id="talkClose" aria-label="關閉真如音檔">×</button>
       </div>
       <div class="talk-list" id="talkList"></div>
+      <div class="talk-picker" id="talkPicker" hidden>
+        <div class="talk-picker-head">
+          <label class="sr-only" for="talkFilter">篩選真如音檔</label>
+          <input type="search" id="talkFilter" placeholder="輸入關鍵字篩選…" autocomplete="off" />
+          <span class="talk-picker-count" id="talkPickerCount"></span>
+        </div>
+        <ul class="talk-picker-list" id="talkPickerList" role="listbox" aria-label="真如音檔清單"></ul>
+      </div>
       <div class="talk-pager" id="talkPager"></div>
     </section>
   </div>
@@ -161,7 +183,6 @@
         <button type="button" data-member-tab="register">註冊</button>
       </div>
       <form class="member-form active" id="memberLoginForm">
-        <p class="member-register-notice" role="note">敬愛的會員：舊有會員因程式更新錯誤，先前會員資料必須重新註冊。再請大家協助重新註冊，抱歉。</p>
         <label>手機<input type="tel" id="memberLoginMobile" autocomplete="tel" inputmode="tel" maxlength="10" pattern="09[0-9]{8}" placeholder="例：0968711059" required /></label>
         <div class="member-hint">請輸入註冊時填寫的手機號碼。</div>
         <button type="submit" class="btn btn-gold member-submit">會員登入</button>
@@ -320,7 +341,7 @@
           <div class="grid cols-3" id="dharmaGrid"><div class="skeleton">載入中…</div></div>
         </div>
         <div class="dharma-panel" id="iyaPanel" role="tabpanel" aria-labelledby="iyaTab" data-dharma-panel="iya" hidden>
-          <div class="grid cols-3" id="iyaGrid"><div class="skeleton">載入中…</div></div>
+          <div class="grid cols-8" id="iyaGrid"><div class="skeleton">載入中…</div></div>
         </div>
       </div>
     </section>
@@ -355,13 +376,6 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10l6 6 6-6"/><path d="M12 4v12"/><path d="M5 20h14"/></svg>
     </button>
   </div>
-
-  <button type="button" class="live-video-tab" id="liveVideoOpen" aria-label="開啟即時影片">
-    <span class="live-play" aria-hidden="true">
-      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-    </span>
-    <span class="live-copy" id="liveVideoTabText">2026/7/19 10:00<br/>立教90年 真如開祖恆明法會</span>
-  </button>
 
   <div class="live-video-modal" id="liveVideoModal" hidden>
     <div class="live-video-backdrop" data-live-close></div>
@@ -402,6 +416,6 @@
 
   <script src="assets/js/config.js?v=6"></script>
   <script src="assets/js/api.js?v=40"></script>
-  <script src="assets/js/app.js?v=133"></script>
+  <script src="assets/js/app.js?v=139"></script>
 </body>
 </html>

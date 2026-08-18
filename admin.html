@@ -7,8 +7,9 @@
   <meta name="theme-color" content="#0d1728" />
   <meta name="color-scheme" content="dark" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <link rel="stylesheet" href="assets/css/style.css?v=105" />
-  <link rel="stylesheet" href="assets/css/admin.css?v=38" />
+  <link rel="stylesheet" href="assets/css/style.css?v=133" />
+  <link rel="stylesheet" href="assets/css/admin.css?v=39" />
+  <script src="assets/js/theme.js?v=2"></script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
 </head>
 <body class="admin-body admin-auth-pending">
@@ -54,6 +55,11 @@
         </a>
         <div class="right">
           <span class="pill" id="modePill">已連線</span>
+          <button type="button" class="btn btn-ghost btn-sm theme-toggle" id="themeToggleAdmin" data-theme-toggle aria-label="切換日間／夜間模式" title="切換日間／夜間模式">
+            <svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.4"/><path d="M12 2.2v2.6M12 18.8v2.6M2.2 12h2.6M19.2 12h2.6M5.1 5.1l1.9 1.9M17 17l1.9 1.9M18.9 5.1L17 7M7 17l-1.9 1.9"/></svg>
+            <svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 14.6A8.6 8.6 0 0 1 9.4 3.6a8.8 8.8 0 1 0 11 11z"/></svg>
+            <span class="theme-auto-dot" aria-hidden="true"></span><span class="theme-toggle-text">日間模式</span>
+          </button>
           <button class="btn btn-ghost btn-sm" id="recalcStatsBtn">重新計算統計</button>
           <button class="btn btn-ghost btn-sm" id="recalcLatestBtn">計算最新上架</button>
           <button class="btn btn-ghost btn-sm" id="pwdBtn">修改密碼</button>
