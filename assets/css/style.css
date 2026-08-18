@@ -208,7 +208,7 @@ img { max-width: 100%; display: block; }
   object-fit: contain;
   filter: drop-shadow(0 0 10px rgba(231, 205, 143, .28));
 }
-.brand b { font-size: 1.12rem; letter-spacing: .04em; }
+.brand b { font-size: 1.42rem; letter-spacing: .04em; white-space: nowrap; }
 .brand small { display: block; color: var(--text-dim); font-size: .62rem; letter-spacing: .28em; font-family: var(--sans); }
 .nav-links { display: flex; gap: 8px; margin-left: auto; align-items: center; }
 .nav-links a,
@@ -2232,7 +2232,11 @@ html.talk-open body {
     font-weight: 700;
   }
   .talk-nav-btn {
+    /* relative 只是為了讓 🔒 標記能定位，桌機的 top/left/right 位移必須歸零 */
     position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
     width: 48px;
     height: 48px;
     flex: 0 0 48px;
@@ -2361,7 +2365,7 @@ html.talk-open body {
   .nav-inner { gap: 6px; }
   .brand { gap: 8px; }
   .brand .mark { width: 36px; height: 36px; flex: 0 0 36px; }
-  .brand b { font-size: 1rem; }
+  .brand b { font-size: 1.3rem; }
   .brand small { font-size: .54rem; letter-spacing: .16em; }
   .talk-nav-btn {
     width: 44px;
@@ -3087,4 +3091,22 @@ html[data-theme="light"] .foot-links a { background: rgba(255, 255, 255, .60); }
   html[data-theme="light"] .tool-card::after {
     background: url("../img/ferris-wheel.gif") no-repeat calc(100% - 11px) 11px / 36px 36px;
   }
+}
+
+/* 最窄的手機（360/375）：右側三顆按鈕與站徽再收一點，站名才能維持單行 */
+@media (max-width: 400px) {
+  .nav-inner { padding-left: 10px; padding-right: 10px; }
+  .brand .mark { width: 32px; height: 32px; flex: 0 0 32px; }
+  .brand b { font-size: 1.22rem; }
+  .talk-nav-btn {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    border-radius: 12px;
+    font-size: .6rem;
+  }
+  .live-nav-btn { margin-left: 3px; }
+  .talk-nav-btn + .hamburger { margin-left: 3px; }
+  .hamburger { width: 40px; height: 40px; }
+  .hamburger svg { width: 21px; height: 21px; }
 }
