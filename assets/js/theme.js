@@ -1,13 +1,15 @@
 /* ============================================================
    日間／夜間模式
    - 預設「自動」：以所在地的日出／日落時間為切換點
+   - 舊版曾手動固定日間／夜間的裝置，改版後會被清掉一次、回到「自動」
    - 使用者可按切換鈕手動固定為日間或夜間；再按一次回到自動
    - 在 <head> 以同步方式載入，於首次繪製前就套用主題，避免閃爍
    ============================================================ */
 (function () {
   'use strict';
 
-  var STORAGE_KEY = 'shinnyo-theme';   // 'auto' | 'light' | 'dark'
+  var STORAGE_KEY = 'shinnyo-theme-v2';   // 'auto' | 'light' | 'dark'
+  var LEGACY_STORAGE_KEY = 'shinnyo-theme';  // 舊版鍵名，只清除不沿用
   var AUTO = 'auto';
   var LIGHT = 'light';
   var DARK = 'dark';
@@ -97,6 +99,12 @@
     }
   }
 
+  // 舊版把手動選的日間／夜間記在 LEGACY_STORAGE_KEY，會讓裝置永遠停在同一個模式。
+  // 這裡只清除、不沿用，讓大家先回到「自動」；之後想固定仍可自行按切換鈕。
+  function dropLegacyChoice() {
+    try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch (e) {}
+  }
+
   function store(v) {
     try { localStorage.setItem(STORAGE_KEY, v); } catch (e) {}
   }
@@ -171,6 +179,7 @@
     set(mode === AUTO ? LIGHT : (mode === LIGHT ? DARK : AUTO));
   }
 
+  dropLegacyChoice();
   mode = readStored() || AUTO;
   refresh();
 
