@@ -108,6 +108,12 @@
     tools: '互動程式',
     talks: '真如音檔'
   };
+  // 試算表沿用舊版的 ../assets/... 寫法，實際檔案在站台目錄下的 assets/，
+  // 直接丟給 new URL() 會往上多跳一層而抓不到檔案。
+  function normalizeAssetPath(url) {
+    var s = String(url || '').trim();
+    return /^\.\.\/assets\//.test(s) ? s.replace(/^\.\.\//, '') : s;
+  }
   function absoluteUrl(url) {
     var s = String(url || '').trim();
     if (!s) return '';
@@ -120,9 +126,23 @@
   function cleanUrlForCompare(url) {
     return String(url || '').trim().replace(/[),.，。；;!?！？]+$/, '');
   }
+  // 同站的音檔／圖檔／PDF 本身就是要分享的內容，不能被代換成頁面網址，
+  // 否則像真如音檔這種檔案放在站內的項目，轉傳出去只會連到首頁。
+  function isSiteFileUrl(url) {
+    var clean = cleanUrlForCompare(url);
+    if (!clean) return false;
+    try {
+      var path = new URL(clean, location.href).pathname;
+      return /\/assets\//.test(path) ||
+        /\.(mp3|m4a|aac|wav|ogg|opus|mp4|m4v|mov|webm|pdf|jpe?g|png|gif|webp|svg)$/i.test(path);
+    } catch (e) {
+      return false;
+    }
+  }
   function isSiteShareUrl(url) {
     var clean = cleanUrlForCompare(url);
     if (!clean) return false;
+    if (isSiteFileUrl(clean)) return false;
     try {
       var parsed = new URL(clean, location.href);
       var host = parsed.hostname.toLowerCase();
@@ -146,7 +166,7 @@
       .trim();
   }
   function cardShareUrl(type, it) {
-    var url = fallbackLink(type, it);
+    var url = normalizeAssetPath(fallbackLink(type, it));
     url = url ? absoluteUrl(url) : '';
     return isSiteShareUrl(url) ? currentSiteUrl(type) : (url || currentSiteUrl(type));
   }
@@ -1084,8 +1104,7 @@
   }
 
   function talkAudioSrc(url) {
-    var s = String(url || '').trim();
-    if (/^\.\.\/assets\//.test(s)) s = s.replace(/^\.\.\//, '');
+    var s = normalizeAssetPath(url);
     var driveId = (s.match(/drive\.google\.com\/file\/d\/([^/]+)/) || s.match(/[?&]id=([^&]+)/) || [])[1];
     return driveId ? 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(driveId) : s;
   }
