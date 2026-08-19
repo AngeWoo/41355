@@ -139,6 +139,11 @@
       return false;
     }
   }
+  // 本站所在的目錄，例如 /41355/。同網域下的其他專案（互動程式就有幾個放在
+  // 同一個 GitHub Pages 帳號底下）目錄不同，屬於外部連結。
+  function siteBasePath() {
+    return String(location.pathname || '/').replace(/[^/]*$/, '');
+  }
   function isSiteShareUrl(url) {
     var clean = cleanUrlForCompare(url);
     if (!clean) return false;
@@ -147,10 +152,12 @@
       var parsed = new URL(clean, location.href);
       var host = parsed.hostname.toLowerCase();
       var current = String(location.hostname || '').toLowerCase();
-      return host === current ||
+      var sameHost = host === current ||
         /\.ngrok-free\.app$/.test(host) ||
         host === 'localhost' ||
         host === '127.0.0.1';
+      // 只有本站目錄底下的頁面才算站內連結，才需要代換成正式的區塊網址。
+      return sameHost && parsed.pathname.indexOf(siteBasePath()) === 0;
     } catch (e) {
       return false;
     }
