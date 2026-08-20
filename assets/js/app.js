@@ -1261,6 +1261,16 @@
     renderTalkPicker(rows);
   }
 
+  // 從清單選定後直接開始播放；若瀏覽器擋下自動播放，就維持原本的待播狀態
+  function playCurrentTalk() {
+    var audio = document.querySelector('#talkList audio.talk-audio');
+    if (!audio || !audio.play) return;
+    try {
+      var played = audio.play();
+      if (played && played.catch) played.catch(function () {});
+    } catch (e) {}
+  }
+
   function setTalkCurrent(next) {
     var rows = ((allData && allData.talks) || (window.SEED_DATA && window.SEED_DATA.talks) || []);
     var max = Math.max(0, rows.length - 1);
@@ -1317,7 +1327,9 @@
     talkPickerList.addEventListener('click', function (e) {
       var btn = e.target.closest('button[data-talk-index]');
       if (!btn) return;
+      // 點清單＝確認要聽這一則：上方換好音檔後直接開始播放
       setTalkCurrent(btn.getAttribute('data-talk-index'));
+      playCurrentTalk();
     });
   }
   var talkFilterInput = document.getElementById('talkFilter');
