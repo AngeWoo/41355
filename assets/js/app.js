@@ -484,7 +484,9 @@
   var calendarTabsReady = false;
   var dharmaTabsReady = false;
   var statTimers = {};
-  var talkPage = 0;
+  var talkCurrent = 0;   // 播放中的音檔索引
+  var talkListPage = 0;  // 下方清單的頁碼（與播放無關）
+  var TALK_PAGE_SIZE = 8;
   var talksReady = false;
   var talksLoading = false;
   var DATA_CACHE_KEY = 'shinnyo_front_data_cache_v1';
@@ -1142,7 +1144,27 @@
     });
   }
 
-  // 音檔清單：可直接點選任一則，不必一頁一頁翻
+  // 篩選後的清單；保留原始索引，點選時才對得回正確的音檔
+  function talkPickerRows(rows) {
+    var q = talkFilterText.trim().toLowerCase();
+    var out = [];
+    (rows || talkRows()).forEach(function (it, i) {
+      var text = (String(it.title || '') + ' ' + String(it.desc || '')).toLowerCase();
+      if (!q || text.indexOf(q) !== -1) out.push({ it: it, index: i });
+    });
+    return out;
+  }
+  function talkPageCount(total) {
+    return Math.max(1, Math.ceil(total / TALK_PAGE_SIZE));
+  }
+  // 播放的音檔換了以後，讓清單自動翻到它所在的那一頁
+  function syncTalkListPage() {
+    var matched = talkPickerRows();
+    for (var i = 0; i < matched.length; i++) {
+      if (matched[i].index === talkCurrent) { talkListPage = Math.floor(i / TALK_PAGE_SIZE); return; }
+    }
+  }
+  // 音檔清單：可直接點選任一則，清單本身分頁顯示
   function renderTalkPicker(rows) {
     var picker = document.getElementById('talkPicker');
     var list = document.getElementById('talkPickerList');
@@ -1150,48 +1172,80 @@
     if (!picker || !list) return;
     rows = rows || talkRows();
     picker.hidden = rows.length < 2;
-    if (picker.hidden) { list.innerHTML = ''; return; }
-    var q = talkFilterText.trim().toLowerCase();
-    var shown = 0;
-    var html = rows.map(function (it, i) {
-      var title = String(it.title || '真如音檔');
-      var desc = String(it.desc || '');
-      if (q && (title + ' ' + desc).toLowerCase().indexOf(q) === -1) return '';
-      shown++;
-      var active = i === talkPage;
+    if (picker.hidden) { list.innerHTML = ''; renderTalkPager(1); return; }
+    var matched = talkPickerRows(rows);
+    var pages = talkPageCount(matched.length);
+    talkListPage = Math.max(0, Math.min(pages - 1, talkListPage));
+    var start = talkListPage * TALK_PAGE_SIZE;
+    var html = matched.slice(start, start + TALK_PAGE_SIZE).map(function (r) {
+      var title = String(r.it.title || '真如音檔');
+      var desc = String(r.it.desc || '');
+      var active = r.index === talkCurrent;
       return '<li role="presentation">' +
         '<button type="button" class="talk-pick' + (active ? ' is-active' : '') + '"' +
-        ' role="option" aria-selected="' + (active ? 'true' : 'false') + '" data-talk-index="' + i + '">' +
-        '<span class="talk-pick-no">' + ('0' + (i + 1)).slice(-2) + '</span>' +
+        ' role="option" aria-selected="' + (active ? 'true' : 'false') + '" data-talk-index="' + r.index + '">' +
+        '<span class="talk-pick-no">' + ('0' + (r.index + 1)).slice(-2) + '</span>' +
         '<span class="talk-pick-body"><b>' + esc(title) + '</b>' +
         (desc ? '<small>' + esc(desc) + '</small>' : '') + '</span>' +
         '<span class="talk-pick-state">' + (active ? '播放中' : '') + '</span>' +
         '</button></li>';
     }).join('');
     list.innerHTML = html || '<li class="talk-pick-empty">找不到符合的音檔</li>';
-    if (count) count.textContent = q ? (shown + ' / ' + rows.length) : (rows.length + ' 則');
+    if (count) count.textContent = talkFilterText.trim() ? (matched.length + ' / ' + rows.length) : (rows.length + ' 則');
     var active = list.querySelector('.talk-pick.is-active');
     if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
+    renderTalkPager(pages);
+  }
+  // 換頁列只負責下方清單，完全不碰上方正在播放的音檔
+  function renderTalkPager(pages) {
+    var pager = document.getElementById('talkPager');
+    if (!pager) return;
+    if (!pages || pages <= 1) { pager.innerHTML = ''; return; }
+    var atFirst = talkListPage === 0;
+    var atLast = talkListPage === pages - 1;
+    function btn(action, label, disabled, edge) {
+      return '<button type="button" class="talk-page-btn' + (edge ? ' is-edge' : '') + '"' +
+        ' data-talk-page="' + action + '"' + (disabled ? ' disabled' : '') +
+        ' aria-label="' + esc(label) + '">' + esc(label) + '</button>';
+    }
+    pager.innerHTML =
+      btn('first', '最前頁', atFirst, true) +
+      btn('prev', '上一頁', atFirst) +
+      '<span class="talk-page-info">' + (talkListPage + 1) + ' / ' + pages + '</span>' +
+      btn('next', '下一頁', atLast) +
+      btn('last', '最後頁', atLast, true);
+  }
+  function setTalkListPage(action) {
+    var pages = talkPageCount(talkPickerRows().length);
+    var next = talkListPage;
+    if (action === 'first') next = 0;
+    else if (action === 'last') next = pages - 1;
+    else if (action === 'prev') next = talkListPage - 1;
+    else if (action === 'next') next = talkListPage + 1;
+    else next = Number(action) || 0;
+    next = Math.max(0, Math.min(pages - 1, next));
+    if (next === talkListPage) return;
+    talkListPage = next;
+    renderTalkPicker();
   }
 
   function renderTalkListAudio() {
     var out = document.getElementById('talkList');
-    var pager = document.getElementById('talkPager');
     if (!out) return;
     var rows = talkRows();
     if (!rows.length) {
       out.innerHTML = '<div class="search-empty">目前沒有真如音檔資料</div>';
       out.classList.remove('can-swipe', 'can-swipe-prev', 'can-swipe-next');
-      if (pager) pager.innerHTML = '';
       renderTalkPicker(rows);
       return;
     }
+    if (talkCurrent > rows.length - 1) talkCurrent = rows.length - 1;
+    if (talkCurrent < 0) talkCurrent = 0;
     out.classList.toggle('can-swipe', rows.length > 1);
-    out.classList.toggle('can-swipe-prev', rows.length > 1 && talkPage > 0);
-    out.classList.toggle('can-swipe-next', rows.length > 1 && talkPage < rows.length - 1);
-    if (talkPage > rows.length - 1) talkPage = rows.length - 1;
-    if (talkPage < 0) talkPage = 0;
-    var it = rows[talkPage];
+    out.classList.toggle('can-swipe-prev', rows.length > 1 && talkCurrent > 0);
+    out.classList.toggle('can-swipe-next', rows.length > 1 && talkCurrent < rows.length - 1);
+    syncTalkListPage();
+    var it = rows[talkCurrent];
     out.innerHTML = (function () {
       var src = talkAudioSrc(it.link);
       var url = cardShareUrl('talks', it);
@@ -1204,26 +1258,16 @@
         (src ? '<audio class="talk-audio" controls preload="none" src="' + esc(src) + '">您的瀏覽器不支援音訊播放。</audio>' : '') +
         '</article>';
     })();
-    if (pager) {
-      if (rows.length <= 1) {
-        pager.innerHTML = '';
-      } else {
-        pager.innerHTML =
-          '<button type="button" class="talk-page-btn" data-talk-page="' + (talkPage - 1) + '"' + (talkPage === 0 ? ' disabled' : '') + '>上一頁</button>' +
-          '<span class="talk-page-info">' + (talkPage + 1) + ' / ' + rows.length + '</span>' +
-          '<button type="button" class="talk-page-btn" data-talk-page="' + (talkPage + 1) + '"' + (talkPage === rows.length - 1 ? ' disabled' : '') + '>下一頁</button>';
-      }
-    }
     renderTalkPicker(rows);
   }
 
-  function setTalkPage(next) {
+  function setTalkCurrent(next) {
     var rows = ((allData && allData.talks) || (window.SEED_DATA && window.SEED_DATA.talks) || []);
     var max = Math.max(0, rows.length - 1);
     next = Math.max(0, Math.min(max, Number(next) || 0));
-    if (next === talkPage) return;
-    var dir = next > talkPage ? 'next' : 'prev';
-    talkPage = next;
+    if (next === talkCurrent) return;
+    var dir = next > talkCurrent ? 'next' : 'prev';
+    talkCurrent = next;
     renderTalkListAudio();
     var out = document.getElementById('talkList');
     if (out) {
@@ -1264,7 +1308,8 @@
     talkPager.addEventListener('click', function (e) {
       var btn = e.target.closest('button[data-talk-page]');
       if (!btn || btn.disabled) return;
-      setTalkPage(btn.getAttribute('data-talk-page'));
+      // 只翻下方清單，不動上方正在播放的音檔
+      setTalkListPage(btn.getAttribute('data-talk-page'));
     });
   }
   var talkPickerList = document.getElementById('talkPickerList');
@@ -1272,13 +1317,14 @@
     talkPickerList.addEventListener('click', function (e) {
       var btn = e.target.closest('button[data-talk-index]');
       if (!btn) return;
-      setTalkPage(btn.getAttribute('data-talk-index'));
+      setTalkCurrent(btn.getAttribute('data-talk-index'));
     });
   }
   var talkFilterInput = document.getElementById('talkFilter');
   if (talkFilterInput) {
     talkFilterInput.addEventListener('input', function () {
       talkFilterText = talkFilterInput.value || '';
+      talkListPage = 0;
       renderTalkPicker();
     });
   }
@@ -1295,7 +1341,7 @@
       var dx = e.changedTouches[0].clientX - talkStartX;
       var dy = e.changedTouches[0].clientY - talkStartY;
       if (Date.now() - talkStartTime > 800 || Math.abs(dx) < 52 || Math.abs(dx) < Math.abs(dy) * 1.35) return;
-      setTalkPage(talkPage + (dx < 0 ? 1 : -1));
+      setTalkCurrent(talkCurrent + (dx < 0 ? 1 : -1));
     }, { passive: true });
   }
 

@@ -436,6 +436,19 @@
     recalcLatestBtn.addEventListener('click', function () { refreshLatest(true); });
   }
 
+  // ---------- 右下角快速跳頁 ----------
+  var jumpTop = $('#jumpTop'), jumpBottom = $('#jumpBottom');
+  if (jumpTop) {
+    jumpTop.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+  if (jumpBottom) {
+    jumpBottom.addEventListener('click', function () {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    });
+  }
+
   // ---------- 分頁 ----------
   var mobileTabToggle = $('#mobileTabToggle');
   function setMobileTabMenu(open) {
