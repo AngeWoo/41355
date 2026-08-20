@@ -582,6 +582,12 @@ html.admin-modal-open body {
   line-height: 1.5;
 }
 
+/* 右下角快速跳頁：沿用主站的 .page-jump 樣式，只有登入後的維護畫面才需要 */
+.page-jump { display: none; }
+.admin-shell.active ~ .page-jump { display: grid; }
+/* 燈箱開啟時整頁不可捲動，按鈕一併收起 */
+html.admin-modal-open .admin-shell.active ~ .page-jump { display: none; }
+
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 300;
   background: rgba(255,255,255,.96); border: 1px solid var(--gold-600); color: #111827;
