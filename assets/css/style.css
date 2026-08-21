@@ -1034,15 +1034,15 @@ section.block {
 .calendar-panel[hidden],
 .dharma-panel[hidden] { display: none; }
 
-/* 親苑時報：年／月選擇器 */
-.newsletter-picker {
+/* 快速跳轉選擇器（親苑時報／瑞聲法語／青年iYA報 共用）*/
+.jump-picker {
   display: grid;
   gap: 12px;
   width: min(100%, 780px);
   margin: 0 auto 20px;
 }
-.newsletter-picker[hidden] { display: none; }
-.np-years {
+.jump-picker[hidden] { display: none; }
+.jp-groups {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -1053,7 +1053,7 @@ section.block {
   background: rgba(12,24,43,.68);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.07);
 }
-.np-year {
+.jp-group {
   min-height: 38px;
   padding: 7px 14px;
   border: 1px solid transparent;
@@ -1066,24 +1066,24 @@ section.block {
   cursor: pointer;
   transition: color .2s, background .2s, border-color .2s, box-shadow .2s;
 }
-.np-year:hover,
-.np-year:focus-visible {
+.jp-group:hover,
+.jp-group:focus-visible {
   color: var(--gold-300);
   border-color: rgba(212,175,104,.34);
   outline: none;
 }
-.np-year[aria-selected="true"] {
+.jp-group[aria-selected="true"] {
   color: #fff4cf;
   border-color: rgba(212,175,104,.5);
   background: linear-gradient(145deg, rgba(212,175,104,.24), rgba(212,175,104,.1));
   box-shadow: 0 8px 22px -14px rgba(226,189,97,.72), inset 0 1px 0 rgba(255,255,255,.12);
 }
-.np-months {
+.jp-slots {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 6px;
 }
-.np-month {
+.jp-slot {
   min-height: 42px;
   display: grid;
   place-items: center;
@@ -1097,8 +1097,8 @@ section.block {
   text-decoration: none;
   transition: color .2s, background .2s, border-color .2s, transform .2s, box-shadow .2s;
 }
-a.np-month:hover,
-a.np-month:focus-visible {
+a.jp-slot:hover,
+a.jp-slot:focus-visible {
   color: #fff4cf;
   border-color: rgba(212,175,104,.55);
   background: linear-gradient(145deg, rgba(212,175,104,.26), rgba(212,175,104,.1));
@@ -1106,13 +1106,13 @@ a.np-month:focus-visible {
   box-shadow: 0 10px 22px -14px rgba(226,189,97,.8);
   outline: none;
 }
-.np-month.is-off { opacity: .32; cursor: default; }
+.jp-slot.is-off { opacity: .32; cursor: default; }
 @media (max-width: 860px) {
-  .np-months { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .jp-slots { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 @media (max-width: 460px) {
-  .np-months { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .np-year { padding: 7px 10px; font-size: .88rem; }
+  .jp-slots { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .jp-group { padding: 7px 10px; font-size: .88rem; }
 }
 .cal-item { display: flex; align-items: center; gap: 18px; }
 .cal-chip {
@@ -1234,7 +1234,9 @@ a.np-month:focus-visible {
   display: none;
 }
 .dharma-cover {
-  aspect-ratio: 16/10;
+  /* PDF 封面是直式，跟親苑時報／青年iYA報用同一個比例；
+     原本的 16/10 是一列 3 張時代留下的，縮到一列 8 張會把封面壓成扁扁一條。 */
+  aspect-ratio: 3/4;
   border-radius: var(--radius-sm);
   margin: 0 0 16px -4px;
   overflow: hidden;
@@ -2956,23 +2958,23 @@ html[data-theme="light"] .member-tabs button.active {
   background: linear-gradient(145deg, rgba(226, 189, 97, .42), rgba(226, 189, 97, .20));
   box-shadow: 0 8px 20px -14px rgba(176, 128, 31, .7), inset 0 1px 0 rgba(255, 255, 255, .82);
 }
-html[data-theme="light"] .np-years {
+html[data-theme="light"] .jp-groups {
   border-color: rgba(28, 42, 66, .14);
   background: rgba(255, 255, 255, .74);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .92);
 }
-html[data-theme="light"] .np-year[aria-selected="true"] {
+html[data-theme="light"] .jp-group[aria-selected="true"] {
   color: #5f4208;
   border-color: rgba(176, 128, 31, .55);
   background: linear-gradient(145deg, rgba(226, 189, 97, .42), rgba(226, 189, 97, .20));
   box-shadow: 0 8px 20px -14px rgba(176, 128, 31, .7), inset 0 1px 0 rgba(255, 255, 255, .82);
 }
-html[data-theme="light"] .np-month {
+html[data-theme="light"] .jp-slot {
   border-color: rgba(28, 42, 66, .16);
   background: rgba(255, 255, 255, .78);
 }
-html[data-theme="light"] a.np-month:hover,
-html[data-theme="light"] a.np-month:focus-visible {
+html[data-theme="light"] a.jp-slot:hover,
+html[data-theme="light"] a.jp-slot:focus-visible {
   color: #5f4208;
   border-color: rgba(176, 128, 31, .5);
   background: linear-gradient(145deg, rgba(226, 189, 97, .38), rgba(226, 189, 97, .18));
