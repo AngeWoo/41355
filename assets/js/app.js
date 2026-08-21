@@ -432,7 +432,7 @@
       .replace(/（?點選下方連結閱讀本則瑞聲法語全文）?/g, '')
       .trim();
     if (!content) content = '';
-    var full = it.link ? '<a' + linkAttr(it.link) + ' class="more-link dharma-read">閱讀全文 →</a>' : '';
+    var full = it.link ? '<a' + linkAttr(it.link, true) + ' class="more-link dharma-read">閱讀全文 →</a>' : '';
     var url = cardShareUrl('dharma', it);
     return '<div class="card dharma-item reveal">' + newBadge(it) + lineShareButton('dharma', it, url) +
       '<div class="dharma-cover cover">' + coverMarkup('dharma', it, it.category || '瑞聲法語') + '</div>' +
@@ -445,7 +445,7 @@
   function iyaItem(it) {
     var issueStr = fmtDate(it.issue || it.date);
     var url = cardShareUrl('iya', it);
-    var open = it.link ? '<a class="card paper iya-item reveal"' + linkAttr(it.link) + '>' : '<div class="card paper iya-item reveal">';
+    var open = it.link ? '<a class="card paper iya-item reveal"' + linkAttr(it.link, true) + '>' : '<div class="card paper iya-item reveal">';
     var close = it.link ? '</a>' : '</div>';
     return open + newBadge(it) + lineShareButton('iya', it, url) +
       '<div class="cover">' + coverMarkup('iya', it, it.issue || '青年iYA報') + '</div>' +
@@ -475,12 +475,15 @@
     { type: 'calendar', gridId: 'calendarGrid', minW: 320, item: calItem, empty: '目前沒有台灣行事曆', latestFields: ['date'] },
     { type: 'japanCalendar', gridId: 'japanCalendarGrid', minW: 320, item: japanCalItem, empty: '目前沒有日本行事曆', latestFields: ['date'] },
     { type: 'headquarters', gridId: 'headquartersGrid', minW: 320, item: headquartersItem, empty: '目前沒有總部會聯絡事項', latestFields: ['date'] },
-    { type: 'newsletter', gridId: 'newsletterGrid', minW: 210, item: newsletterItem, empty: '目前沒有親苑時報', latestFields: ['date', 'issue'], afterDraw: afterNewsletterDraw },
-    { type: 'dharma', gridId: 'dharmaGrid', minW: 300, item: dharmaItem, empty: '目前沒有瑞聲法語', latestFields: ['date'] },
-    { type: 'iya', gridId: 'iyaGrid', minW: 120, maxCols: 8, item: iyaItem, empty: '目前沒有青年iYA報', latestFields: ['date', 'issue'] },
+    { type: 'newsletter', gridId: 'newsletterGrid', minW: 210, item: newsletterItem, empty: '目前沒有親苑時報', latestFields: ['date', 'issue'], picker: true },
+    { type: 'dharma', gridId: 'dharmaGrid', minW: 120, maxCols: 8, item: dharmaItem, empty: '目前沒有瑞聲法語', latestFields: ['date'], picker: true },
+    { type: 'iya', gridId: 'iyaGrid', minW: 120, maxCols: 8, item: iyaItem, empty: '目前沒有青年iYA報', latestFields: ['date', 'issue'], picker: true },
     { type: 'tools', gridId: 'toolsGrid', minW: 260, maxCols: 5, item: toolItem, empty: '目前沒有互動程式', latestFields: ['date'] }
   ];
   var store = {};
+  // 已登入但還沒拿到資料時，空清單要顯示「載入中…」而不是「目前沒有…」。
+  // GAS 冷啟動可能要等數十秒，這段期間顯示「目前沒有」會讓人以為資料不見了。
+  var contentLoading = false;
   var searchReady = false;
   var calendarTabsReady = false;
   var dharmaTabsReady = false;
@@ -696,22 +699,16 @@
   setupCalendarTabsOnce();
   setupDharmaTabsOnce();
 
-  // ---- 親苑時報：年／月選擇器 ----
-  // 試算表的 issue 欄本來就是 YYYY-MM，年月直接從既有欄位推導，後端與試算表都不用改。
-  var newsletterYear = '';        // 目前選定的年份
-  var newsletterIdx = {};         // { '2026': { '06': item, ... }, ... }
-  var newsletterYearList = [];    // 由新到舊
-  var newsletterPickerReady = false;
-  var newsletterHashYear = (String(location.hash || '').match(/^#newsletter-(\d{4})$/) || [])[1] || '';
-  var newsletterScrollPending = !!newsletterHashYear;
-  var newsletterJumpPending = !!newsletterHashYear;
+  // ---- 快速跳轉選擇器（親苑時報／瑞聲法語／青年iYA報 共用）----
+  // 兩排：上排選群組、下排選單筆，點下排直接開新分頁看檔案。
+  // 卡片本身仍是「完整清單連續翻頁」，選擇器只負責跳到那一頁；
+  // 翻頁時上排點亮的群組會跟著目前這一頁走。
+  //
+  // 兩種模式，看資料自動決定：
+  //   ym  ── 有年月（親苑時報）：上排年份、下排 1–12 月
+  //   num ── 只有流水號（瑞聲法語「第48號」，沒有日期）：上排號數區間、下排該區間的號數
+  var PICKER_SLOTS = 12;   // 下排固定 12 格，兩種模式共用同一套版面
 
-  // GAS 的 issue／date 是試算表的 Date 物件，JSON 化之後是 UTC ISO 字串
-  // （2026-01-01 台北 → 2025-12-31T16:00:00.000Z）。一定要先過 fmtDate 轉回
-  // 台北時區的 YYYY-MM-DD，否則每一期都會往前位移一個月。
-  function newsletterYmText(it) {
-    return String(fmtDate((it && (it.issue || it.date)) || ''));
-  }
   function ymFrom(text) {
     var m = String(text || '').match(/(\d{4})\D{0,2}(\d{1,2})/);
     if (!m) return null;
@@ -721,175 +718,257 @@
   // 標題（「親苑時報 2026年7月號」）是卡片上看得到的字，優先採用 ——
   // 試算表的 issue 欄是人工填的，實際遇過填錯月份（2026年7月號的期別打成 2026-06），
   // 若以 issue 為準，月份鈕就會跟卡片上的標題對不起來，甚至整格變灰。
-  // 標題看不出年月時才退回 issue、再退回 date。
-  function newsletterYm(it) {
+  // issue／date 是試算表的 Date 物件，JSON 化後是 UTC ISO 字串，一定要先過 fmtDate 轉台北時區。
+  function recordYm(it) {
     return ymFrom(it && it.title) ||
       ymFrom(fmtDate((it && it.issue) || '')) ||
       ymFrom(fmtDate((it && it.date) || ''));
   }
+  // 「瑞聲法語 第48號」「青年iYA報 第12期」→ 48 / 12。
+  function recordNum(it) {
+    var title = String((it && it.title) || '');
+    var m = title.match(/第\s*(\d{1,4})\s*[號期集]/);
+    if (m) return Number(m[1]);
+    // issue／ep 若其實是日期，抓到的會是年份（2026）而不是集數，要擋掉。
+    var raw = String((it && (it.issue || it.ep)) || '').trim();
+    if (raw && !/^\d{4}[-/]\d{1,2}/.test(fmtDate(raw))) {
+      m = raw.match(/(\d{1,4})/);
+      if (m) return Number(m[1]);
+    }
+    // 最後才看標題裡的數字，並先把「2026年」這種年份拿掉。
+    m = title.replace(/\d{4}\s*年/g, ' ').match(/(\d{1,4})/);
+    return m ? Number(m[1]) : 0;
+  }
 
-  // 同一個月萬一有多筆（目前是一月一期，但別寫死），月份鈕開日期較新的那筆，
-  // 其餘仍會出現在下方的卡片列表裡。
-  function buildNewsletterIndex(items) {
-    var idx = {};
+  var PICKER_MODES = {
+    ym: {
+      keyOf: function (it) {
+        var ym = recordYm(it);
+        return ym ? { group: ym.y, slot: ym.m } : null;
+      },
+      slotsOf: function () {
+        var out = [];
+        for (var i = 1; i <= PICKER_SLOTS; i++) out.push({ key: pad(i), label: i + '月' });
+        return out;
+      },
+      groupLabel: function (g) { return g; },
+      sortGroups: function (keys) { return keys.slice().sort().reverse(); },
+      emptyHint: '這個月沒有資料',
+      groupsLabel: '選擇年份',
+      slotsLabel: '選擇月份，點選後開新分頁'
+    },
+    num: {
+      keyOf: function (it) {
+        var n = recordNum(it);
+        return n ? { group: String(Math.floor((n - 1) / PICKER_SLOTS)), slot: String(n) } : null;
+      },
+      slotsOf: function (group) {
+        var base = Number(group) * PICKER_SLOTS, out = [];
+        // 下排只放號數，區間資訊已經在上排（「37–48號」），12 格才排得下
+        for (var i = 1; i <= PICKER_SLOTS; i++) out.push({ key: String(base + i), label: String(base + i) });
+        return out;
+      },
+      groupLabel: function (g) {
+        var b = Number(g) * PICKER_SLOTS;
+        return (b + 1) + '–' + (b + PICKER_SLOTS) + '號';
+      },
+      sortGroups: function (keys) {
+        return keys.slice().sort(function (a, b) { return Number(b) - Number(a); });
+      },
+      emptyHint: '沒有這一號',
+      groupsLabel: '選擇號數區間',
+      slotsLabel: '選擇號數，點選後開新分頁'
+    }
+  };
+
+  // 每個區塊各自的狀態。mode 寫 'auto' 的，等資料進來再決定用哪一種。
+  var PICKER_CFG = {
+    newsletter: { boxId: 'newsletterPicker', mode: 'ym', hashKey: 'newsletter' },
+    dharma: { boxId: 'dharmaPicker', mode: 'num', hashKey: '' },
+    iya: { boxId: 'iyaPicker', mode: 'num', hashKey: '' }   // 用集數，不是日期
+  };
+  var pickers = {};
+  Object.keys(PICKER_CFG).forEach(function (type) {
+    pickers[type] = { cfg: PICKER_CFG[type], mode: '', idx: {}, groups: [], group: '', ready: false, jumpPending: false };
+  });
+
+  var newsletterHashYear = (String(location.hash || '').match(/^#newsletter-(\d{4})$/) || [])[1] || '';
+  var newsletterScrollPending = !!newsletterHashYear;
+
+  // auto：多數記錄判得出年月就用 ym，否則用 num（瑞聲法語就是後者）。
+  function resolvePickerMode(cfgMode, items) {
+    if (cfgMode !== 'auto') return cfgMode;
+    var all = items || [];
+    if (!all.length) return 'ym';
+    var hit = 0;
+    all.forEach(function (it) { if (recordYm(it)) hit++; });
+    return hit * 2 >= all.length ? 'ym' : 'num';
+  }
+
+  // 同一格萬一有多筆，有可用連結的優先（否則那一格會因為挑到沒連結的那筆而變灰）。
+  function buildPickerIndex(mode, items) {
+    var m = PICKER_MODES[mode], idx = {};
     (items || []).forEach(function (it) {
-      var ym = newsletterYm(it);
-      if (!ym) return;
-      if (!idx[ym.y]) idx[ym.y] = {};
-      var prev = idx[ym.y][ym.m];
-      if (!prev) { idx[ym.y][ym.m] = it; return; }
-      // 有可用連結的優先，否則同月若有一筆沒連結就可能讓月份鈕變灰；
-      // 兩筆狀態相同時再取日期較新的。
-      var hasLink = !!safeLinkUrl(it.link), prevHasLink = !!safeLinkUrl(prev.link);
-      if (hasLink !== prevHasLink) {
-        if (hasLink) idx[ym.y][ym.m] = it;
-        return;
-      }
-      if (newsletterYmText(it) > newsletterYmText(prev)) idx[ym.y][ym.m] = it;
+      var k = m.keyOf(it);
+      if (!k) return;
+      if (!idx[k.group]) idx[k.group] = {};
+      var prev = idx[k.group][k.slot];
+      if (!prev) { idx[k.group][k.slot] = it; return; }
+      if (!safeLinkUrl(prev.link) && safeLinkUrl(it.link)) idx[k.group][k.slot] = it;
     });
     return idx;
   }
 
-  function syncNewsletterYear(items) {
-    newsletterIdx = buildNewsletterIndex(items);
-    newsletterYearList = Object.keys(newsletterIdx).sort().reverse();
-    if (!newsletterYearList.length) { newsletterYear = ''; return; }
-    if (newsletterHashYear && newsletterYearList.indexOf(newsletterHashYear) !== -1) {
-      newsletterYear = newsletterHashYear;
+  function syncPicker(type, items) {
+    var p = pickers[type];
+    if (!p) return;
+    p.mode = resolvePickerMode(p.cfg.mode, items);
+    p.idx = buildPickerIndex(p.mode, items);
+    p.groups = PICKER_MODES[p.mode].sortGroups(Object.keys(p.idx));
+    if (!p.groups.length) { p.group = ''; return; }
+    if (type === 'newsletter' && newsletterHashYear && p.groups.indexOf(newsletterHashYear) !== -1) {
+      p.group = newsletterHashYear;
       newsletterHashYear = '';
       return;
     }
-    // 使用者選過的年份只要還在，就不能被背景同步回來的資料打回最新年。
-    if (!newsletterYear || newsletterYearList.indexOf(newsletterYear) === -1) {
-      newsletterYear = newsletterYearList[0];
-    }
+    // 使用者選過的群組只要還在，就不能被背景同步回來的資料打回最新的那一組。
+    if (!p.group || p.groups.indexOf(p.group) === -1) p.group = p.groups[0];
   }
 
-  // 卡片是「完整清單連續翻頁」，年份列只負責跳到該年最新一期所在的那一頁。
-  // 找出某一年在完整清單中的起點（清單本身由新到舊排序，第一筆命中的就是該年最新一期）。
-  function newsletterFirstIndexOfYear(year) {
-    var all = allData.newsletter || [];
+  // 找出某一組在完整清單中的起點（清單由新到舊，第一筆命中的就是該組最新一筆）。
+  function pickerFirstIndexOfGroup(type, group) {
+    var p = pickers[type], all = allData[type] || [];
+    var keyOf = PICKER_MODES[p.mode].keyOf;
     for (var i = 0; i < all.length; i++) {
-      var ym = newsletterYm(all[i]);
-      if (ym && ym.y === year) return i;
+      var k = keyOf(all[i]);
+      if (k && k.group === group) return i;
     }
     return -1;
   }
 
-  function newsletterColsNow() {
-    var st = store.newsletter;
+  function colsOfSection(type) {
+    var st = store[type];
     if (!st) return 1;
     var cols = colsFor(st.grid, st.cfg.minW);
     return st.cfg.maxCols ? Math.min(cols, st.cfg.maxCols) : cols;
   }
 
-  // 翻頁之後，點亮的年份要跟著目前這一頁走。
-  // 規則：這一頁還看得到原本選的年份就維持不變（跨年那一頁不會亂跳），
-  // 整頁都跨過去了才換成該頁第一筆的年份。
-  function syncNewsletterYearToPage(pageItems) {
-    if (!newsletterYearList.length) return;
-    // 還沒跳到 #newsletter-YYYY 指定的年份之前，別被「目前這一頁」蓋掉
+  // 翻頁之後，點亮的群組要跟著目前這一頁走。
+  // 規則：這一頁還看得到原本選的群組就維持不變（跨組那一頁不會亂跳），
+  // 整頁都跨過去了才換成該頁第一筆的群組。
+  function syncPickerToPage(type, pageItems) {
+    var p = pickers[type];
+    if (!p || !p.groups.length) return;
+    // 還沒跳到指定群組之前，別被「目前這一頁」蓋掉
     // （資料回來時 draw() 會先畫第 1 頁，比跳頁還早跑）。
-    if (newsletterJumpPending) return;
-    var years = (pageItems || []).map(newsletterYm).filter(Boolean).map(function (ym) { return ym.y; });
-    if (!years.length) return;
-    if (years.indexOf(newsletterYear) !== -1) return;
-    newsletterYear = years[0];
+    if (p.jumpPending) return;
+    var keyOf = PICKER_MODES[p.mode].keyOf;
+    var groups = (pageItems || []).map(keyOf).filter(Boolean).map(function (k) { return k.group; });
+    if (!groups.length) return;
+    if (groups.indexOf(p.group) !== -1) return;
+    p.group = groups[0];
   }
 
-  function afterNewsletterDraw(pageItems) {
-    syncNewsletterYearToPage(pageItems);
-    renderNewsletterPicker();
-  }
-
-  function renderNewsletterPicker() {
-    var box = document.getElementById('newsletterPicker');
-    var yearBox = document.getElementById('newsletterYears');
-    var monthBox = document.getElementById('newsletterMonths');
-    if (!box || !yearBox || !monthBox) return;
-    if (!newsletterYearList.length) {
+  function renderPicker(type) {
+    var p = pickers[type];
+    if (!p) return;
+    var box = document.getElementById(p.cfg.boxId);
+    if (!box) return;
+    var groupBox = box.querySelector('[data-picker-groups]');
+    var slotBox = box.querySelector('[data-picker-slots]');
+    if (!groupBox || !slotBox) return;
+    if (!p.groups.length) {
       box.hidden = true;
-      yearBox.innerHTML = '';
-      monthBox.innerHTML = '';
+      groupBox.innerHTML = '';
+      slotBox.innerHTML = '';
       return;
     }
+    var m = PICKER_MODES[p.mode];
     box.hidden = false;
-    yearBox.innerHTML = newsletterYearList.map(function (y) {
-      var on = y === newsletterYear;
-      return '<button type="button" role="tab" class="np-year" data-newsletter-year="' + esc(y) + '"' +
+    groupBox.setAttribute('aria-label', m.groupsLabel);
+    slotBox.setAttribute('aria-label', m.slotsLabel);
+    groupBox.innerHTML = p.groups.map(function (g) {
+      var on = g === p.group;
+      return '<button type="button" role="tab" class="jp-group" data-picker-group="' + esc(g) + '"' +
         ' aria-selected="' + (on ? 'true' : 'false') + '"' + (on ? '' : ' tabindex="-1"') + '>' +
-        esc(y) + '</button>';
+        esc(m.groupLabel(g)) + '</button>';
     }).join('');
 
-    var months = newsletterIdx[newsletterYear] || {};
-    var html = '';
-    for (var i = 1; i <= 12; i++) {
-      var it = months[pad(i)];
-      var label = i + '月';
+    var slots = p.idx[p.group] || {};
+    slotBox.innerHTML = m.slotsOf(p.group).map(function (slot) {
+      var it = slots[slot.key];
       if (it && safeLinkUrl(it.link)) {
-        html += '<a class="np-month"' + linkAttr(it.link, true) + ' title="' +
-          esc(it.title || (newsletterYear + '年' + label)) + '">' + label + '</a>';
-      } else {
-        html += '<span class="np-month is-off" aria-disabled="true" title="' +
-          (it ? '這一期尚未提供連結' : '這個月沒有資料') + '">' + label + '</span>';
+        return '<a class="jp-slot"' + linkAttr(it.link, true) + ' title="' + esc(it.title || slot.label) + '">' +
+          esc(slot.label) + '</a>';
       }
-    }
-    monthBox.innerHTML = html;
+      return '<span class="jp-slot is-off" aria-disabled="true" title="' +
+        esc(it ? '這一筆尚未提供連結' : m.emptyHint) + '">' + esc(slot.label) + '</span>';
+    }).join('');
 
     // 從 #newsletter-YYYY 連進來時，瀏覽器找不到這個 id 不會自己捲，這裡補一次。
-    if (newsletterScrollPending) {
+    if (type === 'newsletter' && newsletterScrollPending) {
       newsletterScrollPending = false;
       var sec = document.getElementById('newsletter');
       if (sec) window.setTimeout(function () { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
     }
   }
 
-  // 把卡片翻到某一年最新一期所在的那一頁。draw() 收尾會叫 afterNewsletterDraw() 重畫選擇器。
-  function jumpNewsletterToYear(year) {
-    if (!year || !newsletterIdx[year]) return false;
-    newsletterYear = year;
-    var st = store.newsletter;
-    var at = newsletterFirstIndexOfYear(year);
+  // 把卡片翻到某一組最新一筆所在的那一頁。draw() 收尾會叫 afterPickerDraw() 重畫選擇器。
+  function jumpPickerToGroup(type, group) {
+    var p = pickers[type];
+    if (!p || !group || !p.idx[group]) return false;
+    p.group = group;
+    var st = store[type];
+    var at = pickerFirstIndexOfGroup(type, group);
     if (!st || at === -1) return false;
-    var next = Math.floor(at / newsletterColsNow());
+    var next = Math.floor(at / colsOfSection(type));
     var dir = next === st.page ? '' : (next > st.page ? 'next' : 'prev');
     st.page = next;
-    draw('newsletter', dir);
+    draw(type, dir);
     return true;
   }
 
-  // 使用者主動點年份才要動網址；資料重畫時走 jumpNewsletterToYear()。
-  function selectNewsletterYear(year) {
-    if (!year || !newsletterIdx[year]) return;
-    try {
-      history.replaceState(null, '', location.pathname + location.search + '#newsletter-' + year);
-    } catch (e) {}
-    if (!jumpNewsletterToYear(year)) renderNewsletterPicker();
+  // 使用者主動點群組才要動網址；資料重畫時走 jumpPickerToGroup()。
+  function selectPickerGroup(type, group) {
+    var p = pickers[type];
+    if (!p || !group || !p.idx[group]) return;
+    if (p.cfg.hashKey) {
+      try {
+        history.replaceState(null, '', location.pathname + location.search + '#' + p.cfg.hashKey + '-' + group);
+      } catch (e) {}
+    }
+    if (!jumpPickerToGroup(type, group)) renderPicker(type);
   }
 
-  function setupNewsletterPickerOnce() {
-    if (newsletterPickerReady) return;
-    var box = document.getElementById('newsletterPicker');
+  function afterPickerDraw(type, pageItems) {
+    syncPickerToPage(type, pageItems);
+    renderPicker(type);
+  }
+
+  function setupPickerOnce(type) {
+    var p = pickers[type];
+    if (!p || p.ready) return;
+    var box = document.getElementById(p.cfg.boxId);
     if (!box) return;
-    newsletterPickerReady = true;
+    p.ready = true;
     box.addEventListener('click', function (e) {
-      var btn = e.target.closest && e.target.closest('[data-newsletter-year]');
+      var btn = e.target.closest && e.target.closest('[data-picker-group]');
       if (!btn) return;
-      selectNewsletterYear(btn.getAttribute('data-newsletter-year'));
+      selectPickerGroup(type, btn.getAttribute('data-picker-group'));
     });
     box.addEventListener('keydown', function (e) {
       if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(e.key) === -1) return;
-      var btn = e.target.closest && e.target.closest('[data-newsletter-year]');
+      var btn = e.target.closest && e.target.closest('[data-picker-group]');
       if (!btn) return;
-      var i = newsletterYearList.indexOf(btn.getAttribute('data-newsletter-year'));
+      var i = p.groups.indexOf(btn.getAttribute('data-picker-group'));
       if (i === -1) return;
       var next = e.key === 'Home' ? 0
-        : e.key === 'End' ? newsletterYearList.length - 1
+        : e.key === 'End' ? p.groups.length - 1
         : e.key === 'ArrowLeft' ? i - 1 : i + 1;
-      if (next < 0 || next >= newsletterYearList.length) return;
+      if (next < 0 || next >= p.groups.length) return;
       e.preventDefault();
-      selectNewsletterYear(newsletterYearList[next]);
-      var el = box.querySelector('[data-newsletter-year="' + newsletterYearList[next] + '"]');
+      selectPickerGroup(type, p.groups[next]);
+      var el = box.querySelector('[data-picker-group="' + p.groups[next] + '"]');
       if (el) el.focus();
     });
   }
@@ -958,6 +1037,9 @@
 
   var coverResolveCache = {};
   var newsImageCache = {};
+  // 每個區塊上次畫出來的欄數。手機捲動時網址列收合會觸發 resize（只有高度變），
+  // 若無條件重畫，grid.innerHTML 會整個重建、圖片重新請求，看起來就是一直閃。
+  var lastCols = {};
   function setCoverImage(cover, urls, title) {
     urls = uniqueUrls(urls);
     if (!cover || !urls.length) return;
@@ -1055,12 +1137,13 @@
     var grid = s.grid, items = s.items;
     if (!items.length) {
       grid.style.gridTemplateColumns = '';
-      grid.innerHTML = '<div class="skeleton">' + s.cfg.empty + '</div>';
+      grid.innerHTML = '<div class="skeleton">' + (contentLoading ? '載入中…' : s.cfg.empty) + '</div>';
       s.pager.innerHTML = '';
       return;
     }
     var cols = colsFor(grid, s.cfg.minW);
     if (s.cfg.maxCols) cols = Math.min(cols, s.cfg.maxCols);
+    lastCols[type] = cols;
     var pages = Math.max(1, Math.ceil(items.length / cols));
     if (s.page > pages - 1) s.page = pages - 1;
     if (s.page < 0) s.page = 0;
@@ -1092,7 +1175,7 @@
       window.setTimeout(function () { grid.classList.remove('slide-next', 'slide-prev'); }, 360);
     }
     drawPager(type, pages);
-    if (s.cfg.afterDraw) s.cfg.afterDraw(pageItems);
+    if (s.cfg.picker) afterPickerDraw(type, pageItems);
     revealIn(grid);
   }
 
@@ -1132,7 +1215,20 @@
   var rzT;
   window.addEventListener('resize', function () {
     clearTimeout(rzT);
-    rzT = setTimeout(function () { Object.keys(store).forEach(function (t) { draw(t); }); }, 160);
+    rzT = setTimeout(function () {
+      Object.keys(store).forEach(function (t) {
+        var s = store[t];
+        if (!s || !s.grid) return;
+        // 頁籤沒展開的區塊寬度是 0，量到的欄數會落回 colsFor() 的 1000px 預設值，
+        // 不但不準，還會污染 lastCols。切過去時 activateDharmaTab() 自己會重畫。
+        if (!s.grid.clientWidth) return;
+        var cols = colsFor(s.grid, s.cfg.minW);
+        if (s.cfg.maxCols) cols = Math.min(cols, s.cfg.maxCols);
+        // 只有欄數真的變了才需要重排；高度變化（手機網址列收合）不必動到版面。
+        if (lastCols[t] === cols) return;
+        draw(t);
+      });
+    }, 160);
   });
 
   // Internal section.
@@ -1153,10 +1249,12 @@
     d = normalizeData(d);
     allData = d;
     // 年份要先決定，下面 SECTIONS 的 filter 才有依據
-    syncNewsletterYear(d.newsletter || []);
-    // 這一輪重畫結束前，afterDraw 不要用「目前這頁」去蓋掉選定年份 ——
-    // 下面 SECTIONS 迴圈會先把 page 歸零並畫第 1 頁，比調回年份還早跑。
-    newsletterJumpPending = !!newsletterYear;
+    // 群組要先決定；這一輪重畫結束前 afterPickerDraw 也不能用「目前這頁」去蓋掉它 ——
+    // 下面 SECTIONS 迴圈會先把 page 歸零並畫第 1 頁，比調回群組還早跑。
+    Object.keys(pickers).forEach(function (t) {
+      syncPicker(t, d[t] || []);
+      pickers[t].jumpPending = !!pickers[t].group;
+    });
     SECTIONS.forEach(function (cfg) {
       var items = d[cfg.type] || [];
       if (store[cfg.type]) {
@@ -1169,12 +1267,14 @@
     });
     setupCalendarTabsOnce();
     setupDharmaTabsOnce();
-    setupNewsletterPickerOnce();
-    // renderData 會把 store.page 歸零，這裡把卡片翻回目前選定的年份：
+    // renderData 會把 store.page 歸零，這裡把卡片翻回目前選定的群組：
     // 背景同步回來不會跳回第 1 頁，#newsletter-YYYY 深連結也靠這段生效。
-    newsletterJumpPending = false;
-    if (newsletterYear) jumpNewsletterToYear(newsletterYear);
-    renderNewsletterPicker();
+    Object.keys(pickers).forEach(function (t) {
+      setupPickerOnce(t);
+      pickers[t].jumpPending = false;
+      if (pickers[t].group) jumpPickerToGroup(t, pickers[t].group);
+      renderPicker(t);
+    });
     setupSearchOnce();
     updateStats(d, animateStats);
     observeReveal();
@@ -1187,6 +1287,13 @@
     SECTIONS.forEach(function (cfg) { out[cfg.type] = []; });
     out.talks = [];
     return out;
+  }
+
+  // 載入結束（不論成功或失敗）：把還停在「載入中…」的空清單換成正式訊息。
+  function endContentLoading() {
+    if (!contentLoading) return;
+    contentLoading = false;
+    Object.keys(store).forEach(function (t) { draw(t); });
   }
 
   function clearProtectedContent() {
@@ -1229,10 +1336,12 @@
     if (!token || !API.memberContent) return Promise.resolve(false);
     return API.memberContent(token).then(function (res) {
       if (!res || !res.ok || !res.data) {
+        endContentLoading();
         if (handlers.onFail) handlers.onFail(res || null);
         return false;
       }
       if (handlers.onMember) handlers.onMember(res.member || null);
+      contentLoading = false;
       talksReady = true;
       cacheProtectedContent(token, res.data);
       renderData(stripPrivateCollections(res.data), true);
@@ -1243,7 +1352,16 @@
 
   function boot() {
     var member = storedMemberSession();
-    if (member && member.token && loadCachedProtectedContent(member.token)) return;
+    if (member && member.token) {
+      if (loadCachedProtectedContent(member.token)) return;
+      // 有登入、但本機沒有可用快取：畫面先進入載入中狀態。
+      // 後端冷啟動可能要等數十秒，這時顯示「登入後載入內容」會誤導成沒登入。
+      contentLoading = true;
+      clearProtectedContent();
+      showModeBanner('<b>會員內容載入中…</b> 後端首次喚醒較慢，請稍候');
+      return;
+    }
+    contentLoading = false;
     clearProtectedContent();
     showModeBanner('<b>會員限定</b>：登入後載入內容');
   }
@@ -2463,6 +2581,7 @@
           setMemberStatus('會員內容載入失敗，請稍後重試。', 'err');
         }
       }).catch(function () {
+        endContentLoading();
         memberAuthChecking = false;
         memberAuthReady = false;
         syncMemberUi();

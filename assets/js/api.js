@@ -12,6 +12,11 @@
 
   var MODE = GAS ? 'gas' : 'demo';
   var REQUEST_TIMEOUT_MS = 30000;
+  // GAS 的 /exec 會先 302 轉到 script.googleusercontent.com，冷啟動時第一次往返動輒數十秒
+  // （實測連最輕的 ping 都要 11 秒，最慢一次超過 60 秒）。讀取類請求若沿用 30 秒上限，
+  // 冷啟動那次必定逾時，開站就是一片空白。所以讀取給長一點的上限並自動重試一次。
+  var READ_TIMEOUT_MS = 75000;
+  var READ_RETRY_DELAY_MS = 800;
 
   var TYPES = ['news', 'podcast', 'calendar', 'japanCalendar', 'headquarters', 'newsletter', 'dharma', 'iya', 'tools', 'talks'];
   var DEMO_DATA = window.SEED_DATA || { news: [], podcast: [], calendar: [], japanCalendar: [], headquarters: [], newsletter: [], dharma: [], iya: [], tools: [], talks: [], members: [] };
@@ -129,13 +134,13 @@
     return { begin: begin, end: end };
   })();
 
-  function fetchWithTimeout(url, options) {
+  function fetchWithTimeout(url, options, timeoutMs) {
     options = Object.assign({}, options || {});
     var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var timer = null;
     if (controller) {
       options.signal = controller.signal;
-      timer = setTimeout(function () { controller.abort(); }, REQUEST_TIMEOUT_MS);
+      timer = setTimeout(function () { controller.abort(); }, timeoutMs || REQUEST_TIMEOUT_MS);
     }
     Progress.begin();
     return fetch(url, options).then(function (response) {
@@ -268,7 +273,7 @@
   }
 
   // ---------- 寫入（僅 gas 模式）----------
-  function post(body) {
+  function post(body, timeoutMs) {
     if (MODE !== 'gas') {
       var msg = MODE === 'published'
         ? '目前為「唯讀模式」（讀取自已發布的 Google 試算表）。如需在後台直接編輯，請改用 GAS 網頁應用程式部署並設定 GAS_URL。'
@@ -279,9 +284,23 @@
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(body)
-    }).then(responseJson).then(function (res) {
+    }, timeoutMs).then(responseJson).then(function (res) {
       if (res && res.ok) clearFrontDataCache(body && body.action);
       return res;
+    });
+  }
+
+  // 只有「純讀取、重跑不會產生副作用」的動作可以用這個：逾時或連線失敗時自動重試一次。
+  // GAS 冷啟動第一次特別慢，第二次通常幾秒內就回來，重試的命中率很高。
+  function isRetriableError(err) {
+    var msg = String((err && err.message) || err || '');
+    return /逾時|Failed to fetch|NetworkError|network|HTTP 5\d\d/i.test(msg);
+  }
+  function postRead(body) {
+    return post(body, READ_TIMEOUT_MS).catch(function (err) {
+      if (!isRetriableError(err)) throw err;
+      return new Promise(function (resolve) { setTimeout(resolve, READ_RETRY_DELAY_MS); })
+        .then(function () { return post(body, READ_TIMEOUT_MS); });
     });
   }
 
@@ -353,14 +372,14 @@
     memberRegister: function (record, code) { return post({ action: 'memberRegister', record: record, code: code }); },
     memberLogin: function (mobile) { return post({ action: 'memberLogin', mobile: mobile }); },
     validateMemberToken: function (token) { return post({ action: 'validateMemberToken', token: token }); },
-    memberContent: function (token) { return post({ action: 'memberContent', token: token }); },
+    memberContent: function (token) { return postRead({ action: 'memberContent', token: token }); },
     memberDirectory: function (token) { return post({ action: 'memberDirectory', token: token }); },
     memberProfile: function (token) { return post({ action: 'memberProfile', token: token }); },
     memberUpdateProfile: function (record, token) { return post({ action: 'memberUpdateProfile', record: record, token: token }); },
     memberContactAdmin: function (message, token) { return post({ action: 'memberContactAdmin', message: message, token: token }); },
     adminMemberList: function (token) { return post({ action: 'adminMemberList', token: token }); },
-    adminList: function (type, token) { return post({ action: 'adminList', type: type, token: token }); },
-    adminAll: function (token) { return post({ action: 'adminAll', token: token }); },
+    adminList: function (type, token) { return postRead({ action: 'adminList', type: type, token: token }); },
+    adminAll: function (token) { return postRead({ action: 'adminAll', token: token }); },
     getMemberGlobalNote: function (token) { return post({ action: 'getMemberGlobalNote', token: token }); },
     setMemberGlobalNote: function (note, token) { return post({ action: 'setMemberGlobalNote', note: note, token: token }); },
     sendBulkMail: function (message, token) {
