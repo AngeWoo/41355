@@ -100,6 +100,24 @@
 ## 六、自訂
 
 - **站名／副標／官方連結／頁尾**：改 `assets/js/config.js`。
+- **親苑時報年／月選擇**：區塊標題下方有「年份列＋12 個月份」選擇器，年份由資料自動推導（有幾年就列幾年）。
+  點月份會**開新分頁**看該期檔案，該年沒有的月份會灰掉。
+  - **卡片是完整清單的連續翻頁**，年份列只負責「跳到該年最新一期所在的那一頁」，翻頁可以直接跨年往下看。
+    點亮的年份會跟著目前這一頁走：這一頁還看得到原本選的年份就維持不變（跨年那一頁不會亂跳），
+    整頁都跨過去了才換成該頁第一筆的年份 —— 見 `syncNewsletterYearToPage()`。
+  - 相關函式都在 `assets/js/app.js`：`syncNewsletterYear()`、`renderNewsletterPicker()`、
+    `jumpNewsletterToYear()`（跳頁，不動網址）、`selectNewsletterYear()`（使用者點選，會更新網址）；
+    翻頁後靠 `SECTIONS` 裡 newsletter 的 `afterDraw` 回呼刷新選擇器。樣式在 `assets/css/style.css` 的 `.newsletter-picker`。
+  - `renderData()` 每次重畫都會把 `store.page` 歸零，所以它結尾會再呼叫一次 `jumpNewsletterToYear()`
+    把卡片翻回目前選定的年份，否則背景同步一回來就跳回第 1 頁。
+    重畫期間 `newsletterJumpPending` 會擋住 `afterDraw` 覆寫年份（迴圈裡的 `draw()` 比調回年份還早跑）。
+  - 年月的判讀順序是 **標題 → `issue` → `date`**。標題（「親苑時報 2026年7月號」）是卡片上看得到的字，
+    以它為準，月份鈕才不會跟卡片對不起來。`issue` 是人工填的，實際發生過填錯月份的情況
+    （2026年7月號的期別被打成 `2026-06`，害 7 月整格變灰、6 月變成兩筆）。**後端與試算表結構都不用改。**
+  - ⚠️ **日期一律先過 `fmtDate()` 再取年月**。試算表的日期欄取回來是 Date 物件，JSON 化之後是 UTC ISO 字串
+    （`2026-01-01` 台北 → `2025-12-31T16:00:00.000Z`），直接用正則抓字串前面的年月會讓每一期都往前位移一個月，
+    1 月號還會掉到前一年的 12 月去。`fmtDate()` 會轉成 Asia/Taipei 的 `YYYY-MM-DD`，ISO／`YYYY-MM`／`YYYY/M/D` 都吃得下。
+
 - **搜尋**：按下搜尋鈕（或 Enter）才查詢，輸入過程不會即時跳結果。
   關鍵字以空白拆開、全部命中才算符合，中文與數字交界也會自動斷開 —— 因此「瑞聲法語 12」「瑞聲法語12」都找得到「瑞聲法語第12號」；全形數字會自動轉半形。
 - **真如音檔**：彈窗上半是目前播放的音檔，下半是可捲動的清單，可直接點選任一則，並支援關鍵字篩選。
@@ -113,4 +131,11 @@
   - 白天模式的所有樣式集中在 `assets/css/style.css` 與 `assets/css/admin.css` 檔案最後的 `html[data-theme="light"]` 區塊，調整日間配色只需改這兩段；夜間模式的原有樣式完全未動。
   - 切換邏輯在 `assets/js/theme.js`，於 `<head>` 同步載入以避免首次繪製閃爍；
     另提供 `window.ShinnyoTheme.get()`（目前主題）、`.getMode()`（auto/light/dark）、`.getSunTimes()`、`.set('auto'|'light'|'dark')`、`.toggle()`。
+- **後台的日期顯示**：試算表的日期欄取回來是 Date 物件，JSON 化後是 UTC ISO 字串
+  （台北 `2026-06-01` → `2026-05-31T16:00:00.000Z`）。`assets/js/admin.js` 的 `taipeiYmd()` 負責換算回台北日期，
+  `dateValue()`／`simpleDate()`／`issueValue()` 都走這條路，**不要再用切前 10 碼的寫法** ——
+  那會讓後台列表與編輯框比前台少一天，而且一存檔就把少掉的那天寫回試算表，每編輯一次就再往前一天。
+- **期別欄（`issue`）**：試算表會把 `2026-06` 自動轉成日期，取回來也是 ISO 字串。
+  編輯框與列表都用 `issueValue()` 正規化成 `YYYY-MM` 再顯示，否則會出現「2026-05-31T16:00:00.000Z」被原樣存回去。
+
 - **新增欄位**：在 `gas/Code.gs` 的 `SCHEMA` 加欄位，並在 `assets/js/admin.js` 的 `COLLECTIONS` 對應 `fields` 加上即可。
