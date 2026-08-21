@@ -105,7 +105,7 @@
         { k: 'order', label: '排序', type: 'number' }
       ],
       title: function (r) { return r.title; },
-      sub: function (r) { return [r.issue, simpleDate(r.date)].filter(Boolean).join(' · '); }
+      sub: function (r) { return [issueValue(r.issue), simpleDate(r.date)].filter(Boolean).join(' · '); }
     },
     {
       type: 'dharma', label: '瑞聲法語',
@@ -135,7 +135,7 @@
         { k: 'order', label: '排序', type: 'number' }
       ],
       title: function (r) { return r.title; },
-      sub: function (r) { return [r.issue, simpleDate(r.date)].filter(Boolean).join(' · '); }
+      sub: function (r) { return [issueValue(r.issue), simpleDate(r.date)].filter(Boolean).join(' · '); }
     },
     {
       type: 'tools', label: '互動程式',
@@ -182,10 +182,33 @@
   function truthy(v) { var s = String(v).toLowerCase(); return s === 'true' || s === '1' || s === 'yes' || v === true; }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function byType(t) { return COLLECTIONS.filter(function (c) { return c.type === t; })[0]; }
+  // 試算表的日期欄取回來是 Date 物件，JSON 化之後是 UTC ISO 字串
+  // （台北 2026-06-01 → 2026-05-31T16:00:00.000Z）。直接切前 10 碼會少一天，
+  // 後台列表與編輯框就會跟前台差一天，而且一存檔就把少掉的那天寫回試算表，
+  // 每編輯一次日期就往前跑一天。這裡跟前台 app.js 的 fmtDate() 用同一套換算。
+  function taipeiYmd(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!/^\d{4}-\d{2}-\d{2}T/.test(s)) return '';
+    var dt = new Date(s);
+    if (isNaN(dt.getTime())) return s.slice(0, 10);
+    try { return dt.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (e) { return s.slice(0, 10); }
+  }
+  // 期別欄（YYYY-MM）：試算表會把 2026-06 自動存成日期，取回來一樣是 ISO 字串，
+  // 直接塞進文字框會顯示成「2026-05-31T16:00:00.000Z」，一存檔就把 ISO 字串寫回去。
+  function issueValue(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return '';
+    var ymd = taipeiYmd(s);
+    if (ymd) return ymd.slice(0, 7);
+    var m = s.match(/^(\d{4})[-/](\d{1,2})$/);
+    return m ? m[1] + '-' + String(m[2]).padStart(2, '0') : s;
+  }
   function simpleDate(v) { return dateValue(v); }
   function dateValue(v) {
     var s = String(v == null ? '' : v).trim();
     if (!s) return '';
+    var tz = taipeiYmd(s);
+    if (tz) return tz;
     var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
     var m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
@@ -1340,7 +1363,9 @@
     return c.type !== 'members' && c.fields.some(function (f) { return f.k === 'link'; });
   }
   function fieldHtml(f, val) {
-    var v = esc(f.type === 'date' ? dateValue(val) : (val == null ? '' : val));
+    var v = esc(f.type === 'date' ? dateValue(val)
+      : f.k === 'issue' ? issueValue(val)
+      : (val == null ? '' : val));
     if (f.type === 'textarea') return '<textarea id="f_' + f.k + '"' + (f.req ? ' required' : '') + '>' + v + '</textarea>';
     if (f.type === 'bool') return '<select id="f_' + f.k + '"><option value="">否</option><option value="TRUE"' + (truthy(val) ? ' selected' : '') + '>是</option></select>';
     var t = f.type === 'number' ? 'number' : (f.type === 'date' ? 'date' : (f.type === 'url' ? 'url' : 'text'));
