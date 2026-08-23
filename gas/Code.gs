@@ -1079,18 +1079,54 @@ function createMemberToken(member) {
   return payload + '.' + signMemberTokenPayload(payload);
 }
 
-function verifyMemberToken(token) {
-  if (!token) return null;
+// 回傳 { member: 會員 } 或 { code: 'auth_invalid' } 或 { code: 'temporary' }。
+//
+// 重點在於區分後兩者：簽章驗過之後還要讀試算表確認會員仍存在，而那一步可能因為
+// 配額、逾時等「暫時性」原因失敗。若把暫時性失敗也回報成「登入已過期」，前台就會
+// 把明明還有效的登入狀態清掉，使用者會莫名其妙被登出。
+function resolveMemberToken(token) {
+  if (!token) return { code: 'auth_invalid' };
   var parts = String(token).split('.');
-  if (parts.length !== 2 || signMemberTokenPayload(parts[0]) !== parts[1]) return null;
+  if (parts.length !== 2 || signMemberTokenPayload(parts[0]) !== parts[1]) return { code: 'auth_invalid' };
+
+  var payload;
   try {
-    var payload = JSON.parse(base64UrlDecodeText(parts[0]));
-    // 相容舊版含 exp 的 token；只要簽章正確且會員帳號仍存在，即保持登入有效。
-    if (payload.type !== 'member' || !payload.sub) return null;
-    return findMemberById(payload.sub);
+    payload = JSON.parse(base64UrlDecodeText(parts[0]));
   } catch (e) {
-    return null;
+    return { code: 'auth_invalid' };
   }
+  // 相容舊版含 exp 的 token；只要簽章正確且會員帳號仍存在，即保持登入有效。
+  if (payload.type !== 'member' || !payload.sub) return { code: 'auth_invalid' };
+
+  var rows;
+  try {
+    rows = listRecords('members');
+  } catch (err) {
+    console.warn('verifyMemberToken: 讀取會員名單失敗，視為暫時性錯誤 — ' + err);
+    return { code: 'temporary' };
+  }
+  // 會員名單不可能是空的；讀成空的一定是異常，不能據此判定會員被刪除。
+  if (!rows || !rows.length) return { code: 'temporary' };
+
+  var target = String(payload.sub);
+  var member = rows.filter(function (m) { return String(m.id || '') === target; })[0];
+  // 名單讀得到、裡面沒有這個人 —— 這才是真的被刪除。
+  return member ? { member: member } : { code: 'auth_invalid' };
+}
+
+// 舊介面沿用（回傳會員或 null）。
+function verifyMemberToken(token) {
+  return resolveMemberToken(token).member || null;
+}
+
+// 各 handler 共用的失敗回應。前台只有收到 code === 'auth_invalid' 才會清掉登入狀態；
+// temporary 的訊息刻意不含「登入已過期」「未授權」字樣，這樣即使前台還沒更新、
+// 仍在用關鍵字判斷的舊版，也不會誤把使用者登出。
+function memberAuthErrorJson(auth) {
+  if (auth && auth.code === 'temporary') {
+    return json({ ok: false, code: 'temporary', error: '伺服器忙碌中，暫時無法確認身分，請稍後再試。' });
+  }
+  return json({ ok: false, code: 'auth_invalid', error: '會員登入已過期，請重新登入。' });
 }
 
 function handleChangePassword(body) {
@@ -1437,8 +1473,9 @@ function memberProfileData(row) {
 }
 
 function handleMemberProfile(body) {
-  var member = verifyMemberToken(body.token);
-  if (!member) return json({ ok: false, error: '會員登入已過期，請重新登入。' });
+  var auth = resolveMemberToken(body.token);
+  if (!auth.member) return memberAuthErrorJson(auth);
+  var member = auth.member;
   return json({ ok: true, data: memberProfileData(member) });
 }
 
@@ -1481,8 +1518,9 @@ function notifyMemberProfileUpdated(before, after) {
 }
 
 function handleMemberUpdateProfile(body) {
-  var member = verifyMemberToken(body.token);
-  if (!member) return json({ ok: false, error: '會員登入已過期，請重新登入。' });
+  var auth = resolveMemberToken(body.token);
+  if (!auth.member) return memberAuthErrorJson(auth);
+  var member = auth.member;
   var fields = validateMemberFields(body.record || {});
   if (fields.error) return json({ ok: false, error: fields.error });
   if (normalizeEmail(fields.email) !== normalizeEmail(member.email) || normalizeMobile(fields.mobile) !== normalizeMobile(member.mobile)) {
@@ -1509,8 +1547,9 @@ function handleMemberUpdateProfile(body) {
 }
 
 function handleMemberContactAdmin(body) {
-  var member = verifyMemberToken(body.token);
-  if (!member) return json({ ok: false, error: '會員登入已過期，請重新登入。' });
+  var auth = resolveMemberToken(body.token);
+  if (!auth.member) return memberAuthErrorJson(auth);
+  var member = auth.member;
   var message = String(body.message || '').trim();
   if (!message) return json({ ok: false, error: '請輸入訊息內容。' });
   if (message.length > 2000) return json({ ok: false, error: '訊息不可超過 2000 字。' });
@@ -1594,8 +1633,9 @@ function contentData(publishedOnly) {
 }
 
 function handleMemberContent(body) {
-  var member = verifyMemberToken(body.token);
-  if (!member) return json({ ok: false, error: '會員登入已過期，請重新登入。' });
+  var auth = resolveMemberToken(body.token);
+  if (!auth.member) return memberAuthErrorJson(auth);
+  var member = auth.member;
   // 一併回傳會員資料，前台開站時就不必再多打一次 validateMemberToken（省下一次 GAS 往返）。
   return json({
     ok: true,
@@ -1607,8 +1647,9 @@ function handleMemberContent(body) {
 }
 
 function handleMemberDirectory(body) {
-  var member = verifyMemberToken(body.token);
-  if (!member) return json({ ok: false, error: '會員登入已過期，請重新登入。' });
+  var auth = resolveMemberToken(body.token);
+  if (!auth.member) return memberAuthErrorJson(auth);
+  var member = auth.member;
   var canViewAll = isMemberDirectoryAdmin(member.mobile);
   var rows = canViewAll ? listRecords('members') : [member];
   return json({ ok: true, scope: canViewAll ? 'all' : 'self', data: rows.map(memberDirectoryRow) });
