@@ -4,6 +4,15 @@
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var MEMBER_STORAGE_KEY = 'shinnyo_member_v2';
   // 重新整理後回到頁面最上方的處理已移到 assets/js/scroll-top.js（在 <head> 就先執行）。
+  // 後端會用 code 明確區分「登入真的失效」（auth_invalid）與「暫時性失敗」（temporary）。
+  // 只有前者才該把使用者登出 —— 否則後端讀會員名單失敗一次，明明有效的登入就被清掉。
+  // 舊版後端沒有 code 欄位，才退回用錯誤訊息關鍵字判斷。
+  function isAuthExpired(res) {
+    if (!res) return false;
+    if (res.code) return res.code === 'auth_invalid';
+    return /登入已過期|未授權/.test(res.error || '');
+  }
+
   function storedMemberSession() {
     try {
       var current = JSON.parse(localStorage.getItem(MEMBER_STORAGE_KEY) || 'null');
@@ -2130,7 +2139,7 @@
         if (!active || active.token !== activeToken) return;
         if (res && res.ok) renderMemberDirectory(res);
         else {
-          if (res && /登入已過期|未授權/.test(res.error || '')) clearMember();
+          if (isAuthExpired(res)) clearMember();
           if (memberDirectoryCount) memberDirectoryCount.textContent = '';
           if (memberDirectoryList) memberDirectoryList.innerHTML = '<div class="member-directory-empty">' + esc((res && res.error) || '會員資料讀取失敗。') + '</div>';
         }
@@ -2167,7 +2176,7 @@
           fillMemberProfile(res.data);
           memberProfileLoaded = true;
           setMemberStatus('您可以修改個人資料後儲存。', '');
-        } else if (res && /登入已過期|未授權/.test(res.error || '')) {
+        } else if (isAuthExpired(res)) {
           clearMember();
         } else {
           setMemberStatus((res && res.error) || '個人資料讀取失敗。', 'err');
@@ -2507,7 +2516,7 @@
             saveMember(res.data, activeToken);
             if (res.profile) { fillMemberProfile(res.profile); memberProfileLoaded = true; }
             setMemberStatus('個人資料已更新。', 'ok');
-          } else if (res && /登入已過期|未授權/.test(res.error || '')) {
+          } else if (isAuthExpired(res)) {
             clearMember();
           } else {
             setMemberStatus((res && res.error) || '儲存失敗，請稍後再試。', 'err');
@@ -2540,7 +2549,7 @@
           if (res && res.ok) {
             if (messageInput) messageInput.value = '';
             setMemberStatus(res.msg || '訊息已送出，管理員會盡快回覆。', 'ok');
-          } else if (res && /登入已過期|未授權/.test(res.error || '')) {
+          } else if (isAuthExpired(res)) {
             clearMember();
           } else {
             setMemberStatus((res && res.error) || '訊息送出失敗，請稍後再試。', 'err');
@@ -2569,7 +2578,7 @@
         onFail: function (res) {
           var active = currentMember();
           if (!active || active.token !== pendingMemberToken) return;
-          if (res && /登入已過期|未授權/.test(res.error || '')) {
+          if (isAuthExpired(res)) {
             clearMember();
             setMemberStatus('會員登入已過期，請重新登入。', 'err');
             return;
