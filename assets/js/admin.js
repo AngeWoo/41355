@@ -1362,6 +1362,44 @@
   function canNotifyMembers(c) {
     return c.type !== 'members' && c.fields.some(function (f) { return f.k === 'link'; });
   }
+  // 會員／群組發信不提供「複製到最新消息」；最新消息本身也不需要複製給自己。
+  function canCopyToNews(c) {
+    return c.type !== 'news' && c.type !== 'members' && c.type !== BULK_MAIL_TYPE;
+  }
+  function todayYmd() {
+    try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); }
+    catch (e) { return new Date().toISOString().slice(0, 10); }
+  }
+  function firstText() {
+    for (var i = 0; i < arguments.length; i++) {
+      var s = String(arguments[i] == null ? '' : arguments[i]).trim();
+      if (s) return s;
+    }
+    return '';
+  }
+  // 把其他區塊的一筆紀錄轉成「最新消息」草稿：只帶入最新消息有的欄位，
+  // 標記 _draft 讓儲存時走「新增」而不是「更新」。
+  function newsDraftFrom(c, rec) {
+    var title = '', meta = '';
+    try { title = String(c.title(rec) || '').trim(); } catch (e) { title = ''; }
+    if (!title) title = String(rec.title || '').trim();
+    try { meta = String(c.sub(rec) || '').trim(); } catch (e) { meta = ''; }
+    return {
+      _draft: true,
+      _sourceLabel: c.label,
+      title: title,
+      date: dateValue(rec.date) || todayYmd(),
+      body: firstText(rec.body, rec.desc, rec.content, meta),
+      link: String(rec.link || '').trim(),
+      imageAlt: '',
+      pinned: '',
+      order: ''
+    };
+  }
+  function openNewsDraft(draft) {
+    openEditor('news', draft);
+    alertBox($('#modalAlert'), '這是從「' + draft._sourceLabel + '」複製的最新消息草稿，確認內容後按「儲存」才會送出。', 'ok');
+  }
   function fieldHtml(f, val) {
     var v = esc(f.type === 'date' ? dateValue(val)
       : f.k === 'issue' ? issueValue(val)
@@ -1379,7 +1417,9 @@
     editorReturnFocus = document.activeElement;
     current = type; editing = record;
     var c = byType(type);
-    $('#modalTitle').textContent = (record ? '編輯' : '新增') + '：' + c.label;
+    var isDraft = !!(record && record._draft);
+    $('#modalTitle').textContent = (record && !isDraft ? '編輯' : '新增') + '：' + c.label +
+      (isDraft ? '（複製自' + record._sourceLabel + '）' : '');
     alertBox($('#modalAlert'), '', '');
     var compact = ['order', 'pinned', 'date', 'issue', 'ep'];
     $('#formFields').innerHTML = c.fields.map(function (f) {
@@ -1388,6 +1428,9 @@
     }).join('') + (type === 'news' ? newsImageFieldsHtml(record) : '') + (canNotifyMembers(c)
       ? '<label class="notify-members-toggle"><input type="checkbox" id="notifyMembers" />' +
         '<span><b>發信通知所有會員</b><small>本次儲存後，若有連結網址，寄送新上架通知到會員 Email。</small></span></label>'
+      : '') + (canCopyToNews(c)
+      ? '<label class="notify-members-toggle copy-news-toggle"><input type="checkbox" id="copyToNews" />' +
+        '<span><b>複製到最新消息</b><small>儲存後會開啟「最新消息」編輯視窗並帶入本則內容，確認後再送出。</small></span></label>'
       : '');
     if (type === 'news') bindNewsImageEditor(record);
     else { pendingNewsImagePromise = null; pendingNewsImageData = null; }
@@ -1436,8 +1479,8 @@
 
   $('#recordForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    var c = byType(current), rec = {};
-    var seedFallback = editing && editing._seedFallback;
+    var c = byType(current), rec = {}, sourceType = current;
+    var seedFallback = editing && (editing._seedFallback || editing._draft);
     if (editing && !seedFallback) rec.id = editing.id;
     c.fields.forEach(function (f) {
       var el = $('#f_' + f.k);
@@ -1456,6 +1499,7 @@
       rec.imageAlt = '';
     }
     var notifyMembers = !!($('#notifyMembers') && $('#notifyMembers').checked);
+    var copyToNews = !!($('#copyToNews') && $('#copyToNews').checked);
     if (API.isReadOnly()) { toast(API.mode === 'published' ? '唯讀模式：請在 Google 試算表編輯' : '展示模式無法儲存', true); return; }
     var btn = $('#saveBtn'); btn.disabled = true; btn.textContent = '儲存中…';
     var imageStep = Promise.resolve();
@@ -1488,8 +1532,11 @@
         } else {
           toast(wasEditing ? '已更新' : '已新增');
         }
-        if (wasEditing) loadType(current);
+        // 勾選複製時先不整頁重新載入，等最新消息草稿確認送出後再一起刷新。
+        var draft = copyToNews ? newsDraftFrom(c, rec) : null;
+        if (wasEditing || draft) loadType(sourceType);
         else refreshPageSoon();
+        if (draft) openNewsDraft(draft);
       } else {
         alertBox($('#modalAlert'), res.error || '儲存失敗', 'err');
         if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1500);
