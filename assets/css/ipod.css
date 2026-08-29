@@ -34,6 +34,17 @@
   --lcd-line: rgba(44, 45, 40, .22);
   --lcd-font: "Helvetica Neue", Helvetica, Arial, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
 
+  /* ---- 機身配色：預設白色。換色請改 index.html 上的 data-skin ---- */
+  --skin-hi: #ffffff;                          /* 左上高光 */
+  --skin: #f7f8f9;                             /* 主色 */
+  --skin-lo: #e4e8ec;                          /* 右下暗部 */
+  --skin-edge: #cfd4d9;                        /* 外框線 */
+  --skin-halo: rgba(255, 255, 255, .55);       /* 外框外的一圈亮邊 */
+  --skin-inset-hi: rgba(255, 255, 255, .95);   /* 內側頂端反光 */
+  --skin-shade: rgba(120, 132, 146, .18);      /* 內側底部陰影 */
+  --skin-gloss: rgba(255, 255, 255, .96);      /* 表面斜向光澤 */
+  --skin-ink: #949ca4;                         /* 機身下緣字樣 */
+
   position: relative;
   z-index: 1;
   box-sizing: border-box;
@@ -53,13 +64,81 @@
   border: 0;
   border-radius: 1.4em;
   background:
-    linear-gradient(158deg, #ffffff 0%, #fbfcfc 34%, #f1f3f5 62%, #e4e8ec 100%);
+    linear-gradient(158deg, var(--skin-hi) 0%, var(--skin) 38%, var(--skin) 62%, var(--skin-lo) 100%);
   box-shadow:
-    0 0 0 .085em #cfd4d9,
-    0 0 0 .17em rgba(255, 255, 255, .55),
+    0 0 0 .085em var(--skin-edge),
+    0 0 0 .17em var(--skin-halo),
     0 1.6em 3.4em -1.2em rgba(8, 14, 24, .62),
-    inset 0 .09em .22em rgba(255, 255, 255, .95),
-    inset 0 -.35em .7em -.2em rgba(120, 132, 146, .18);
+    inset 0 .09em .22em var(--skin-inset-hi),
+    inset 0 -.35em .7em -.2em var(--skin-shade);
+}
+
+/* ---------- 機身配色：左右滑動切換（顏色取自首頁的四個 motif 與彩虹漸層）----------
+   轉盤與中央鍵一律維持白色，不隨機身變色。 */
+
+/* 月亮橘 — assets/img/motif-moon.svg #f2a900 */
+.talk-popover.ipod-mode .talk-panel.ipod[data-skin="orange"] {
+  --skin-hi: #ffd374;
+  --skin: #f2a900;
+  --skin-lo: #d38f00;
+  --skin-edge: #ad7700;
+  --skin-halo: rgba(255, 232, 180, .40);
+  --skin-inset-hi: rgba(255, 255, 255, .58);
+  --skin-shade: rgba(120, 74, 0, .26);
+  --skin-gloss: rgba(255, 255, 255, .70);
+  --skin-ink: rgba(255, 255, 255, .92);
+}
+
+/* 太陽紅 — assets/img/motif-sun.svg #e01f26 */
+.talk-popover.ipod-mode .talk-panel.ipod[data-skin="red"] {
+  --skin-hi: #ff7a7e;
+  --skin: #e01f26;
+  --skin-lo: #b8161c;
+  --skin-edge: #911015;
+  --skin-halo: rgba(255, 196, 196, .34);
+  --skin-inset-hi: rgba(255, 255, 255, .50);
+  --skin-shade: rgba(92, 8, 11, .30);
+  --skin-gloss: rgba(255, 255, 255, .62);
+  --skin-ink: rgba(255, 255, 255, .92);
+}
+
+/* 星星藍 — assets/img/motif-star-blue.svg #2e3192 */
+.talk-popover.ipod-mode .talk-panel.ipod[data-skin="blue"] {
+  --skin-hi: #7176de;
+  --skin: #2e3192;
+  --skin-lo: #232770;
+  --skin-edge: #181a55;
+  --skin-halo: rgba(186, 190, 255, .30);
+  --skin-inset-hi: rgba(255, 255, 255, .45);
+  --skin-shade: rgba(8, 10, 52, .34);
+  --skin-gloss: rgba(255, 255, 255, .56);
+  --skin-ink: rgba(255, 255, 255, .90);
+}
+
+/* 星星綠 — assets/img/motif-star-green.svg #1f7a3a */
+.talk-popover.ipod-mode .talk-panel.ipod[data-skin="green"] {
+  --skin-hi: #56c47a;
+  --skin: #1f7a3a;
+  --skin-lo: #17602d;
+  --skin-edge: #0e4820;
+  --skin-halo: rgba(186, 242, 206, .30);
+  --skin-inset-hi: rgba(255, 255, 255, .45);
+  --skin-shade: rgba(5, 46, 20, .32);
+  --skin-gloss: rgba(255, 255, 255, .56);
+  --skin-ink: rgba(255, 255, 255, .90);
+}
+
+/* 紫 — 首頁彩虹漸層末端 #b45ef0 */
+.talk-popover.ipod-mode .talk-panel.ipod[data-skin="purple"] {
+  --skin-hi: #e0b2ff;
+  --skin: #b45ef0;
+  --skin-lo: #9440cf;
+  --skin-edge: #782cae;
+  --skin-halo: rgba(230, 202, 255, .34);
+  --skin-inset-hi: rgba(255, 255, 255, .55);
+  --skin-shade: rgba(70, 20, 110, .28);
+  --skin-gloss: rgba(255, 255, 255, .68);
+  --skin-ink: rgba(255, 255, 255, .92);
 }
 
 /* 機身反光 */
@@ -70,8 +149,8 @@
   border-radius: inherit;
   pointer-events: none;
   background:
-    linear-gradient(148deg, rgba(255, 255, 255, .96) 0%, rgba(255, 255, 255, .32) 26%, rgba(255, 255, 255, 0) 46%),
-    radial-gradient(120% 42% at 50% 100%, rgba(150, 162, 176, .16), transparent 70%);
+    linear-gradient(148deg, var(--skin-gloss) 0%, rgba(255, 255, 255, .30) 26%, rgba(255, 255, 255, 0) 46%),
+    radial-gradient(120% 42% at 50% 100%, var(--skin-shade), transparent 70%);
 }
 
 /* ---------- 螢幕外框（金屬邊）---------- */
@@ -212,6 +291,31 @@
   height: .34em;
   border-radius: 0 .06em .06em 0;
   background: var(--lcd-ink);
+}
+
+/* 左右滑動換色時，螢幕中央短暫顯示顏色名稱 */
+.talk-popover.ipod-mode .ipod-skin-toast {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: .5em 1em;
+  border-radius: .3em;
+  background: rgba(44, 45, 40, .88);
+  color: var(--lcd-sel-ink);
+  font: 700 1.05em/1 var(--lcd-font);
+  letter-spacing: .06em;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease;
+}
+
+.talk-popover.ipod-mode .ipod-skin-toast.is-on { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .talk-popover.ipod-mode .ipod-skin-toast { transition: none; }
 }
 
 /* 螢幕內容區 */
@@ -430,7 +534,7 @@
   border-radius: .2em;
   background: transparent;
   color: var(--lcd-ink);
-  font: 700 .68em/1 var(--lcd-font);
+  font: 700 .86em/1 var(--lcd-font);
   cursor: pointer;
 }
 
@@ -442,7 +546,7 @@
   min-width: 0;
   padding: 0 .15em;
   color: var(--lcd-dim);
-  font-size: .68em;
+  font-size: .86em;
   font-weight: 700;
 }
 
@@ -614,6 +718,7 @@
   border: 0;
   background: transparent;
   color: #9aa2aa;
+  font: inherit;
   font-family: var(--lcd-font);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -624,6 +729,16 @@
   line-height: 1;
   position: relative;
 }
+
+/* 標籤字級掛在 span 上；下面各鍵的 padding 則以機身字級為基準置中於環帶 */
+.talk-popover.ipod-mode .ipod-key-menu span {
+  font-size: .92em;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.talk-popover.ipod-mode .ipod-key-prev span,
+.talk-popover.ipod-mode .ipod-key-next span { font-size: .95em; }
+.talk-popover.ipod-mode .ipod-key-play span { font-size: .88em; }
 
 /* 用 SVG 而不是 ◀ ▶ 字元：這些符號在手機上會被當成 emoji 畫成彩色，
    桌機則是純文字字形，兩邊長得不一樣。 */
@@ -646,10 +761,7 @@
   clip-path: polygon(50% 50%, 0 0, 100% 0);
   align-items: flex-start;
   justify-content: center;
-  padding-top: 1.83em;
-  font-size: .72em;
-  font-weight: 600;
-  letter-spacing: .04em;
+  padding-top: 1.73em;
   color: #99a1a9;
 }
 
@@ -657,25 +769,21 @@
   clip-path: polygon(50% 50%, 0 100%, 0 0);
   align-items: center;
   justify-content: flex-start;
-  padding-left: 1.67em;
-  font-size: .66em;
+  padding-left: 1.375em;
 }
 
 .talk-popover.ipod-mode .ipod-key-next {
   clip-path: polygon(50% 50%, 100% 0, 100% 100%);
   align-items: center;
   justify-content: flex-end;
-  padding-right: 1.67em;
-  font-size: .66em;
+  padding-right: 1.375em;
 }
 
 .talk-popover.ipod-mode .ipod-key-play {
   clip-path: polygon(50% 50%, 100% 100%, 0 100%);
   align-items: flex-end;
   justify-content: center;
-  padding-bottom: 2.06em;
-  font-size: .62em;
-  letter-spacing: .06em;
+  padding-bottom: 1.75em;
 }
 
 .talk-popover.ipod-mode .ipod-key:active::before,
@@ -701,14 +809,14 @@
   z-index: 2;
   left: 0;
   right: 0;
-  bottom: 1.12em;
+  bottom: 1.05em;
   text-align: center;
   font-family: var(--lcd-font);
-  font-size: .85em;
+  font-size: 1.05em;
   font-weight: 600;
   letter-spacing: .2em;
   text-indent: .2em;
-  color: #949ca4;
+  color: var(--skin-ink);
   pointer-events: none;
   user-select: none;
 }
@@ -779,7 +887,7 @@
 
 .talk-popover.ipod-mode .ipod-select svg {
   display: block;
-  height: 1.25em;
+  height: 1.45em;
   width: auto;
   fill: currentColor;
 }
@@ -807,12 +915,14 @@ html[data-theme="light"] .talk-popover.ipod-mode .talk-page-btn {
 }
 
 html[data-theme="light"] .talk-popover.ipod-mode .talk-panel.ipod {
-  background: linear-gradient(158deg, #ffffff 0%, #fbfcfc 34%, #f1f3f5 62%, #e4e8ec 100%);
+  background:
+    linear-gradient(158deg, var(--skin-hi) 0%, var(--skin) 38%, var(--skin) 62%, var(--skin-lo) 100%);
   box-shadow:
-    0 0 0 .085em #cfd4d9,
-    0 0 0 .17em rgba(255, 255, 255, .55),
+    0 0 0 .085em var(--skin-edge),
+    0 0 0 .17em var(--skin-halo),
     0 1.6em 3.4em -1.2em rgba(8, 14, 24, .38),
-    inset 0 .09em .22em rgba(255, 255, 255, .95);
+    inset 0 .09em .22em var(--skin-inset-hi),
+    inset 0 -.35em .7em -.2em var(--skin-shade);
 }
 
 html[data-theme="light"] .talk-popover.ipod-mode .talk-backdrop { background: rgba(28, 38, 56, .48); }
@@ -868,8 +978,8 @@ html[data-theme="light"] .talk-popover.ipod-mode .talk-picker-head input {
 
   .talk-popover.ipod-mode .talk-panel.ipod { --pad-bottom: 3.4em; }
   .talk-popover.ipod-mode .ipod-close { width: 1.7em; height: 1.7em; }
-  .talk-popover.ipod-mode .talk-page-btn { height: 1.9em; padding: 0 .6em; font-size: .74em; }
-  .talk-popover.ipod-mode .talk-page-info { font-size: .74em; }
+  .talk-popover.ipod-mode .talk-page-btn { height: 1.9em; padding: 0 .45em; font-size: .95em; }
+  .talk-popover.ipod-mode .talk-page-info { font-size: .95em; }
 
   /* 螢幕在手機上會變高，字級跟著放大比較好讀（點擊區域也一起變大） */
   .talk-popover.ipod-mode .talk-pick { padding: .38em .45em; }
