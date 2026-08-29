@@ -9,6 +9,7 @@
   <meta name="color-scheme" content="dark" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <link rel="stylesheet" href="assets/css/style.css?v=143" />
+  <link rel="stylesheet" href="assets/css/ipod.css?v=20" />
   <script src="assets/js/theme.js?v=3"></script>
   <script src="assets/js/scroll-top.js?v=1"></script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
@@ -126,23 +127,63 @@
     </div>
   </div>
 
-  <div class="talk-popover" id="talkPopover" hidden>
+  <div class="talk-popover ipod-mode" id="talkPopover" hidden>
     <div class="talk-backdrop" data-talk-close aria-hidden="true"></div>
-    <section class="talk-panel" role="dialog" aria-modal="true" aria-labelledby="talkDialogTitle">
-      <div class="talk-head">
-        <b id="talkDialogTitle">真如音檔</b>
-        <button type="button" id="talkClose" aria-label="關閉真如音檔">×</button>
-      </div>
-      <div class="talk-list" id="talkList"></div>
-      <div class="talk-picker" id="talkPicker" hidden>
-        <div class="talk-picker-head">
-          <label class="sr-only" for="talkFilter">篩選真如音檔</label>
-          <input type="search" id="talkFilter" placeholder="輸入關鍵字篩選…" autocomplete="off" />
-          <span class="talk-picker-count" id="talkPickerCount"></span>
+    <section class="talk-panel ipod" id="ipod" role="dialog" aria-modal="true" aria-labelledby="talkDialogTitle">
+      <div class="ipod-screen-frame">
+        <div class="ipod-screen">
+          <div class="talk-head ipod-statusbar">
+            <button type="button" class="ipod-close" id="talkClose" aria-label="關閉真如音檔">×</button>
+            <b id="talkDialogTitle">真如音檔</b>
+            <span class="ipod-status-right">
+              <span class="ipod-share-slot" id="talkShareSlot"></span>
+              <span class="ipod-battery" aria-hidden="true"></span>
+            </span>
+          </div>
+
+          <div class="ipod-screen-body">
+            <div class="talk-picker" id="talkPicker" hidden>
+              <div class="talk-picker-head">
+                <label class="sr-only" for="talkFilter">篩選真如音檔</label>
+                <input type="search" id="talkFilter" placeholder="輸入關鍵字篩選…" autocomplete="off" />
+                <span class="talk-picker-count" id="talkPickerCount"></span>
+              </div>
+              <ul class="talk-picker-list" id="talkPickerList" role="listbox" aria-label="真如音檔清單"></ul>
+            </div>
+            <div class="talk-pager" id="talkPager"></div>
+
+            <div class="ipod-now">
+              <div class="ipod-nowmeta" id="ipodNowMeta"></div>
+              <div class="talk-list" id="talkList"></div>
+              <div class="ipod-progress" id="ipodProgress">
+                <span class="ipod-time" id="ipodTimeNow">0:00</span>
+                <div class="ipod-bar" id="ipodBar" role="slider" tabindex="0"
+                     aria-label="播放進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                  <i id="ipodBarFill"></i>
+                </div>
+                <span class="ipod-time" id="ipodTimeLeft">-0:00</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <ul class="talk-picker-list" id="talkPickerList" role="listbox" aria-label="真如音檔清單"></ul>
       </div>
-      <div class="talk-pager" id="talkPager"></div>
+
+      <div class="ipod-wheel" id="ipodWheel">
+        <button type="button" class="ipod-key ipod-key-menu" data-ipod="menu">menu</button>
+        <button type="button" class="ipod-key ipod-key-prev" data-ipod="prev" aria-label="上一則">
+          <span aria-hidden="true"><svg viewBox="0 0 24 14" fill="currentColor"><path d="M11.2 1.1 2.6 7l8.6 5.9zM21.6 1.1 13 7l8.6 5.9z"/></svg></span>
+        </button>
+        <button type="button" class="ipod-key ipod-key-next" data-ipod="next" aria-label="下一則">
+          <span aria-hidden="true"><svg viewBox="0 0 24 14" fill="currentColor"><path d="M12.8 1.1 21.4 7l-8.6 5.9zM2.4 1.1 11 7l-8.6 5.9z"/></svg></span>
+        </button>
+        <button type="button" class="ipod-key ipod-key-play" data-ipod="play" aria-label="播放或暫停">
+          <span aria-hidden="true"><svg viewBox="0 0 30 14" fill="currentColor"><path d="M2 1.1 11.4 7 2 12.9z"/><rect x="17.4" y="1.1" width="3.4" height="11.8" rx=".7"/><rect x="24.2" y="1.1" width="3.4" height="11.8" rx=".7"/></svg></span>
+        </button>
+        <div class="ipod-scroll" id="ipodScroll" aria-hidden="true"></div>
+        <button type="button" class="ipod-select" data-ipod="select" aria-label="選取並播放"></button>
+      </div>
+
+      <span class="ipod-wordmark" aria-hidden="true">Shinnyo iPod</span>
     </section>
   </div>
 
@@ -429,6 +470,7 @@
 
   <script src="assets/js/config.js?v=6"></script>
   <script src="assets/js/api.js?v=41"></script>
-  <script src="assets/js/app.js?v=157"></script>
+  <script src="assets/js/app.js?v=164"></script>
+  <script src="assets/js/ipod.js?v=8"></script>
 </body>
 </html>

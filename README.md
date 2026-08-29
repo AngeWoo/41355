@@ -14,12 +14,14 @@
 ├─ admin.html              後台維護介面（登入 + 增刪改）
 ├─ assets/
 │  ├─ css/style.css        主站樣式（夜間深色主題 + 日間白天主題）
+│  ├─ css/ipod.css         真如音檔彈窗的 iPod 皮膚（機身／LCD／轉盤，手機自動滿版）
 │  ├─ css/admin.css        後台樣式
 │  └─ js/
 │     ├─ theme.js          日／夜模式切換（在 <head> 同步載入，避免閃爍）
 │     ├─ config.js         ★ 設定檔：填入 GAS_URL
 │     ├─ api.js            API 客戶端（會員／管理員權杖存取）
 │     ├─ app.js            前台渲染
+│     ├─ ipod.js           真如音檔 iPod 操作：轉盤捲動＋menu／◀◀／▶▶／▶❙❙／中央鍵
 │     └─ admin.js          後台 CRUD 邏輯
 ├─ gas/
 │  └─ Code.gs              ★ GAS 後端（複製到 script.google.com）
