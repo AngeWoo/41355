@@ -9,7 +9,7 @@
   <meta name="color-scheme" content="dark" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <link rel="stylesheet" href="assets/css/style.css?v=144" />
-  <link rel="stylesheet" href="assets/css/ipod.css?v=28" />
+  <link rel="stylesheet" href="assets/css/ipod.css?v=29" />
   <script src="assets/js/theme.js?v=3"></script>
   <script src="assets/js/scroll-top.js?v=1"></script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
@@ -134,6 +134,7 @@
         <div class="ipod-screen">
           <div class="talk-head ipod-statusbar">
             <button type="button" class="ipod-close" id="talkClose" aria-label="關閉真如音檔">×</button>
+            <span class="ipod-repeat-badge ipod-mode-ic" id="ipodRepeatBadge" data-mode="normal" role="img" aria-label="播放模式：正常" title="播放模式：正常"><svg class="ic-mode-normal" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h11"/><path d="M11 7l5 5-5 5"/><path d="M20 5v14"/></svg><svg class="ic-mode-all" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 2.5l4 4-4 4"/><path d="M3 11.5v-1a4 4 0 0 1 4-4h13"/><path d="M8 21.5l-4-4 4-4"/><path d="M21 12.5v1a4 4 0 0 1-4 4H4"/></svg><svg class="ic-mode-one" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 2.5l4 4-4 4"/><path d="M3 11.5v-1a4 4 0 0 1 4-4h13"/><path d="M8 21.5l-4-4 4-4"/><path d="M21 12.5v1a4 4 0 0 1-4 4H4"/><text class="ic-mode-num" x="12" y="15.6" text-anchor="middle">1</text></svg></span>
             <b id="talkDialogTitle">Shinnyo iPod 真如音檔</b>
             <span class="ipod-status-right">
               <span class="ipod-share-slot" id="talkShareSlot"></span>
@@ -176,8 +177,8 @@
         <button type="button" class="ipod-key ipod-key-next" data-ipod="next" aria-label="下一則">
           <span aria-hidden="true"><svg viewBox="0 0 24 14" fill="currentColor"><path d="M12.8 1.1 21.4 7l-8.6 5.9zM2.4 1.1 11 7l-8.6 5.9z"/></svg></span>
         </button>
-        <button type="button" class="ipod-key ipod-key-play" data-ipod="play" aria-label="播放或暫停">
-          <span aria-hidden="true"><svg viewBox="0 0 30 14" fill="currentColor"><path d="M2 1.1 11.4 7 2 12.9z"/><rect x="17.4" y="1.1" width="3.4" height="11.8" rx=".7"/><rect x="24.2" y="1.1" width="3.4" height="11.8" rx=".7"/></svg></span>
+        <button type="button" class="ipod-key ipod-key-play ipod-key-repeat" id="ipodRepeatKey" data-ipod="repeat" aria-label="播放模式：正常，按下切換">
+          <span class="ipod-mode-ic" data-mode="normal" aria-hidden="true"><svg class="ic-mode-normal" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h11"/><path d="M11 7l5 5-5 5"/><path d="M20 5v14"/></svg><svg class="ic-mode-all" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 2.5l4 4-4 4"/><path d="M3 11.5v-1a4 4 0 0 1 4-4h13"/><path d="M8 21.5l-4-4 4-4"/><path d="M21 12.5v1a4 4 0 0 1-4 4H4"/></svg><svg class="ic-mode-one" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 2.5l4 4-4 4"/><path d="M3 11.5v-1a4 4 0 0 1 4-4h13"/><path d="M8 21.5l-4-4 4-4"/><path d="M21 12.5v1a4 4 0 0 1-4 4H4"/><text class="ic-mode-num" x="12" y="15.6" text-anchor="middle">1</text></svg></span>
         </button>
         <div class="ipod-scroll" id="ipodScroll" aria-hidden="true"></div>
         <button type="button" class="ipod-select" id="ipodSelect" data-ipod="select" aria-label="播放">
@@ -476,6 +477,6 @@
   <script src="assets/js/config.js?v=6"></script>
   <script src="assets/js/api.js?v=41"></script>
   <script src="assets/js/app.js?v=170"></script>
-  <script src="assets/js/ipod.js?v=12"></script>
+  <script src="assets/js/ipod.js?v=14"></script>
 </body>
 </html>
