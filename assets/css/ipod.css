@@ -832,19 +832,13 @@
   width: 1.5em;
   height: 1.5em;
   margin-left: .1em;
-  border: .07em solid rgba(44, 45, 40, .35);
+  border: .07em solid rgba(44, 45, 40, .5);
   border-radius: .28em;
-  background: rgba(255, 255, 255, .14);
-  color: var(--lcd-ink);
+  /* 底色固定跟旁邊的 × 一樣，切模式時只換圖示、不換顏色 */
+  background: var(--lcd-sel);
+  color: var(--lcd-sel-ink);
 }
 .talk-popover.ipod-mode .ipod-repeat-badge svg { width: 1em; height: 1em; }
-/* 正常＝沒有循環，畫得淡一點，一眼就知道現在不是循環中 */
-.talk-popover.ipod-mode .ipod-repeat-badge[data-mode="normal"] { opacity: .5; }
-.talk-popover.ipod-mode .ipod-repeat-badge[data-mode="one"],
-.talk-popover.ipod-mode .ipod-repeat-badge[data-mode="all"] {
-  background: rgba(44, 45, 40, .16);
-  border-color: rgba(44, 45, 40, .55);
-}
 
 /* 轉盤下鍵：顯示目前模式。放大並加粗，跟 menu／◀◀／▶▶ 一樣醒目。
    注意 .ipod-key-play span 已經把字級縮成 .88em，圖示的 em 比按鍵本身小；
