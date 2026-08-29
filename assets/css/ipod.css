@@ -809,7 +809,7 @@
   display: none;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.1;
+  stroke-width: 2.8;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -845,8 +845,16 @@
   border-color: rgba(44, 45, 40, .55);
 }
 
-/* 轉盤下鍵：顯示目前模式 */
-.talk-popover.ipod-mode .ipod-key .ipod-mode-ic svg { height: 1.15em; width: 1.15em; }
+/* 轉盤下鍵：顯示目前模式。放大並加粗，跟 menu／◀◀／▶▶ 一樣醒目。
+   注意 .ipod-key-play span 已經把字級縮成 .88em，圖示的 em 比按鍵本身小；
+   圖示變大會往圓心長，底部內距跟著補回來，維持和左右鍵相同的環帶位置。 */
+.talk-popover.ipod-mode .ipod-key-repeat { padding-bottom: 1.49em; }
+.talk-popover.ipod-mode .ipod-key .ipod-mode-ic svg {
+  height: 1.75em;
+  width: 1.75em;
+  stroke-width: 3.6;
+}
+.talk-popover.ipod-mode .ipod-key .ic-mode-num { font: 800 11px/1 var(--lcd-font); }
 
 /* 機身下緣字樣 */
 .talk-popover.ipod-mode .ipod-wordmark {
