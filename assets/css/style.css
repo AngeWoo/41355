@@ -2341,6 +2341,12 @@ html.talk-open body {
   }
   .annual-grid { grid-template-columns: 1fr; }
   .annual-panel { min-height: 0; }
+  /* 「立教九十年，祈念南無真如，推進聖地莊嚴。」共 20 個全形字，
+     手機上 16px 會剛好超出一點而折成兩行。字級跟著可用寬度縮，維持單行。 */
+  .annual-focus .section-head p {
+    white-space: nowrap;
+    font-size: min(1rem, calc((100vw - 76px) / 20));
+  }
   section.block { padding: 24px 0; }
   .hero {
     min-height: auto;
