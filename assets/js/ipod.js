@@ -4,7 +4,7 @@
  * 只用 app.js 匯出的 window.TalkPlayer，不改動原本的清單／分頁／播放流程。
  *   menu   ：播放畫面 → 回選單；選單 → 關閉視窗
  *   ◀◀ ／ ▶▶：上一則／下一則
- *   ▶❙❙  ：播放／暫停
+ *   下方鍵 ：切換播放模式（正常 → 循環 → 重覆），狀態顯示在左上角 × 旁邊
  *   中央鍵 ：游標指到別則＝選定並播放；指到正在播的那一則＝播放／暫停交互輪替
  *   內圈轉盤：選單畫面＝上下捲動游標；播放畫面＝前後快轉
  */
@@ -24,6 +24,11 @@
   };
   var SKIN_KEY = 'shinnyo_ipod_skin';
 
+  // 播放模式：正常＝播完就停；循環＝自動播下一則（播到最後回到第一則）；重覆＝單則重播
+  var REPEAT_MODES = ['normal', 'all', 'one'];
+  var REPEAT_NAMES = { normal: '正常', all: '循環', one: '重覆' };
+  var REPEAT_KEY = 'shinnyo_ipod_repeat';
+
   var pod = document.getElementById('ipod');
   var wheel = document.getElementById('ipodWheel');
   var scroll = document.getElementById('ipodScroll');
@@ -36,11 +41,14 @@
   var nowMeta = document.getElementById('ipodNowMeta');
   var selectBtn = document.getElementById('ipodSelect');
   var progress = document.getElementById('ipodProgress');
+  var repeatBadge = document.getElementById('ipodRepeatBadge');
+  var repeatKey = document.getElementById('ipodRepeatKey');
   if (!pod || !wheel) return;
 
   var cursor = 0;             // 游標在「篩選後清單」中的位置
   var view = 'menu';
   var skinIndex = 0;
+  var repeatMode = 'normal';
 
   /* ---------- 機身配色 ---------- */
 
@@ -81,12 +89,12 @@
     var dy = e.clientY - swipeY;
     if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < Math.abs(dy) * 1.4) return;
     var name = applySkin(skinIndex + (dx < 0 ? 1 : -1), true);
-    showSkinToast(SKIN_NAMES[name]);
+    showPodToast(SKIN_NAMES[name]);
   }
 
-  // 換色時在螢幕上短暫顯示顏色名稱，讓使用者知道發生了什麼
+  // 換色或切換播放模式時，在螢幕上短暫顯示名稱，讓使用者知道發生了什麼
   var skinToastTimer = null;
-  function showSkinToast(label) {
+  function showPodToast(label) {
     if (!label) return;
     var el = document.getElementById('ipodSkinToast');
     if (!el) {
@@ -107,6 +115,39 @@
   pod.addEventListener('pointerdown', swipeStart);
   pod.addEventListener('pointerup', swipeEnd);
   pod.addEventListener('pointercancel', function () { swipeId = null; });
+
+  /* ---------- 播放模式 ---------- */
+
+  function applyRepeat(mode, remember) {
+    repeatMode = REPEAT_MODES.indexOf(mode) < 0 ? 'normal' : mode;
+    var label = '播放模式：' + REPEAT_NAMES[repeatMode];
+    if (repeatBadge) {
+      repeatBadge.setAttribute('data-mode', repeatMode);
+      repeatBadge.setAttribute('aria-label', label);
+      repeatBadge.setAttribute('title', label);
+    }
+    if (repeatKey) {
+      repeatKey.setAttribute('aria-label', label + '，按下切換');
+      var ic = repeatKey.querySelector('.ipod-mode-ic');
+      if (ic) ic.setAttribute('data-mode', repeatMode);
+    }
+    if (remember) {
+      try { localStorage.setItem(REPEAT_KEY, repeatMode); } catch (e) {}
+    }
+    return repeatMode;
+  }
+
+  function cycleRepeat() {
+    var next = REPEAT_MODES[(REPEAT_MODES.indexOf(repeatMode) + 1) % REPEAT_MODES.length];
+    applyRepeat(next, true);
+    showPodToast(REPEAT_NAMES[repeatMode]);
+  }
+
+  function restoreRepeat() {
+    var saved = '';
+    try { saved = localStorage.getItem(REPEAT_KEY) || ''; } catch (e) {}
+    applyRepeat(saved, false);
+  }
 
   function TP() { return window.TalkPlayer || null; }
   function matched() { var tp = TP(); return (tp && tp.matched && tp.matched()) || []; }
@@ -193,6 +234,33 @@
     if (wasPlaying || view === 'now') { setView('now'); tp.play(); }
   }
 
+  // 從頭再播同一則（單則重覆，或循環模式但整份清單只有一則）
+  function replayCurrent() {
+    var a = audio();
+    if (!a) return;
+    try { a.currentTime = 0; } catch (e) {}
+    var played = a.play();
+    if (played && played.catch) played.catch(function () {});
+  }
+
+  // 循環模式：播完換下一則，最後一則播完回到第一則
+  function advanceAuto() {
+    var tp = TP();
+    if (!tp) return;
+    var total = (tp.rows() || []).length;
+    if (total < 2) { replayCurrent(); return; }
+    var next = tp.current() + 1;
+    tp.select(next > total - 1 ? 0 : next);
+    cursorToCurrent();
+    setView('now');
+    tp.play();
+  }
+
+  function handleEnded() {
+    if (repeatMode === 'one') replayCurrent();
+    else if (repeatMode === 'all') advanceAuto();
+  }
+
   function isPlaying() {
     var a = audio();
     return !!(a && !a.paused && !a.ended);
@@ -224,6 +292,7 @@
     ['play', 'playing', 'pause', 'ended'].forEach(function (t) {
       a.addEventListener(t, syncPlayIcon);
     });
+    a.addEventListener('ended', handleEnded);
   }
 
   function togglePlay() {
@@ -269,7 +338,7 @@
     if (act === 'menu') pressMenu();
     else if (act === 'prev') stepTrack(-1);
     else if (act === 'next') stepTrack(1);
-    else if (act === 'play') togglePlay();
+    else if (act === 'repeat') cycleRepeat();
     else if (act === 'select') selectCursor();
   });
 
@@ -445,6 +514,7 @@
   });
 
   restoreSkin();
+  restoreRepeat();
   setView('menu');
   syncPlayIcon();
 })();
