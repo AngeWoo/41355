@@ -221,17 +221,18 @@
   padding: 0;
   border: .07em solid rgba(44, 45, 40, .5);
   border-radius: .28em;
-  background: rgba(255, 255, 255, .14);
-  color: var(--lcd-ink);
+  /* 開窗時會自動 focus 這顆鍵，之前 hover／focus 才變深色，滑鼠一移開又變淺，
+     看起來像自己在閃色。固定用深底白字，滑鼠與鍵盤操作都不再換色。 */
+  background: var(--lcd-sel);
+  color: var(--lcd-sel-ink);
   font: 700 1.05em/1 var(--lcd-font);
   cursor: pointer;
 }
 
-.talk-popover.ipod-mode .ipod-close:hover,
+/* 鍵盤操作仍要看得出焦點：只加外框，不動底色 */
 .talk-popover.ipod-mode .ipod-close:focus-visible {
-  outline: none;
-  background: var(--lcd-sel);
-  color: var(--lcd-sel-ink);
+  outline: .1em solid var(--lcd-ink);
+  outline-offset: .1em;
 }
 
 /* 狀態列右側：LINE 分享 + 電池 */
