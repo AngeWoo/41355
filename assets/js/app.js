@@ -150,11 +150,15 @@
   function talkShareUrl() {
     return location.origin + location.pathname + '?' + TALK_PARAM + '=' + TALK_PARAM_VALUE;
   }
+  // 用真正的 <a target="_blank">，不要走 window.open()。
+  // Safari（iPad／iPhone）看到 window.open 帶 features 參數就會當成彈出視窗擋掉，
+  // 造成點了 LINE 沒反應；一般連結則不受彈出視窗封鎖影響。
   function talkPlayerShareButton() {
-    return lineShareButton('talks', {
-      title: '真如音檔',
-      desc: '線上收聽真如音檔（需會員登入）'
-    }, talkShareUrl());
+    var url = talkShareUrl();
+    var text = ['真如音檔', '線上收聽真如音檔（需會員登入）', url].join(String.fromCharCode(10));
+    return '<a class="ipod-share-line" href="' + esc(lineShareUrl(text)) + '"' +
+      ' target="_blank" rel="noopener"' +
+      ' aria-label="LINE 分享：真如音檔播放器網址">LINE</a>';
   }
   function isTalkPlayerRequested() {
     try {
