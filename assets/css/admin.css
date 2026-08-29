@@ -581,6 +581,13 @@ html.admin-modal-open body {
   color: var(--text-soft);
   line-height: 1.5;
 }
+/* 複製到最新消息：與「發信通知會員」區隔，用藍色系 */
+.copy-news-toggle {
+  border-color: rgba(120, 170, 235, .30);
+  background: rgba(120, 170, 235, .08);
+}
+.copy-news-toggle input { accent-color: #78aaeb; }
+.copy-news-toggle b { color: #a9cbf4; }
 
 /* 右下角快速跳頁：沿用主站的 .page-jump 樣式，只有登入後的維護畫面才需要 */
 .page-jump { display: none; }
@@ -876,6 +883,11 @@ html[data-theme="light"] .notify-members-toggle {
   border-color: rgba(176, 128, 31, .32);
   background: rgba(226, 189, 97, .14);
 }
+html[data-theme="light"] .copy-news-toggle {
+  border-color: rgba(46, 106, 178, .32);
+  background: rgba(120, 170, 235, .16);
+}
+html[data-theme="light"] .copy-news-toggle b { color: #1d4e86; }
 
 /* 最新消息圖片編輯 */
 html[data-theme="light"] .news-image-editor {
