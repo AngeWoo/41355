@@ -560,6 +560,79 @@
       .toLowerCase();
   }
 
+  // ---- 頁面靜態文字的搜尋來源 ----
+  // 原本只查 GAS 回來的資料，寫死在 HTML 裡的內容（例如「2026年精進目標」）查不到。
+  // 這裡把頁面上的靜態區塊也建成索引；動態卡片區不收，免得跟上面的資料結果重複。
+  var PAGE_UNIT_SELECTOR = '.card, .annual-panel, .section-head, .hero-feature, .hero-content';
+  var PAGE_TEXT_SELECTOR = 'header.hero h1, header.hero h2, header.hero p, header.hero li,' +
+    'main h2, main h3, main h4, main p, main li';
+  var PAGE_SKIP_SELECTOR = '#newsGrid, #podcastGrid, #calendarGrid, #japanCalendarGrid,' +
+    '#headquartersGrid, #newsletterGrid, #dharmaGrid, #iyaGrid, #toolsGrid,' +
+    '.talk-popover, .member-popover, .search-popover, .live-video-panel, nav.nav';
+  var pageUnitsCache = null;
+
+  function pageUnitText(el) {
+    var clone = el.cloneNode(true);
+    Array.prototype.forEach.call(
+      clone.querySelectorAll('.line-card-share, .ipod-share-line, .latest-badge, script, style'),
+      function (n) { if (n.parentNode) n.parentNode.removeChild(n); }
+    );
+    return String(clone.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function pageUnits() {
+    if (pageUnitsCache) return pageUnitsCache;
+    var units = [];
+    var nodes = document.querySelectorAll(PAGE_TEXT_SELECTOR);
+    Array.prototype.forEach.call(nodes, function (el) {
+      if (!el.closest) return;
+      if (el.closest(PAGE_SKIP_SELECTOR)) return;
+      var unit = el.closest(PAGE_UNIT_SELECTOR) || el;
+      for (var i = 0; i < units.length; i++) if (units[i].el === unit) return;
+      var text = pageUnitText(unit);
+      if (!text) return;
+      // 沒有標題的區塊（例如「實踐德目」「苑歌」）改用小標當標題
+      var head = unit.querySelector('h1, h2, h3, h4') || unit.querySelector('.mini-kicker, .kicker');
+      var title = head ? String(head.textContent || '').trim() : text.slice(0, 40);
+      // 摘要不要再重複一次標題（標題不一定在最前面，例如 kicker 排在 h2 之前）
+      var body = text;
+      if (title) body = body.split(title).join(' ').replace(/\s+/g, ' ').trim();
+      units.push({ el: unit, hay: normalizeSearchText(text), title: title || text.slice(0, 40), body: body });
+    });
+    pageUnitsCache = units;
+    return units;
+  }
+
+  function pageAnchorFor(el) {
+    if (el.tagName === 'A') {
+      var href = el.getAttribute('href') || '';
+      if (href) return href;
+    }
+    var node = el;
+    while (node && node !== document.body) {
+      if (node.id) return '#' + node.id;
+      node = node.parentElement;
+    }
+    return '#top';
+  }
+
+  function searchPageRows(terms) {
+    var rows = [];
+    pageUnits().forEach(function (u) {
+      var hit = terms.every(function (t) { return u.hay.indexOf(t) !== -1; });
+      if (!hit) return;
+      rows.push({
+        label: '頁面內容',
+        href: pageAnchorFor(u.el),
+        calendarType: '',
+        dharmaType: '',
+        title: u.title,
+        body: u.body
+      });
+    });
+    return rows;
+  }
+
   function searchRows(q) {
     // 拆成多個關鍵字，全部命中才算符合（順序不拘）：
     // 「瑞聲法語 12」「瑞聲法語12」都能找到「瑞聲法語第12號」。
@@ -596,7 +669,8 @@
         });
       });
     });
-    return rows.slice(0, 12);
+    // 資料結果排前面，頁面靜態文字補在後面
+    return rows.concat(searchPageRows(terms)).slice(0, 12);
   }
 
   function renderSearch(q) {
@@ -1520,6 +1594,12 @@
     btn.addEventListener('click', openTalkPopover);
   }
 
+  // 清單右側的狀態字：選到但沒在播是「已選取」，真的在播才是「播放中」
+  function talkAudioPlaying() {
+    var a = document.querySelector('#talkList audio.talk-audio');
+    return !!(a && !a.paused && !a.ended);
+  }
+
   function talkAudioSrc(url) {
     var s = normalizeAssetPath(url);
     var driveId = (s.match(/drive\.google\.com\/file\/d\/([^/]+)/) || s.match(/[?&]id=([^&]+)/) || [])[1];
@@ -1616,7 +1696,7 @@
         '<span class="talk-pick-no">' + ('0' + (r.index + 1)).slice(-2) + '</span>' +
         '<span class="talk-pick-body"><b>' + esc(title) + '</b>' +
         (desc ? '<small>' + esc(desc) + '</small>' : '') + '</span>' +
-        '<span class="talk-pick-state">' + (active ? '播放中' : '') + '</span>' +
+        '<span class="talk-pick-state">' + (active ? (talkAudioPlaying() ? '播放中' : '已選取') : '') + '</span>' +
         '</button></li>';
     }).join('');
     list.innerHTML = html || '<li class="talk-pick-empty">找不到符合的音檔</li>';
@@ -1785,7 +1865,9 @@
       renderTalkPicker();
     });
   }
-  if (talkList) {
+  // iPod 皮膚下，左右滑動改成切換機身配色（見 ipod.js），
+  // 換曲交給 ◀◀ / ▶▶ 與轉盤，避免同一個手勢有兩種意思。
+  if (talkList && !(talkPopover && talkPopover.classList.contains('ipod-mode'))) {
     var talkStartX = 0, talkStartY = 0, talkStartTime = 0;
     talkList.addEventListener('touchstart', function (e) {
       if (!e.touches || e.touches.length !== 1) return;

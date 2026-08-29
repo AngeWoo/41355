@@ -13,6 +13,16 @@
 
   var SEEK_STEP = 5;          // 播放畫面轉一格 = 5 秒
   var WHEEL_STEP_DEG = 24;    // 轉盤每 24 度移動一格
+  var SWIPE_MIN = 48;         // 換色滑動的最短距離（px）
+  var SWIPE_MAX_MS = 800;
+
+  // 機身配色，順序＝左右滑動的循環順序。'' 代表預設白色。
+  var SKINS = ['', 'orange', 'red', 'blue', 'green', 'purple'];
+  var SKIN_NAMES = {
+    '': '白色', orange: '月亮橘', red: '太陽紅',
+    blue: '星星藍', green: '星星綠', purple: '紫'
+  };
+  var SKIN_KEY = 'shinnyo_ipod_skin';
 
   var pod = document.getElementById('ipod');
   var wheel = document.getElementById('ipodWheel');
@@ -30,6 +40,73 @@
 
   var cursor = 0;             // 游標在「篩選後清單」中的位置
   var view = 'menu';
+  var skinIndex = 0;
+
+  /* ---------- 機身配色 ---------- */
+
+  function applySkin(next, remember) {
+    skinIndex = ((next % SKINS.length) + SKINS.length) % SKINS.length;
+    var name = SKINS[skinIndex];
+    if (name) pod.setAttribute('data-skin', name);
+    else pod.removeAttribute('data-skin');
+    if (remember) {
+      try { localStorage.setItem(SKIN_KEY, name); } catch (e) {}
+    }
+    return name;
+  }
+
+  function restoreSkin() {
+    var saved = '';
+    try { saved = localStorage.getItem(SKIN_KEY) || ''; } catch (e) {}
+    var i = SKINS.indexOf(saved);
+    applySkin(i < 0 ? 0 : i, false);
+  }
+
+  // 左右滑動換色。轉盤要留給轉動，所以從轉盤上開始的手勢不算。
+  var swipeId = null, swipeX = 0, swipeY = 0, swipeAt = 0;
+
+  function swipeStart(e) {
+    if (e.target.closest && e.target.closest('#ipodWheel')) { swipeId = null; return; }
+    swipeId = e.pointerId;
+    swipeX = e.clientX;
+    swipeY = e.clientY;
+    swipeAt = e.timeStamp;
+  }
+
+  function swipeEnd(e) {
+    if (swipeId !== e.pointerId) return;
+    swipeId = null;
+    if (e.timeStamp - swipeAt > SWIPE_MAX_MS) return;
+    var dx = e.clientX - swipeX;
+    var dy = e.clientY - swipeY;
+    if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    var name = applySkin(skinIndex + (dx < 0 ? 1 : -1), true);
+    showSkinToast(SKIN_NAMES[name]);
+  }
+
+  // 換色時在螢幕上短暫顯示顏色名稱，讓使用者知道發生了什麼
+  var skinToastTimer = null;
+  function showSkinToast(label) {
+    if (!label) return;
+    var el = document.getElementById('ipodSkinToast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'ipodSkinToast';
+      el.className = 'ipod-skin-toast';
+      el.setAttribute('aria-live', 'polite');
+      var screen = pod.querySelector('.ipod-screen');
+      if (!screen) return;
+      screen.appendChild(el);
+    }
+    el.textContent = label;
+    el.classList.add('is-on');
+    if (skinToastTimer) window.clearTimeout(skinToastTimer);
+    skinToastTimer = window.setTimeout(function () { el.classList.remove('is-on'); }, 900);
+  }
+
+  pod.addEventListener('pointerdown', swipeStart);
+  pod.addEventListener('pointerup', swipeEnd);
+  pod.addEventListener('pointercancel', function () { swipeId = null; });
 
   function TP() { return window.TalkPlayer || null; }
   function matched() { var tp = TP(); return (tp && tp.matched && tp.matched()) || []; }
@@ -42,7 +119,7 @@
     var title = document.getElementById('talkDialogTitle');
     var tp = TP();
     var hasRows = !!(tp && (tp.rows() || []).length);
-    if (title) title.textContent = (next === 'now' && hasRows) ? '播放中' : '真如音檔';
+    if (title) title.textContent = (next === 'now' && hasRows) ? '播放中' : 'Shinnyo iPod 真如音檔';
     if (next === 'now') syncProgress();
   }
 
@@ -122,11 +199,21 @@
   }
 
   // 中央鍵：播放中顯示暫停符號，停著時顯示三角形
+  // 順便同步清單右側的狀態字（app.js 重畫時會給初值，這裡負責之後的變化）
   function syncPlayIcon() {
-    if (!selectBtn) return;
     var playing = isPlaying();
-    selectBtn.classList.toggle('is-playing', playing);
-    selectBtn.setAttribute('aria-label', playing ? '暫停' : '播放');
+    if (selectBtn) {
+      selectBtn.classList.toggle('is-playing', playing);
+      selectBtn.setAttribute('aria-label', playing ? '暫停' : '播放');
+    }
+    if (!pickList) return;
+    var picks = pickList.querySelectorAll('.talk-pick');
+    for (var i = 0; i < picks.length; i++) {
+      var state = picks[i].querySelector('.talk-pick-state');
+      if (!state) continue;
+      var want = picks[i].classList.contains('is-active') ? (playing ? '播放中' : '已選取') : '';
+      if (state.textContent !== want) state.textContent = want;
+    }
   }
 
   // 換曲時 app.js 會重建 <audio>，所以每次重畫都要重新掛一次事件
@@ -357,6 +444,7 @@
     }, 0);
   });
 
+  restoreSkin();
   setView('menu');
   syncPlayIcon();
 })();
