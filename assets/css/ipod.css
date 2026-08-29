@@ -1,4 +1,4 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    真如音檔 — iPod 皮膚
    機身寬度 --w 決定 font-size，內部尺寸全部用 em，所以整台機器等比縮放。
    手機直式時 --w = 100vw、機身高 = 100dvh，畫面自動變滿版（螢幕區塊吸收多餘高度）。
@@ -187,11 +187,11 @@
   box-shadow: inset 0 0 .5em rgba(40, 44, 40, .28);
 }
 
-/* 狀態列：關閉鍵 ｜ 標題 ｜ 電池 */
+/* 狀態列：關閉鍵 ｜ 播放模式 ｜ 標題 ｜ 電池 */
 .talk-popover.ipod-mode .talk-head.ipod-statusbar {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 2.1em minmax(0, 1fr) auto;
+  grid-template-columns: 2.1em auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0;
   padding: 0 .35em;
@@ -201,7 +201,7 @@
 }
 
 .talk-popover.ipod-mode .ipod-statusbar b {
-  grid-column: 2;
+  grid-column: 3;
   font-family: var(--lcd-font);
   font-size: 1.02em;
   font-weight: 700;
@@ -236,7 +236,7 @@
 
 /* 狀態列右側：LINE 分享 + 電池 */
 .talk-popover.ipod-mode .ipod-status-right {
-  grid-column: 3;
+  grid-column: 4;
   justify-self: end;
   display: flex;
   align-items: center;
@@ -803,6 +803,51 @@
   background: radial-gradient(circle at 50% 50%, rgba(120, 132, 148, .05) 40%, rgba(120, 132, 148, .16) 100%);
 }
 
+/* ---------- 播放模式：正常／循環／重覆 ---------- */
+/* 同一組圖示給狀態列徽章與轉盤下鍵共用，用 data-mode 決定顯示哪一個 */
+.talk-popover.ipod-mode .ipod-mode-ic svg {
+  display: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.talk-popover.ipod-mode .ipod-mode-ic[data-mode="normal"] .ic-mode-normal,
+.talk-popover.ipod-mode .ipod-mode-ic[data-mode="all"] .ic-mode-all,
+.talk-popover.ipod-mode .ipod-mode-ic[data-mode="one"] .ic-mode-one { display: block; }
+.talk-popover.ipod-mode .ic-mode-num {
+  fill: currentColor;
+  stroke: none;
+  font: 700 9.5px/1 var(--lcd-font);
+}
+
+/* 狀態列左上角（× 右邊）的狀態徽章 */
+.talk-popover.ipod-mode .ipod-repeat-badge {
+  grid-column: 2;
+  justify-self: start;
+  display: inline-grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  margin-left: .1em;
+  border: .07em solid rgba(44, 45, 40, .35);
+  border-radius: .28em;
+  background: rgba(255, 255, 255, .14);
+  color: var(--lcd-ink);
+}
+.talk-popover.ipod-mode .ipod-repeat-badge svg { width: 1em; height: 1em; }
+/* 正常＝沒有循環，畫得淡一點，一眼就知道現在不是循環中 */
+.talk-popover.ipod-mode .ipod-repeat-badge[data-mode="normal"] { opacity: .5; }
+.talk-popover.ipod-mode .ipod-repeat-badge[data-mode="one"],
+.talk-popover.ipod-mode .ipod-repeat-badge[data-mode="all"] {
+  background: rgba(44, 45, 40, .16);
+  border-color: rgba(44, 45, 40, .55);
+}
+
+/* 轉盤下鍵：顯示目前模式 */
+.talk-popover.ipod-mode .ipod-key .ipod-mode-ic svg { height: 1.15em; width: 1.15em; }
+
 /* 機身下緣字樣 */
 .talk-popover.ipod-mode .ipod-wordmark {
   position: absolute;
@@ -978,6 +1023,7 @@ html[data-theme="light"] .talk-popover.ipod-mode .talk-picker-head input {
 
   .talk-popover.ipod-mode .talk-panel.ipod { --pad-bottom: 3.4em; }
   .talk-popover.ipod-mode .ipod-close { width: 1.7em; height: 1.7em; }
+  .talk-popover.ipod-mode .ipod-repeat-badge { width: 1.7em; height: 1.7em; }
   .talk-popover.ipod-mode .talk-page-btn { height: 1.9em; padding: 0 .45em; font-size: .95em; }
   .talk-popover.ipod-mode .talk-page-info { font-size: .95em; }
 
