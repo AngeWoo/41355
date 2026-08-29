@@ -9,7 +9,7 @@
   <meta name="color-scheme" content="dark" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <link rel="stylesheet" href="assets/css/style.css?v=143" />
-  <link rel="stylesheet" href="assets/css/ipod.css?v=21" />
+  <link rel="stylesheet" href="assets/css/ipod.css?v=24" />
   <script src="assets/js/theme.js?v=3"></script>
   <script src="assets/js/scroll-top.js?v=1"></script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
@@ -180,7 +180,12 @@
           <span aria-hidden="true"><svg viewBox="0 0 30 14" fill="currentColor"><path d="M2 1.1 11.4 7 2 12.9z"/><rect x="17.4" y="1.1" width="3.4" height="11.8" rx=".7"/><rect x="24.2" y="1.1" width="3.4" height="11.8" rx=".7"/></svg></span>
         </button>
         <div class="ipod-scroll" id="ipodScroll" aria-hidden="true"></div>
-        <button type="button" class="ipod-select" data-ipod="select" aria-label="選取並播放"></button>
+        <button type="button" class="ipod-select" id="ipodSelect" data-ipod="select" aria-label="播放">
+          <span class="ipod-select-icon" aria-hidden="true">
+            <svg class="ic-play" viewBox="0 0 14 16" fill="currentColor"><path d="M2.4 1 12.6 8 2.4 15z"/></svg>
+            <svg class="ic-pause" viewBox="0 0 14 16" fill="currentColor"><rect x="2" y="1" width="3.8" height="14" rx=".8"/><rect x="8.2" y="1" width="3.8" height="14" rx=".8"/></svg>
+          </span>
+        </button>
       </div>
 
       <span class="ipod-wordmark" aria-hidden="true">Shinnyo iPod</span>
@@ -471,6 +476,6 @@
   <script src="assets/js/config.js?v=6"></script>
   <script src="assets/js/api.js?v=41"></script>
   <script src="assets/js/app.js?v=165"></script>
-  <script src="assets/js/ipod.js?v=8"></script>
+  <script src="assets/js/ipod.js?v=9"></script>
 </body>
 </html>
