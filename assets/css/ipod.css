@@ -1,0 +1,867 @@
+/* ==========================================================================
+   真如音檔 — iPod 皮膚
+   機身寬度 --w 決定 font-size，內部尺寸全部用 em，所以整台機器等比縮放。
+   手機直式時 --w = 100vw、機身高 = 100dvh，畫面自動變滿版（螢幕區塊吸收多餘高度）。
+   ========================================================================== */
+
+.talk-popover.ipod-mode {
+  padding: 20px;
+  place-items: center;
+}
+
+.talk-popover.ipod-mode .talk-backdrop {
+  background: rgba(12, 16, 24, .62);
+  backdrop-filter: blur(6px);
+}
+
+/* ---------- 機身 ---------- */
+.talk-popover.ipod-mode .talk-panel.ipod {
+  /* 桌機：最寬 430px，並受視窗寬高兩邊限制（第一行是不支援 dvh 的瀏覽器用的） */
+  --w: min(430px, calc(100vw - 44px), calc((100vh - 44px) * .585));
+  --w: min(430px, calc(100vw - 44px), calc((100dvh - 44px) * .585));
+  --h: calc(var(--w) * 1.7093);
+  --pad-top: 1.814em;
+  --pad-bottom: 3.2em;
+  --gap: 2.2em;
+
+  --lcd-bg: #a4a59c;
+  --lcd-bg-2: #9b9c93;
+  --lcd-bar: #8e8f86;
+  --lcd-ink: #2c2d28;
+  --lcd-dim: #575850;
+  --lcd-sel: #43443d;
+  --lcd-sel-ink: #e9eae1;
+  --lcd-line: rgba(44, 45, 40, .22);
+  --lcd-font: "Helvetica Neue", Helvetica, Arial, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: var(--w);
+  height: var(--h);
+  max-height: none;
+  font-size: calc(var(--w) / 26);
+  font-family: var(--lcd-font);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: var(--pad-top) 0 var(--pad-bottom);
+  overflow: visible;
+
+  border: 0;
+  border-radius: 1.4em;
+  background:
+    linear-gradient(158deg, #ffffff 0%, #fbfcfc 34%, #f1f3f5 62%, #e4e8ec 100%);
+  box-shadow:
+    0 0 0 .085em #cfd4d9,
+    0 0 0 .17em rgba(255, 255, 255, .55),
+    0 1.6em 3.4em -1.2em rgba(8, 14, 24, .62),
+    inset 0 .09em .22em rgba(255, 255, 255, .95),
+    inset 0 -.35em .7em -.2em rgba(120, 132, 146, .18);
+}
+
+/* 機身反光 */
+.talk-popover.ipod-mode .talk-panel.ipod::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(148deg, rgba(255, 255, 255, .96) 0%, rgba(255, 255, 255, .32) 26%, rgba(255, 255, 255, 0) 46%),
+    radial-gradient(120% 42% at 50% 100%, rgba(150, 162, 176, .16), transparent 70%);
+}
+
+/* ---------- 螢幕外框（金屬邊）---------- */
+.talk-popover.ipod-mode .ipod-screen-frame {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 88%;
+  height: 24em;
+  padding: .42em;
+  display: flex;
+  border-radius: .34em;
+  background: linear-gradient(180deg, #b4b7b8 0%, #cfd2d3 40%, #e2e5e6 100%);
+  box-shadow:
+    0 .05em 0 rgba(255, 255, 255, .9),
+    inset 0 .05em .16em rgba(30, 36, 44, .42);
+}
+
+/* ---------- LCD ---------- */
+.talk-popover.ipod-mode .ipod-screen {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: .1em;
+  background: linear-gradient(180deg, var(--lcd-bg) 0%, var(--lcd-bg-2) 100%);
+  color: var(--lcd-ink);
+  box-shadow: inset 0 0 .5em rgba(40, 44, 40, .28);
+}
+
+/* 狀態列：關閉鍵 ｜ 標題 ｜ 電池 */
+.talk-popover.ipod-mode .talk-head.ipod-statusbar {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 2.1em minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0;
+  padding: 0 .35em;
+  height: 2.06em;
+  border-bottom: .07em solid rgba(44, 45, 40, .45);
+  background: linear-gradient(180deg, #b0b1a8 0%, var(--lcd-bar) 100%);
+}
+
+.talk-popover.ipod-mode .ipod-statusbar b {
+  grid-column: 2;
+  font-family: var(--lcd-font);
+  font-size: 1.02em;
+  font-weight: 700;
+  letter-spacing: .01em;
+  color: var(--lcd-ink);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.talk-popover.ipod-mode .ipod-close {
+  grid-column: 1;
+  justify-self: start;
+  width: 1.5em;
+  height: 1.5em;
+  padding: 0;
+  border: .07em solid rgba(44, 45, 40, .5);
+  border-radius: .28em;
+  background: rgba(255, 255, 255, .14);
+  color: var(--lcd-ink);
+  font: 700 1.05em/1 var(--lcd-font);
+  cursor: pointer;
+}
+
+.talk-popover.ipod-mode .ipod-close:hover,
+.talk-popover.ipod-mode .ipod-close:focus-visible {
+  outline: none;
+  background: var(--lcd-sel);
+  color: var(--lcd-sel-ink);
+}
+
+/* 狀態列右側：LINE 分享 + 電池 */
+.talk-popover.ipod-mode .ipod-status-right {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: .4em;
+}
+
+/* 分享整台播放器的網址（?player=talks），選單與播放畫面都看得到 */
+.talk-popover.ipod-mode .ipod-share-slot .line-card-share {
+  position: static;
+  min-width: 0;
+  height: 1.35em;
+  padding: 0 .45em;
+  border: .07em solid rgba(44, 45, 40, .35);
+  border-radius: .25em;
+  font-size: .62em;
+  font-weight: 800;
+  letter-spacing: .02em;
+  box-shadow: none;
+  transition: filter .2s;
+}
+
+.talk-popover.ipod-mode .ipod-share-slot .line-card-share:hover,
+.talk-popover.ipod-mode .ipod-share-slot .line-card-share:focus-visible {
+  transform: none;
+  outline: .1em solid var(--lcd-ink);
+  outline-offset: .1em;
+  box-shadow: none;
+}
+
+/* 電池圖示 */
+.talk-popover.ipod-mode .ipod-battery {
+  position: relative;
+  width: 1.55em;
+  height: .82em;
+  border: .09em solid var(--lcd-ink);
+  border-radius: .1em;
+  background:
+    linear-gradient(90deg, var(--lcd-ink) 0 82%, transparent 82%) no-repeat center / calc(100% - .16em) calc(100% - .16em);
+}
+
+.talk-popover.ipod-mode .ipod-battery::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -.22em;
+  transform: translateY(-50%);
+  width: .14em;
+  height: .34em;
+  border-radius: 0 .06em .06em 0;
+  background: var(--lcd-ink);
+}
+
+/* 螢幕內容區 */
+.talk-popover.ipod-mode .ipod-screen-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- 清單（選單畫面）---------- */
+.talk-popover.ipod-mode .talk-picker {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.talk-popover.ipod-mode .talk-picker[hidden] { display: none; }
+
+.talk-popover.ipod-mode .talk-picker-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: .35em;
+  padding: .2em .3em;
+  border-bottom: .07em solid var(--lcd-line);
+  background: rgba(255, 255, 255, .10);
+}
+
+.talk-popover.ipod-mode .talk-picker-head input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 1.5em;
+  padding: 0 .4em;
+  border: .07em solid rgba(44, 45, 40, .42);
+  border-radius: .2em;
+  background: rgba(255, 255, 255, .30);
+  color: var(--lcd-ink);
+  font: 600 .74em/1 var(--lcd-font);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.talk-popover.ipod-mode .talk-picker-head input::placeholder { color: rgba(44, 45, 40, .52); }
+
+.talk-popover.ipod-mode .talk-picker-head input:focus {
+  outline: none;
+  border-color: var(--lcd-ink);
+  box-shadow: none;
+  background: rgba(255, 255, 255, .48);
+}
+
+.talk-popover.ipod-mode .talk-picker-count {
+  flex: 0 0 auto;
+  color: var(--lcd-dim);
+  font-size: .64em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.talk-popover.ipod-mode .talk-picker-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: block;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.talk-popover.ipod-mode .talk-picker-list::-webkit-scrollbar { width: 0; height: 0; }
+
+/* 單列選單：選到的那列＝反白＋右側箭頭 */
+.talk-popover.ipod-mode .talk-pick {
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.75em minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .3em;
+  padding: .26em .45em;
+  border: 0;
+  border-bottom: .07em solid rgba(44, 45, 40, .10);
+  border-radius: 0;
+  background: transparent;
+  color: var(--lcd-ink);
+  font-family: var(--lcd-font);
+  text-align: left;
+  cursor: pointer;
+  transition: none;
+}
+
+.talk-popover.ipod-mode .talk-pick::after {
+  content: "›";
+  position: absolute;
+  right: .42em;
+  top: 50%;
+  transform: translateY(-52%);
+  font-size: 1.1em;
+  font-weight: 700;
+  opacity: .55;
+}
+
+.talk-popover.ipod-mode .talk-pick:hover,
+.talk-popover.ipod-mode .talk-pick:focus-visible {
+  outline: none;
+  background: rgba(44, 45, 40, .12);
+  border-color: var(--lcd-line);
+}
+
+/* 轉盤游標所在列 */
+.talk-popover.ipod-mode .talk-pick.is-cursor,
+.talk-popover.ipod-mode .talk-pick.is-cursor:hover {
+  background: linear-gradient(180deg, #55564f 0%, var(--lcd-sel) 100%);
+  color: var(--lcd-sel-ink);
+  box-shadow: none;
+}
+
+.talk-popover.ipod-mode .talk-pick.is-cursor .talk-pick-no,
+.talk-popover.ipod-mode .talk-pick.is-cursor .talk-pick-body small,
+.talk-popover.ipod-mode .talk-pick.is-cursor .talk-pick-state { color: var(--lcd-sel-ink); }
+
+/* 播放中的那一則（沒被游標壓住時，用左側粗線＋喇叭符號標示） */
+.talk-popover.ipod-mode .talk-pick.is-active {
+  border-color: var(--lcd-line);
+  background: rgba(44, 45, 40, .10);
+  box-shadow: inset .18em 0 0 var(--lcd-ink);
+}
+
+.talk-popover.ipod-mode .talk-pick.is-cursor.is-active {
+  background: linear-gradient(180deg, #55564f 0%, var(--lcd-sel) 100%);
+  box-shadow: inset .18em 0 0 var(--lcd-sel-ink);
+}
+
+.talk-popover.ipod-mode .talk-pick-no {
+  font-family: var(--lcd-font);
+  font-size: .68em;
+  font-weight: 700;
+  color: var(--lcd-dim);
+  text-align: center;
+}
+
+.talk-popover.ipod-mode .talk-pick-body { display: grid; gap: 0; padding-right: .75em; }
+.talk-popover.ipod-mode .talk-pick-body b { font-size: .86em; font-weight: 700; line-height: 1.3; letter-spacing: .01em; }
+.talk-popover.ipod-mode .talk-pick-body small { font-size: .64em; line-height: 1.35; color: var(--lcd-dim); }
+
+.talk-popover.ipod-mode .talk-pick-state {
+  font-size: .6em;
+  font-weight: 700;
+  color: var(--lcd-dim);
+  padding-right: .8em;
+}
+
+.talk-popover.ipod-mode .talk-pick-empty,
+.talk-popover.ipod-mode .search-empty {
+  padding: 1.4em .8em;
+  color: var(--lcd-dim);
+  text-align: center;
+  font: 700 .82em/1.5 var(--lcd-font);
+}
+
+/* 未登入／載入中的提示：附一顆可直接開啟會員視窗的按鈕 */
+.talk-popover.ipod-mode .talk-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .9em;
+}
+
+.talk-popover.ipod-mode .talk-empty-login {
+  min-height: 2.1em;
+  padding: 0 1.1em;
+  border: .07em solid var(--lcd-ink);
+  border-radius: .25em;
+  background: var(--lcd-sel);
+  color: var(--lcd-sel-ink);
+  font: 700 1em/1 var(--lcd-font);
+  cursor: pointer;
+}
+
+.talk-popover.ipod-mode .talk-empty-login:hover,
+.talk-popover.ipod-mode .talk-empty-login:focus-visible {
+  outline: none;
+  background: #55564f;
+  box-shadow: 0 0 0 .1em rgba(44, 45, 40, .35);
+}
+
+/* ---------- 分頁列（螢幕底部）---------- */
+.talk-popover.ipod-mode .talk-pager {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .18em;
+  padding: 0 .2em;
+  border-top: .07em solid var(--lcd-line);
+  background: rgba(255, 255, 255, .10);
+}
+
+.talk-popover.ipod-mode .talk-pager:empty { display: none; border: 0; }
+
+.talk-popover.ipod-mode .talk-page-btn {
+  min-width: 0;
+  height: 1.35em;
+  padding: 0 .3em;
+  border: 0;
+  border-radius: .2em;
+  background: transparent;
+  color: var(--lcd-ink);
+  font: 700 .68em/1 var(--lcd-font);
+  cursor: pointer;
+}
+
+.talk-popover.ipod-mode .talk-page-btn.is-edge { opacity: .9; }
+.talk-popover.ipod-mode .talk-page-btn:disabled { opacity: .35; cursor: default; }
+.talk-popover.ipod-mode .talk-page-btn:not(:disabled):hover { background: rgba(44, 45, 40, .16); }
+
+.talk-popover.ipod-mode .talk-page-info {
+  min-width: 0;
+  padding: 0 .15em;
+  color: var(--lcd-dim);
+  font-size: .68em;
+  font-weight: 700;
+}
+
+/* ---------- 播放中畫面 ---------- */
+.talk-popover.ipod-mode .ipod-now {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: none;
+  flex-direction: column;
+}
+
+.talk-popover.ipod-mode .ipod.view-now .ipod-now { display: flex; }
+.talk-popover.ipod-mode .ipod.view-now .talk-picker,
+.talk-popover.ipod-mode .ipod.view-now .talk-pager { display: none; }
+.talk-popover.ipod-mode .ipod.view-menu .ipod-now { display: none; }
+
+.talk-popover.ipod-mode .ipod-nowmeta {
+  flex: 0 0 auto;
+  padding: .45em .6em .1em;
+  color: var(--lcd-dim);
+  font: 700 .66em/1 var(--lcd-font);
+  text-align: center;
+  letter-spacing: .04em;
+}
+
+.talk-popover.ipod-mode .talk-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  padding: .35em .6em;
+  overflow-y: auto;
+  scrollbar-width: none;
+  max-height: none;
+}
+
+.talk-popover.ipod-mode .talk-list::-webkit-scrollbar { width: 0; }
+.talk-popover.ipod-mode .talk-list.can-swipe-prev::before,
+.talk-popover.ipod-mode .talk-list.can-swipe-next::after { display: none; }
+
+/* 播放中：仿實機的直式排版 — 上面是封面方塊，下面是曲名 */
+.talk-popover.ipod-mode .talk-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: .45em;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+}
+
+.talk-popover.ipod-mode .talk-icon {
+  grid-column: 1;
+  grid-row: 1;
+  /* 注意：width/height 的 em 是以本元素放大後的 font-size 為基準，
+     3.2em x 2.6 = 機身的 8.3em，換算後大約是螢幕寬度的四成 */
+  font: 700 2.6em/1 var(--lcd-font);
+  width: 3.9em;
+  height: 3.9em;
+  border-radius: .12em;
+  background: linear-gradient(150deg, #55564f, var(--lcd-sel));
+  color: var(--lcd-sel-ink);
+  box-shadow: inset 0 0 0 .015em rgba(233, 234, 225, .35), 0 .04em .12em rgba(40, 44, 40, .3);
+}
+
+.talk-popover.ipod-mode .talk-item > div {
+  grid-column: 1;
+  grid-row: 2;
+  justify-items: center;
+  gap: .18em;
+}
+
+.talk-popover.ipod-mode .talk-item h3 {
+  font-family: var(--lcd-font);
+  font-size: .95em;
+  font-weight: 700;
+  color: var(--lcd-ink);
+  line-height: 1.3;
+}
+.talk-popover.ipod-mode .talk-item p {
+  font-size: .72em;
+  line-height: 1.45;
+  color: var(--lcd-dim);
+}
+
+/* 原生播放器藏起來，改用轉盤 + 下面的進度條 */
+.talk-popover.ipod-mode .talk-audio { display: none !important; }
+
+.talk-popover.ipod-mode .ipod-progress {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: .4em;
+  padding: .35em .6em .5em;
+}
+
+.talk-popover.ipod-mode .ipod-time {
+  flex: 0 0 auto;
+  min-width: 2.4em;
+  color: var(--lcd-dim);
+  font: 700 .66em/1 var(--lcd-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.talk-popover.ipod-mode .ipod-time:last-child { text-align: right; }
+
+.talk-popover.ipod-mode .ipod-bar {
+  flex: 1 1 auto;
+  position: relative;
+  height: .62em;
+  border: .07em solid var(--lcd-ink);
+  border-radius: .1em;
+  background: rgba(255, 255, 255, .18);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.talk-popover.ipod-mode .ipod-bar i {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--lcd-ink);
+}
+
+.talk-popover.ipod-mode .ipod-bar:focus-visible { outline: .1em solid var(--lcd-ink); outline-offset: .12em; }
+
+/* 沒有可播放的音檔時（例如尚未登入），不要顯示空的進度條 */
+.talk-popover.ipod-mode .ipod-progress.is-idle { visibility: hidden; }
+
+/* ---------- 轉盤 ---------- */
+.talk-popover.ipod-mode .ipod-wheel {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  width: 13.2em;
+  height: 13.2em;
+  margin-top: var(--gap);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 30%, #ffffff 0%, #f7f8f9 44%, #eaedef 74%, #dcdfe3 92%, #d0d4d9 100%);
+  box-shadow:
+    inset 0 .12em .3em rgba(255, 255, 255, .95),
+    inset 0 -.14em .34em rgba(118, 130, 145, .22),
+    inset 0 0 .5em .1em rgba(126, 138, 152, .12),
+    0 .14em .4em rgba(20, 26, 36, .18),
+    0 0 0 .05em rgba(255, 255, 255, .8);
+}
+
+/* 四等分的分隔線（45°／135°／225°／315°） */
+.talk-popover.ipod-mode .ipod-wheel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: repeating-conic-gradient(from 45deg, rgba(56, 66, 78, .16) 0 .55deg, transparent .55deg 90deg);
+}
+
+.talk-popover.ipod-mode .ipod-key {
+  position: absolute;
+  inset: -1.2em;
+  z-index: 1;
+  display: flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9aa2aa;
+  font-family: var(--lcd-font);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.talk-popover.ipod-mode .ipod-key span {
+  display: block;
+  line-height: 1;
+  position: relative;
+}
+
+/* 用 SVG 而不是 ◀ ▶ 字元：這些符號在手機上會被當成 emoji 畫成彩色，
+   桌機則是純文字字形，兩邊長得不一樣。 */
+.talk-popover.ipod-mode .ipod-key svg {
+  display: block;
+  height: 1em;
+  width: auto;
+  fill: currentColor;
+}
+
+.talk-popover.ipod-mode .ipod-key::before {
+  content: "";
+  position: absolute;
+  inset: 1.2em;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.talk-popover.ipod-mode .ipod-key-menu {
+  clip-path: polygon(50% 50%, 0 0, 100% 0);
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 1.83em;
+  font-size: .72em;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: #99a1a9;
+}
+
+.talk-popover.ipod-mode .ipod-key-prev {
+  clip-path: polygon(50% 50%, 0 100%, 0 0);
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 1.67em;
+  font-size: .66em;
+}
+
+.talk-popover.ipod-mode .ipod-key-next {
+  clip-path: polygon(50% 50%, 100% 0, 100% 100%);
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 1.67em;
+  font-size: .66em;
+}
+
+.talk-popover.ipod-mode .ipod-key-play {
+  clip-path: polygon(50% 50%, 100% 100%, 0 100%);
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2.06em;
+  font-size: .62em;
+  letter-spacing: .06em;
+}
+
+.talk-popover.ipod-mode .ipod-key:active::before,
+.talk-popover.ipod-mode .ipod-key.is-press::before {
+  background: radial-gradient(circle at 50% 50%, rgba(120, 132, 148, .04) 40%, rgba(120, 132, 148, .18) 100%);
+}
+
+.talk-popover.ipod-mode .ipod-key:active,
+.talk-popover.ipod-mode .ipod-key.is-press { color: #6f7880; }
+
+.talk-popover.ipod-mode .ipod-key:focus-visible {
+  outline: none;
+  color: #4b5560;
+}
+
+.talk-popover.ipod-mode .ipod-key:focus-visible::before {
+  background: radial-gradient(circle at 50% 50%, rgba(120, 132, 148, .05) 40%, rgba(120, 132, 148, .16) 100%);
+}
+
+/* 機身下緣字樣 */
+.talk-popover.ipod-mode .ipod-wordmark {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 1.12em;
+  text-align: center;
+  font-family: var(--lcd-font);
+  font-size: .85em;
+  font-weight: 600;
+  letter-spacing: .2em;
+  text-indent: .2em;
+  color: #949ca4;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 內圈：轉動這一圈捲動清單 */
+.talk-popover.ipod-mode .ipod-scroll {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 70%;
+  height: 70%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 28%, #ffffff 0%, #fdfdfe 46%, #f2f4f5 78%, #e8ebee 100%);
+  box-shadow:
+    0 0 0 .05em rgba(160, 170, 182, .28),
+    0 0 0 .1em rgba(255, 255, 255, .92),
+    inset 0 .1em .26em rgba(255, 255, 255, .95),
+    inset 0 -.1em .26em rgba(126, 138, 152, .18),
+    0 .1em .3em rgba(20, 26, 36, .16);
+  cursor: grab;
+  touch-action: none;
+}
+
+.talk-popover.ipod-mode .ipod-scroll:active { cursor: grabbing; }
+
+/* 中央選取鍵 */
+.talk-popover.ipod-mode .ipod-select {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 29%;
+  height: 29%;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, #ffffff 0%, #f6f7f8 56%, #e6e9ec 100%);
+  box-shadow:
+    0 0 0 .04em rgba(190, 197, 204, .55),
+    inset 0 .07em .18em rgba(255, 255, 255, .95),
+    inset 0 -.07em .18em rgba(126, 138, 152, .18),
+    0 .06em .2em rgba(20, 26, 36, .2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.talk-popover.ipod-mode .ipod-select:active,
+.talk-popover.ipod-mode .ipod-select.is-press {
+  background: radial-gradient(circle at 50% 30%, #f2f3f4 0%, #e7eaec 60%, #dadee2 100%);
+  box-shadow:
+    0 0 0 .04em rgba(178, 186, 194, .6),
+    inset 0 .1em .26em rgba(120, 132, 148, .3);
+}
+
+.talk-popover.ipod-mode .ipod-select:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 .08em rgba(120, 132, 148, .55),
+    inset 0 .07em .18em rgba(255, 255, 255, .95);
+}
+
+/* ---------- 無論日／夜模式，機身與螢幕都維持 iPod 原色 ---------- */
+html[data-theme="light"] .talk-popover.ipod-mode .talk-panel.ipod,
+html[data-theme="light"] .talk-popover.ipod-mode .talk-head.ipod-statusbar,
+html[data-theme="light"] .talk-popover.ipod-mode .talk-item,
+html[data-theme="light"] .talk-popover.ipod-mode .talk-picker,
+html[data-theme="light"] .talk-popover.ipod-mode .talk-pick,
+html[data-theme="light"] .talk-popover.ipod-mode .talk-page-btn {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+html[data-theme="light"] .talk-popover.ipod-mode .talk-panel.ipod {
+  background: linear-gradient(158deg, #ffffff 0%, #fbfcfc 34%, #f1f3f5 62%, #e4e8ec 100%);
+  box-shadow:
+    0 0 0 .085em #cfd4d9,
+    0 0 0 .17em rgba(255, 255, 255, .55),
+    0 1.6em 3.4em -1.2em rgba(8, 14, 24, .38),
+    inset 0 .09em .22em rgba(255, 255, 255, .95);
+}
+
+html[data-theme="light"] .talk-popover.ipod-mode .talk-backdrop { background: rgba(28, 38, 56, .48); }
+
+html[data-theme="light"] .talk-popover.ipod-mode .talk-head.ipod-statusbar {
+  background: linear-gradient(180deg, #b0b1a8 0%, var(--lcd-bar) 100%);
+  border-bottom: .07em solid rgba(44, 45, 40, .45);
+}
+
+html[data-theme="light"] .talk-popover.ipod-mode .talk-pick,
+html[data-theme="light"] .talk-popover.ipod-mode .talk-picker { background: transparent; }
+html[data-theme="light"] .talk-popover.ipod-mode .talk-pick { border-bottom: .07em solid var(--lcd-line); }
+html[data-theme="light"] .talk-popover.ipod-mode .talk-pick.is-cursor {
+  background: linear-gradient(180deg, #55564f 0%, var(--lcd-sel) 100%);
+  color: var(--lcd-sel-ink);
+}
+html[data-theme="light"] .talk-popover.ipod-mode .talk-pick.is-active { background: rgba(44, 45, 40, .10); }
+html[data-theme="light"] .talk-popover.ipod-mode .talk-picker-head input {
+  border-color: rgba(44, 45, 40, .42);
+  background: rgba(255, 255, 255, .30);
+  color: var(--lcd-ink);
+}
+
+/* ---------- 手機：滿版 ---------- */
+@media (max-width: 640px) {
+  /* 手機留邊：不做滿版，讓機身的圓角與外框看得出來 */
+  .talk-popover.ipod-mode {
+    padding:
+      calc(10px + env(safe-area-inset-top, 0px))
+      calc(10px + env(safe-area-inset-right, 0px))
+      calc(10px + env(safe-area-inset-bottom, 0px))
+      calc(10px + env(safe-area-inset-left, 0px));
+  }
+
+  .talk-popover.ipod-mode .talk-panel.ipod {
+    /* 直式時貼近畫面寬度但留邊；橫式退回以高度為準，避免轉盤被切掉 */
+    --edge: calc(20px + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px));
+    --edge-y: calc(20px + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
+    --w: min(calc(100vw - var(--edge)), calc((100vh - var(--edge-y)) * .88));
+    --w: min(calc(100vw - var(--edge)), calc((100dvh - var(--edge-y)) * .88));
+    --h: calc(100vh - var(--edge-y));
+    --h: calc(100dvh - var(--edge-y));
+    width: var(--w);
+    height: var(--h);
+  }
+
+  /* 多出來的高度全部給螢幕，清單就能多顯示幾則 */
+  .talk-popover.ipod-mode .ipod-screen-frame {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 8em;
+  }
+
+  .talk-popover.ipod-mode .talk-panel.ipod { --pad-bottom: 3.4em; }
+  .talk-popover.ipod-mode .ipod-close { width: 1.7em; height: 1.7em; }
+  .talk-popover.ipod-mode .talk-page-btn { height: 1.9em; padding: 0 .6em; font-size: .74em; }
+  .talk-popover.ipod-mode .talk-page-info { font-size: .74em; }
+
+  /* 螢幕在手機上會變高，字級跟著放大比較好讀（點擊區域也一起變大） */
+  .talk-popover.ipod-mode .talk-pick { padding: .38em .45em; }
+  .talk-popover.ipod-mode .talk-pick-body b { font-size: .95em; }
+  .talk-popover.ipod-mode .talk-pick-body small { font-size: .72em; }
+  .talk-popover.ipod-mode .talk-pick-no { font-size: .74em; }
+  .talk-popover.ipod-mode .talk-pick-state { font-size: .66em; }
+  .talk-popover.ipod-mode .talk-picker-head { padding: .3em .3em; }
+  .talk-popover.ipod-mode .talk-picker-head input { height: 1.9em; font-size: .82em; }
+  .talk-popover.ipod-mode .talk-picker-count { font-size: .7em; }
+  .talk-popover.ipod-mode .talk-item h3 { font-size: 1.05em; }
+  .talk-popover.ipod-mode .talk-item p { font-size: .8em; }
+  .talk-popover.ipod-mode .ipod-time,
+  .talk-popover.ipod-mode .ipod-nowmeta { font-size: .74em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .talk-popover.ipod-mode .talk-list.slide-next .talk-item,
+  .talk-popover.ipod-mode .talk-list.slide-prev .talk-item { animation: none; }
+}
