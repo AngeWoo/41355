@@ -749,6 +749,10 @@
   padding: 0;
   border: 0;
   border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: inherit;
+  color: #9aa2aa;
   background: radial-gradient(circle at 50% 30%, #ffffff 0%, #f6f7f8 56%, #e6e9ec 100%);
   box-shadow:
     0 0 0 .04em rgba(190, 197, 204, .55),
@@ -766,6 +770,23 @@
     0 0 0 .04em rgba(178, 186, 194, .6),
     inset 0 .1em .26em rgba(120, 132, 148, .3);
 }
+
+/* 中央鍵圖示：播放中顯示暫停、停著時顯示三角形，顏色與四周按鍵一致 */
+.talk-popover.ipod-mode .ipod-select-icon {
+  display: block;
+  pointer-events: none;
+}
+
+.talk-popover.ipod-mode .ipod-select svg {
+  display: block;
+  height: 1.25em;
+  width: auto;
+  fill: currentColor;
+}
+
+.talk-popover.ipod-mode .ipod-select .ic-pause { display: none; }
+.talk-popover.ipod-mode .ipod-select.is-playing .ic-play { display: none; }
+.talk-popover.ipod-mode .ipod-select.is-playing .ic-pause { display: block; }
 
 .talk-popover.ipod-mode .ipod-select:focus-visible {
   outline: none;
