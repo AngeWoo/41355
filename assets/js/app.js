@@ -129,9 +129,38 @@
     if (!s) return '';
     try { return new URL(s, location.href).href; } catch (e) { return s; }
   }
+  // 真如音檔播放器的獨立分享網址參數。其他區塊的分享網址不可以把它帶著走。
+  var TALK_PARAM = 'player';
+  var TALK_PARAM_VALUE = 'talks';
+  function searchWithoutTalk() {
+    try {
+      var params = new URLSearchParams(location.search);
+      params.delete(TALK_PARAM);
+      var out = params.toString();
+      return out ? '?' + out : '';
+    } catch (e) { return location.search || ''; }
+  }
   function currentSiteUrl(type) {
     var hash = SECTION_HASH[type] || location.hash || '';
-    return location.origin + location.pathname + location.search + hash;
+    if (/^#&?player=/.test(hash)) hash = '';
+    return location.origin + location.pathname + searchWithoutTalk() + hash;
+  }
+  // 播放器的獨立網址：…/index.html?player=talks
+  // 分享出去的是這個頁面而不是 mp3 檔本身，開啟後仍要先通過會員登入才看得到內容。
+  function talkShareUrl() {
+    return location.origin + location.pathname + '?' + TALK_PARAM + '=' + TALK_PARAM_VALUE;
+  }
+  function talkPlayerShareButton() {
+    return lineShareButton('talks', {
+      title: '真如音檔',
+      desc: '線上收聽真如音檔（需會員登入）'
+    }, talkShareUrl());
+  }
+  function isTalkPlayerRequested() {
+    try {
+      if ((new URLSearchParams(location.search).get(TALK_PARAM) || '') === TALK_PARAM_VALUE) return true;
+    } catch (e) {}
+    return /[#&]player=talks/.test(String(location.hash || ''));
   }
   function cleanUrlForCompare(url) {
     return String(url || '').trim().replace(/[),.，。；;!?！？]+$/, '');
@@ -160,6 +189,9 @@
     if (isSiteFileUrl(clean)) return false;
     try {
       var parsed = new URL(clean, location.href);
+      // 播放器分享網址本身就是要傳出去的目標，不能再被代換成首頁網址
+      if (!parsed.hash && parsed.searchParams &&
+          parsed.searchParams.get(TALK_PARAM) === TALK_PARAM_VALUE) return false;
       var host = parsed.hostname.toLowerCase();
       var current = String(location.hostname || '').toLowerCase();
       var sameHost = host === current ||
@@ -249,7 +281,10 @@
       card.setAttribute('data-line-ready', '1');
       var title = card.querySelector('h3');
       var body = card.querySelector('p');
-      var url = absoluteUrl(card.getAttribute('href') || location.href);
+      var href = String(card.getAttribute('href') || '');
+      var url = /^#/.test(href)
+        ? location.origin + location.pathname + searchWithoutTalk() + href
+        : (absoluteUrl(href) || currentSiteUrl(''));
       var text = [
         title ? title.textContent : '真如苑資料網站',
         body ? body.textContent : '',
@@ -502,6 +537,8 @@
   var TALK_PAGE_SIZE = 8;
   var talksReady = false;
   var talksLoading = false;
+  var talksError = '';      // 會員內容抓取失敗時的原因，顯示在播放器螢幕上
+  var sharedPlayerPending = isTalkPlayerRequested();   // 由 ?player=talks 進來、還沒開起來的播放器
   var DATA_CACHE_KEY = 'shinnyo_front_data_cache_v1';
   // 本機快取只用來「先把畫面顯示出來」，每次開站仍會向後端重新取一次並覆蓋（stale-while-revalidate）。
   // 舊值 15 分鐘會讓稍後回訪的會員又對著空白畫面等 GAS 回應，這裡放寬到 24 小時。
@@ -1303,6 +1340,8 @@
     if (!contentLoading) return;
     contentLoading = false;
     Object.keys(store).forEach(function (t) { draw(t); });
+    var talkPop = document.getElementById('talkPopover');
+    if (talkPop && !talkPop.hidden) renderTalkListAudio();
   }
 
   function clearProtectedContent() {
@@ -1345,16 +1384,19 @@
     if (!token || !API.memberContent) return Promise.resolve(false);
     return API.memberContent(token).then(function (res) {
       if (!res || !res.ok || !res.data) {
+        talksError = (res && res.error) || '伺服器沒有回傳內容';
         endContentLoading();
         if (handlers.onFail) handlers.onFail(res || null);
         return false;
       }
+      talksError = '';
       if (handlers.onMember) handlers.onMember(res.member || null);
       contentLoading = false;
       talksReady = true;
       cacheProtectedContent(token, res.data);
       renderData(stripPrivateCollections(res.data), true);
       showModeBanner('<b>會員內容已安全載入</b>');
+      tryOpenSharedPlayer();
       return true;
     });
   }
@@ -1407,6 +1449,24 @@
     fn('statCal', (d.calendar || []).length + (d.japanCalendar || []).length);
   }
 
+  function talkEmptyHtml() {
+    var checking = !!(memberGate && memberGate.isChecking());
+    var needLogin = !!(memberGate && !checking && !memberGate.isLoggedIn());
+    var msg;
+    if (checking) msg = '確認登入狀態中…';
+    else if (needLogin) msg = '請先登入會員';
+    else if (contentLoading || talksLoading) msg = '載入中…　後端首次喚醒較慢，請稍候';
+    else if (talksError) msg = '內容載入失敗：' + talksError;
+    else if (!talksReady) msg = '載入中…　後端首次喚醒較慢，請稍候';
+    else msg = '目前沒有真如音檔資料';
+    var retry = !needLogin && !!talksError;
+    return '<div class="search-empty talk-empty">' +
+      '<span>' + esc(msg) + '</span>' +
+      (needLogin ? '<button type="button" class="talk-empty-login" data-talk-login>會員登入</button>' : '') +
+      (retry ? '<button type="button" class="talk-empty-login" data-talk-retry>重新載入</button>' : '') +
+      '</div>';
+  }
+
   function renderTalkList() {
     var out = document.getElementById('talkList');
     if (!out) return;
@@ -1414,18 +1474,16 @@
       return (Number(a.order || 0) - Number(b.order || 0)) || String(a.title || '').localeCompare(String(b.title || ''));
     });
     if (!rows.length) {
-      out.innerHTML = '<div class="search-empty">目前沒有真如音檔資料</div>';
+      out.innerHTML = talkEmptyHtml();
       return;
     }
     out.innerHTML = rows.map(function (it) {
       var src = talkAudioSrc(it.link);
-      var url = cardShareUrl('talks', it);
       return '<article class="talk-item">' +
         '<span class="talk-icon">' + esc(it.icon || '音') + '</span>' +
         '<div><h3>' + esc(it.title || '真如音檔') + '</h3>' +
         (it.desc ? '<p>' + esc(it.desc) + '</p>' : '') +
         '</div>' +
-        lineShareButton('talks', it, url) +
         (src ? '<audio class="talk-audio" controls preload="none" src="' + esc(src) + '">您的瀏覽器不支援音訊播放。</audio>' : '') +
         '</article>';
     }).join('');
@@ -1441,6 +1499,14 @@
     pop.hidden = false;
     document.documentElement.classList.add('talk-open');
     if (close) close.focus();
+    try { document.dispatchEvent(new CustomEvent('talk:opened')); } catch (e) {}
+  }
+
+  function fillTalkShareSlot() {
+    var slot = document.getElementById('talkShareSlot');
+    if (!slot || slot.dataset.ready === '1') return;
+    slot.dataset.ready = '1';
+    slot.innerHTML = talkPlayerShareButton();
   }
 
   function bindTalkButton() {
@@ -1462,6 +1528,22 @@
     return m ? 'https://mega.nz/embed/' + encodeURIComponent(m[1]) + '#' + encodeURIComponent(m[2]) : '';
   }
 
+  // 從分享網址進來：未登入先叫出會員視窗，登入完成後再自動把播放器打開。
+  // 幾個進入點都會呼叫這支，條件不足就原地返回等下一次。
+  function tryOpenSharedPlayer() {
+    if (!sharedPlayerPending || !memberGate) return;
+    if (!memberGate.isLoggedIn()) {
+      if (!memberGate.isChecking() && !sharedPlayerPrompted) {
+        sharedPlayerPrompted = true;
+        memberGate.prompt('register', '真如音檔為會員限定，請先登入或註冊會員後即可收聽。');
+      }
+      return;
+    }
+    sharedPlayerPending = false;
+    openTalkPopover();
+  }
+  var sharedPlayerPrompted = false;
+
   function refreshTalks() {
     if (talksLoading || talksReady) return;
     var member = storedMemberSession();
@@ -1471,7 +1553,12 @@
       talksLoading = false;
       var pop = document.getElementById('talkPopover');
       if (pop && !pop.hidden) renderTalkListAudio();
-    }).catch(function () { talksLoading = false; });
+    }).catch(function (err) {
+      talksLoading = false;
+      talksError = (err && err.message) || '連線失敗';
+      var pop = document.getElementById('talkPopover');
+      if (pop && !pop.hidden) renderTalkListAudio();
+    });
   }
 
   var talkFilterText = '';
@@ -1572,7 +1659,7 @@
     if (!out) return;
     var rows = talkRows();
     if (!rows.length) {
-      out.innerHTML = '<div class="search-empty">目前沒有真如音檔資料</div>';
+      out.innerHTML = talkEmptyHtml();
       out.classList.remove('can-swipe', 'can-swipe-prev', 'can-swipe-next');
       renderTalkPicker(rows);
       return;
@@ -1586,13 +1673,11 @@
     var it = rows[talkCurrent];
     out.innerHTML = (function () {
       var src = talkAudioSrc(it.link);
-      var url = cardShareUrl('talks', it);
       return '<article class="talk-item">' +
         '<span class="talk-icon">' + esc(it.icon || '音') + '</span>' +
         '<div><h3>' + esc(it.title || '真如音檔') + '</h3>' +
         (it.desc ? '<p>' + esc(it.desc) + '</p>' : '') +
         '</div>' +
-        lineShareButton('talks', it, url) +
         (src ? '<audio class="talk-audio" controls preload="none" src="' + esc(src) + '">您的瀏覽器不支援音訊播放。</audio>' : '') +
         '</article>';
     })();
@@ -1635,6 +1720,7 @@
 
   function showModeBanner() {
     bindTalkButton();
+    fillTalkShareSlot();
   }
 
   var talkClose = document.getElementById('talkClose');
@@ -1643,6 +1729,23 @@
   var talkList = document.getElementById('talkList');
   var talkReturnFocus = null;
   bindTalkButton();
+  fillTalkShareSlot();
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest) return;
+    if (e.target.closest('[data-talk-login]')) {
+      e.preventDefault();
+      if (memberGate) memberGate.prompt('register', '真如音檔為會員限定，請先登入或註冊會員後即可收聽。');
+      return;
+    }
+    if (e.target.closest('[data-talk-retry]')) {
+      e.preventDefault();
+      talksError = '';
+      talksReady = false;
+      talksLoading = false;
+      renderTalkListAudio();
+      refreshTalks();
+    }
+  });
   if (talkClose) talkClose.addEventListener('click', closeTalkPopover);
   if (talkPopover) {
     talkPopover.addEventListener('click', function (e) {
@@ -1694,6 +1797,22 @@
       setTalkCurrent(talkCurrent + (dx < 0 ? 1 : -1));
     }, { passive: true });
   }
+
+  // iPod 皮膚（assets/js/ipod.js）用的最小對外介面：
+  // 轉盤／四顆按鍵要能換曲、播放、翻頁，但不重寫上面既有的邏輯。
+  window.TalkPlayer = {
+    rows: talkRows,
+    matched: function () { return talkPickerRows(); },
+    current: function () { return talkCurrent; },
+    select: function (i) { setTalkCurrent(i); },
+    play: playCurrentTalk,
+    audio: function () { return document.querySelector('#talkList audio.talk-audio'); },
+    page: function () { return talkListPage; },
+    setPage: setTalkListPage,
+    render: renderTalkListAudio,
+    open: openTalkPopover,
+    close: closeTalkPopover
+  };
 
   // Internal section.
   var nav = document.getElementById('nav');
@@ -1995,6 +2114,9 @@
       root.classList.toggle('member-locked', isLocked);
       root.setAttribute('aria-busy', memberAuthChecking ? 'true' : 'false');
       syncMemberLockBars(isLocked);
+      tryOpenSharedPlayer();
+      var talkPop = document.getElementById('talkPopover');
+      if (talkPop && !talkPop.hidden) renderTalkListAudio();
     }
     function saveMember(member, token) {
       var session = member && token ? {
@@ -2252,6 +2374,7 @@
     }
     function finishMemberEntry() {
       closeMemberPopover();
+      tryOpenSharedPlayer();
       if (!pendingMemberTarget) return;
       var target = document.querySelector(pendingMemberTarget);
       if (target) {
