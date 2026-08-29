@@ -24,6 +24,7 @@
   var tNow = document.getElementById('ipodTimeNow');
   var tLeft = document.getElementById('ipodTimeLeft');
   var nowMeta = document.getElementById('ipodNowMeta');
+  var selectBtn = document.getElementById('ipodSelect');
   var progress = document.getElementById('ipodProgress');
   if (!pod || !wheel) return;
 
@@ -118,6 +119,24 @@
   function isPlaying() {
     var a = audio();
     return !!(a && !a.paused && !a.ended);
+  }
+
+  // 中央鍵：播放中顯示暫停符號，停著時顯示三角形
+  function syncPlayIcon() {
+    if (!selectBtn) return;
+    var playing = isPlaying();
+    selectBtn.classList.toggle('is-playing', playing);
+    selectBtn.setAttribute('aria-label', playing ? '暫停' : '播放');
+  }
+
+  // 換曲時 app.js 會重建 <audio>，所以每次重畫都要重新掛一次事件
+  function bindAudioEvents() {
+    var a = audio();
+    if (!a || a.getAttribute('data-ipod-bound') === '1') return;
+    a.setAttribute('data-ipod-bound', '1');
+    ['play', 'playing', 'pause', 'ended'].forEach(function (t) {
+      a.addEventListener(t, syncPlayIcon);
+    });
   }
 
   function togglePlay() {
@@ -241,6 +260,8 @@
       nowMeta.textContent = total ? (tp.current() + 1) + ' / ' + total : '';
     }
     if (progress) progress.classList.toggle('is-idle', !a);
+    bindAudioEvents();
+    syncPlayIcon();
   }
 
   function seekToClientX(x) {
@@ -270,14 +291,19 @@
   }
 
   window.setInterval(function () {
-    if (view === 'now' && document.documentElement.classList.contains('talk-open')) syncProgress();
-  }, 500);
+    if (!document.documentElement.classList.contains('talk-open')) return;
+    bindAudioEvents();
+    syncPlayIcon();
+    if (view === 'now') syncProgress();
+  }, 400);
 
   /* ---------- 與 app.js 的重繪同步 ---------- */
 
   // 清單／播放區被重畫時，補回游標並更新進度
   if (window.MutationObserver) {
-    var mo = new MutationObserver(function () { autoView(); paintCursor(); syncProgress(); });
+    var mo = new MutationObserver(function () {
+      autoView(); paintCursor(); syncProgress(); bindAudioEvents(); syncPlayIcon();
+    });
     if (pickList) mo.observe(pickList, { childList: true });
     var list = document.getElementById('talkList');
     if (list) mo.observe(list, { childList: true, subtree: true });
@@ -332,4 +358,5 @@
   });
 
   setView('menu');
+  syncPlayIcon();
 })();
