@@ -165,27 +165,31 @@
 }
 
 /* 分享整台播放器的網址（?player=talks），選單與播放畫面都看得到 */
-.talk-popover.ipod-mode .ipod-share-slot .line-card-share {
-  position: static;
-  min-width: 0;
-  height: 1.35em;
-  padding: 0 .45em;
+.talk-popover.ipod-mode .ipod-share-line {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.6em;
+  height: 1.45em;
+  padding: 0 .5em;
   border: .07em solid rgba(44, 45, 40, .35);
   border-radius: .25em;
-  font-size: .62em;
-  font-weight: 800;
+  background: #06c755;
+  color: #fff;
+  font: 800 .62em/1 var(--lcd-font);
   letter-spacing: .02em;
-  box-shadow: none;
-  transition: filter .2s;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.talk-popover.ipod-mode .ipod-share-slot .line-card-share:hover,
-.talk-popover.ipod-mode .ipod-share-slot .line-card-share:focus-visible {
-  transform: none;
+.talk-popover.ipod-mode .ipod-share-line:hover,
+.talk-popover.ipod-mode .ipod-share-line:focus-visible {
   outline: .1em solid var(--lcd-ink);
   outline-offset: .1em;
-  box-shadow: none;
+  filter: brightness(1.05);
 }
+
+.talk-popover.ipod-mode .ipod-share-line:active { filter: brightness(.94); }
 
 /* 電池圖示 */
 .talk-popover.ipod-mode .ipod-battery {
