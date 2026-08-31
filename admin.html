@@ -8,7 +8,7 @@
   <meta name="color-scheme" content="dark" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <link rel="stylesheet" href="assets/css/style.css?v=140" />
-  <link rel="stylesheet" href="assets/css/admin.css?v=41" />
+  <link rel="stylesheet" href="assets/css/admin.css?v=42" />
   <script src="assets/js/theme.js?v=3"></script>
   <script src="assets/js/scroll-top.js?v=1" data-keep-hash></script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
@@ -63,6 +63,7 @@
           </button>
           <button class="btn btn-ghost btn-sm" id="recalcStatsBtn">重新計算統計</button>
           <button class="btn btn-ghost btn-sm" id="recalcLatestBtn">計算最新上架</button>
+          <button class="btn btn-ghost btn-sm" id="loginLogBtn">登入紀錄</button>
           <button class="btn btn-ghost btn-sm" id="pwdBtn">修改密碼</button>
           <a href="index.html" class="btn btn-ghost btn-sm">看前台</a>
           <button class="btn btn-ghost btn-sm" id="logoutBtn">登出</button>
@@ -135,6 +136,26 @@
     </div>
   </div>
 
+  <!-- 登入紀錄彈窗 -->
+  <div class="modal-mask" id="loginLogMask" aria-hidden="true">
+    <div class="card modal login-log-modal" role="dialog" aria-modal="true" aria-labelledby="loginLogTitle">
+      <button type="button" class="modal-close" id="loginLogClose" aria-label="關閉登入紀錄視窗">×</button>
+      <h3 id="loginLogTitle">會員登入紀錄</h3>
+      <div class="alert" id="loginLogAlert" role="alert" aria-live="polite"></div>
+      <div class="login-log-toolbar">
+        <div class="field login-log-search"><input type="search" id="loginLogFilter" placeholder="搜尋姓名或手機號碼…" autocomplete="off" /></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="loginLogRefresh">重新整理</button>
+      </div>
+      <p class="login-log-count" id="loginLogCount"></p>
+      <div class="login-log-table-wrap">
+        <table class="login-log-table">
+          <thead><tr><th>時間</th><th>姓名</th><th>手機</th><th>裝置</th></tr></thead>
+          <tbody id="loginLogBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <div class="page-jump" aria-label="頁面快速導覽">
     <button type="button" class="page-jump-btn" id="jumpTop" aria-label="回到最上方">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14l6-6 6 6"/><path d="M12 8v12"/><path d="M5 4h14"/></svg>
@@ -147,7 +168,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="assets/js/config.js?v=6"></script>
-  <script src="assets/js/api.js?v=41"></script>
-  <script src="assets/js/admin.js?v=70"></script>
+  <script src="assets/js/api.js?v=42"></script>
+  <script src="assets/js/admin.js?v=71"></script>
 </body>
 </html>
