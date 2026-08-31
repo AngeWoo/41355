@@ -33,6 +33,8 @@ var MEMBER_OTP_MAX_ATTEMPTS = 5;
 var MEMBER_OTP_GLOBAL_MAX_PER_WINDOW = 20;
 var LOGIN_RATE_WINDOW_SECONDS = 60 * 10;
 var LOGIN_RATE_MAX_FAILURES = 5;
+var LOGIN_LOG_SHEET = '登入紀錄';
+var LOGIN_LOG_HEADERS = ['time', 'role', 'memberId', 'name', 'mobile', 'userAgent'];
 var NEWS_IMAGE_FOLDER_NAME = '真如苑資料網站 — 圖庫';
 var NEWS_IMAGE_MAX_BYTES = 1.5 * 1024 * 1024;
 var NEWS_IMAGE_ALLOWED_MIME = { 'image/jpeg': true, 'image/png': true, 'image/webp': true };
@@ -80,7 +82,7 @@ var SCHEMA = {
   },
   talks: {
     sheet: '真如音檔',
-    headers: ['id', 'title', 'icon', 'desc', 'link', 'order', 'createdAt', 'updatedAt']
+    headers: ['id', 'title', 'icon', 'desc', 'link', 'order', 'volumeAdjust', 'createdAt', 'updatedAt']
   },
   members: {
     sheet: '會員',
@@ -97,6 +99,7 @@ function setup() {
   Object.keys(SCHEMA).forEach(function (type) {
     ensureSheet(ss, SCHEMA[type]);
   });
+  ensureLoginLogSheet(ss);
   if (!PROP.getProperty('ADMIN_PWD_HASH')) {
     initialPassword = generateTemporaryAdminPassword();
     setAdminPassword(initialPassword);
@@ -260,6 +263,38 @@ function applyTextColumns(sh, names) {
 }
 
 // ====================== HTTP 入口 ======================
+// 登入紀錄分頁不在 SCHEMA 裡：這是純粹的稽核紀錄（誰、何時登入過），
+// 不需要 id/排序/編輯，也不該出現在後台的內容管理清單裡，所以獨立處理。
+function ensureLoginLogSheet(ss) {
+  var sh = ss.getSheetByName(LOGIN_LOG_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(LOGIN_LOG_SHEET);
+    sh.appendRow(LOGIN_LOG_HEADERS);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+// 記錄一次登入成功。appendRow 跟其他寫入動作一樣包一層鎖，避免多人同時登入時撞列；
+// 寫入失敗只記警告，不能因為記錄失敗就連帶讓使用者登入不了。
+function logLoginEvent(role, info) {
+  try {
+    withWriteLock(function () {
+      var sh = ensureLoginLogSheet(getSpreadsheet());
+      sh.appendRow([
+        new Date(),
+        role,
+        (info && info.id) || '',
+        (info && info.name) || '',
+        (info && info.mobile) || '',
+        (info && info.userAgent) || ''
+      ]);
+    });
+  } catch (e) {
+    Logger.log('logLoginEvent failed: ' + e);
+  }
+}
+
 function withWriteLock(work) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) throw new Error('系統忙碌中，請稍後再試。');
@@ -1454,6 +1489,12 @@ function handleMemberLogin(body) {
     Utilities.sleep(400);
     return json({ ok: false, error: '手機號碼或會員資料不符。' });
   }
+  logLoginEvent('member', {
+    id: member.id,
+    name: member.name,
+    mobile: mobile,
+    userAgent: body.userAgent
+  });
   return json({
     ok: true,
     data: memberSessionData(member),
