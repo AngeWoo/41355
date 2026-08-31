@@ -551,6 +551,23 @@ html.admin-modal-open body {
 .password-modal { max-width: 420px; }
 .modal-actions { display: flex; gap: 12px; margin-top: 22px; }
 .modal-actions .btn { flex: 1; justify-content: center; }
+
+.login-log-modal { max-width: 720px; }
+.login-log-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.login-log-search { flex: 1 1 auto; margin-bottom: 0; }
+.login-log-count { color: var(--text-dim); font-size: .78rem; margin: 6px 0 12px; }
+.login-log-table-wrap { max-height: 55vh; overflow: auto; border: 1px solid var(--line-soft); border-radius: 12px; }
+.login-log-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.login-log-table th, .login-log-table td {
+  padding: 10px 12px; text-align: left; white-space: nowrap;
+  border-bottom: 1px solid var(--line-soft);
+}
+.login-log-table td:nth-child(4) { white-space: normal; color: var(--text-dim); font-size: .78rem; max-width: 220px; }
+.login-log-table thead th {
+  position: sticky; top: 0; background: rgba(18,31,54,.94); color: var(--text-soft);
+  font-weight: 600; font-size: .78rem; letter-spacing: .03em;
+}
+.login-log-table tbody tr:hover { background: rgba(255,255,255,.04); }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .notify-members-toggle {
   display: flex;
@@ -800,6 +817,13 @@ html[data-theme="light"] .global-note-box textarea {
   border-color: rgba(28, 42, 66, .20);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .92);
 }
+html[data-theme="light"] .login-log-table thead th {
+  background: #f3f5f9;
+  color: #45536b;
+}
+html[data-theme="light"] .login-log-table th,
+html[data-theme="light"] .login-log-table td { border-bottom-color: rgba(28, 42, 66, .12); }
+html[data-theme="light"] .login-log-table tbody tr:hover { background: rgba(28, 42, 66, .04); }
 html[data-theme="light"] .field input::placeholder,
 html[data-theme="light"] .field textarea::placeholder { color: #93a0b2; }
 html[data-theme="light"] .field input[type="date"],
