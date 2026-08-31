@@ -295,6 +295,23 @@ function logLoginEvent(role, info) {
   }
 }
 
+// 給後台「登入紀錄」畫面用：新的在前，預設只回最近 limit 筆，避免記錄累積很多年後
+// 後台一次讀整張表卡住。這裡不用 withWriteLock，單純讀取不會跟寫入的行順序衝突。
+function listLoginLogs(limit) {
+  var sh = ensureLoginLogSheet(getSpreadsheet());
+  var headers = readHeaders(sh);
+  var lastRow = sh.getLastRow();
+  if (lastRow < 2) return [];
+  var values = sh.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  var rows = values.map(function (row) {
+    var obj = {};
+    headers.forEach(function (h, i) { obj[h] = row[i]; });
+    return obj;
+  }).reverse();
+  var n = Number(limit) || 200;
+  return rows.slice(0, Math.max(1, Math.min(1000, n)));
+}
+
 function withWriteLock(work) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) throw new Error('系統忙碌中，請稍後再試。');
@@ -403,6 +420,10 @@ function doPost(e) {
     if (action === 'adminMemberList') {
       if (!verifyToken(body.token)) return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
       return json({ ok: true, data: listRecords('members'), scope: 'all' });
+    }
+    if (action === 'adminLoginLog') {
+      if (!verifyToken(body.token)) return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
+      return json({ ok: true, data: listLoginLogs(body.limit) });
     }
     if (action === 'adminList') {
       if (!verifyToken(body.token)) return json({ ok: false, error: '未授權或登入逾時，請重新登入。' });
