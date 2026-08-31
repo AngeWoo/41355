@@ -497,6 +497,7 @@
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       if ($('#pwdMask').classList.contains('open')) closePwdModal();
+      else if ($('#loginLogMask').classList.contains('open')) closeLoginLogModal();
       else if ($('#modalMask').classList.contains('open')) requestCloseEditor();
       else setMobileTabMenu(false);
     });
@@ -1560,6 +1561,74 @@
         if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1200);
       }
     }).catch(function () { toast('刪除失敗，請檢查連線。', true); });
+  }
+
+  // ---------- 登入紀錄 ----------
+  var loginLogReturnFocus = null;
+  var loginLogRows = [];
+
+  function fmtLoginTime(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return '';
+    var dt = new Date(s);
+    if (isNaN(dt.getTime())) return s;
+    try {
+      return dt.toLocaleString('zh-Hant-TW', {
+        timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      });
+    } catch (e) { return s; }
+  }
+
+  function renderLoginLog() {
+    var body = $('#loginLogBody');
+    if (!body) return;
+    var q = ($('#loginLogFilter').value || '').trim().toLowerCase();
+    var rows = loginLogRows.filter(function (r) {
+      if (!q) return true;
+      return [r.name, r.mobile].some(function (v) { return String(v || '').toLowerCase().indexOf(q) !== -1; });
+    });
+    $('#loginLogCount').textContent = rows.length ? ('共 ' + rows.length + ' 筆') : '';
+    body.innerHTML = rows.length ? rows.map(function (r) {
+      return '<tr><td>' + esc(fmtLoginTime(r.time)) + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.mobile) + '</td><td>' + esc(r.userAgent) + '</td></tr>';
+    }).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:24px;">' + (q ? '沒有符合的紀錄' : '尚無登入紀錄') + '</td></tr>';
+  }
+
+  function loadLoginLog() {
+    alertBox($('#loginLogAlert'), '', '');
+    $('#loginLogBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:24px;">載入中…</td></tr>';
+    API.adminLoginLog(token, 200).then(function (res) {
+      if (res.ok) {
+        loginLogRows = res.data || [];
+        renderLoginLog();
+      } else {
+        alertBox($('#loginLogAlert'), res.error || '載入失敗', 'err');
+        if (isAuthExpiredError(res.error || '')) setTimeout(function () { handleAuthExpired(res.error); }, 1200);
+      }
+    }).catch(function () { alertBox($('#loginLogAlert'), '載入失敗，請檢查連線。', 'err'); });
+  }
+
+  function closeLoginLogModal() {
+    $('#loginLogMask').classList.remove('open');
+    $('#loginLogMask').setAttribute('aria-hidden', 'true');
+    document.documentElement.classList.remove('admin-modal-open');
+    if (loginLogReturnFocus && document.contains(loginLogReturnFocus)) loginLogReturnFocus.focus();
+    loginLogReturnFocus = null;
+  }
+  if ($('#loginLogBtn')) {
+    $('#loginLogBtn').addEventListener('click', function () {
+      loginLogReturnFocus = document.activeElement;
+      alertBox($('#loginLogAlert'), '', '');
+      $('#loginLogFilter').value = '';
+      $('#loginLogMask').classList.add('open');
+      $('#loginLogMask').setAttribute('aria-hidden', 'false');
+      document.documentElement.classList.add('admin-modal-open');
+      loadLoginLog();
+    });
+    $('#loginLogClose').addEventListener('click', closeLoginLogModal);
+    $('#loginLogMask').addEventListener('click', function (e) { if (e.target === $('#loginLogMask')) closeLoginLogModal(); });
+    $('#loginLogRefresh').addEventListener('click', loadLoginLog);
+    $('#loginLogFilter').addEventListener('input', renderLoginLog);
   }
 
   // ---------- 修改密碼 ----------

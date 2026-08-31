@@ -382,6 +382,7 @@
     memberUpdateProfile: function (record, token) { return post({ action: 'memberUpdateProfile', record: record, token: token }); },
     memberContactAdmin: function (message, token) { return post({ action: 'memberContactAdmin', message: message, token: token }); },
     adminMemberList: function (token) { return post({ action: 'adminMemberList', token: token }); },
+    adminLoginLog: function (token, limit) { return post({ action: 'adminLoginLog', token: token, limit: limit }); },
     adminList: function (type, token) { return postRead({ action: 'adminList', type: type, token: token }); },
     adminAll: function (token) { return postRead({ action: 'adminAll', token: token }); },
     getMemberGlobalNote: function (token) { return post({ action: 'getMemberGlobalNote', token: token }); },
