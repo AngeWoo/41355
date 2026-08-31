@@ -29,6 +29,22 @@
   var REPEAT_NAMES = { normal: '正常', all: '循環', one: '重覆' };
   var REPEAT_KEY = 'shinnyo_ipod_repeat';
 
+  // 音量：直接調 <audio>.volume／.muted。
+  // 原本想用 Web Audio API 的 GainNode 做到 iOS 可調、還能放大超過 100%，但音檔是
+  // 從 Google Drive 的 uc?export=download 連結播放，那個網址沒有回應 CORS 標頭；
+  // 一接上 createMediaElementSource()，Chrome 不會報錯，而是直接把輸出音量歸零，
+  // 整個播放器就啞掉。除非音檔換成有 CORS 的主機，否則只能用最原始的做法，
+  // 上限就是 100%，iOS 也只能靠 .muted 做開關，調不了實際音量。
+  var VOLUME_KEY = 'shinnyo_ipod_volume';
+  var MUTED_KEY = 'shinnyo_ipod_muted';
+  var volumeAdjustable = (function () {
+    try {
+      var t = document.createElement('audio');
+      t.volume = 0.5;
+      return Math.abs(t.volume - 0.5) < 0.01;
+    } catch (e) { return true; }
+  })();
+
   var pod = document.getElementById('ipod');
   var wheel = document.getElementById('ipodWheel');
   var scroll = document.getElementById('ipodScroll');
@@ -43,12 +59,18 @@
   var progress = document.getElementById('ipodProgress');
   var repeatBadge = document.getElementById('ipodRepeatBadge');
   var repeatKey = document.getElementById('ipodRepeatKey');
+  var volumeBtn = document.getElementById('ipodVolumeBtn');
+  var volumePop = document.getElementById('ipodVolumePop');
+  var volumeRange = document.getElementById('ipodVolumeRange');
+  var volumePct = document.getElementById('ipodVolumePct');
   if (!pod || !wheel) return;
 
   var cursor = 0;             // 游標在「篩選後清單」中的位置
   var view = 'menu';
   var skinIndex = 0;
   var repeatMode = 'normal';
+  var volumeLevel = 1;        // 0..1，只有 volumeAdjustable 的裝置才有意義
+  var muted = false;
 
   /* ---------- 機身配色 ---------- */
 
@@ -148,6 +170,111 @@
     try { saved = localStorage.getItem(REPEAT_KEY) || ''; } catch (e) {}
     applyRepeat(saved, false);
   }
+
+  /* ---------- 音量 ---------- */
+
+  // 後台可以在「真如音檔」試算表幫特別大聲的那幾則填 volumeAdjust（例如 80，
+  // 代表用這則音檔原始音量的 80%），讓不同音檔預設聽起來音量比較一致，使用者
+  // 自己再調整的音量滑桿則疊在這個修正值上面。因為 <audio>.volume 上限就是
+  // 100%，這個值只能把太大聲的壓低，沒辦法把太小聲的往上加。
+  function currentTrackGain() {
+    var tp = TP();
+    if (!tp) return 1;
+    var rows = tp.rows() || [];
+    var rec = rows[tp.current()];
+    var pct = parseFloat(rec && rec.volumeAdjust);
+    if (!isFinite(pct) || pct <= 0) return 1;
+    return Math.min(1, pct / 100);
+  }
+
+  // 換曲時 app.js 會重建 <audio>，所以每次有新的 <audio> 出現都要重套一次目前的音量／靜音狀態
+  function applyVolumeToAudio() {
+    var a = audio();
+    if (!a) return;
+    if (volumeAdjustable) a.volume = Math.max(0, Math.min(1, volumeLevel * currentTrackGain()));
+    a.muted = muted;
+  }
+
+  function syncVolumeUI() {
+    var pct = Math.round(volumeLevel * 100);
+    if (volumeRange) volumeRange.value = String(pct);
+    if (volumePct) volumePct.textContent = pct + '%';
+    var isOff = muted || (volumeAdjustable && volumeLevel === 0);
+    if (volumeBtn) {
+      volumeBtn.classList.toggle('is-muted', isOff);
+      volumeBtn.setAttribute('aria-label', isOff ? '取消靜音' : '靜音');
+    }
+  }
+
+  function setVolume(v, remember) {
+    volumeLevel = Math.max(0, Math.min(1, v));
+    if (volumeLevel > 0) muted = false;
+    applyVolumeToAudio();
+    syncVolumeUI();
+    if (remember) {
+      try {
+        localStorage.setItem(VOLUME_KEY, String(volumeLevel));
+        localStorage.setItem(MUTED_KEY, muted ? '1' : '0');
+      } catch (e) {}
+    }
+  }
+
+  function toggleMute() {
+    muted = !muted;
+    applyVolumeToAudio();
+    syncVolumeUI();
+    try { localStorage.setItem(MUTED_KEY, muted ? '1' : '0'); } catch (e) {}
+  }
+
+  function restoreVolume() {
+    var v = 1, m = false;
+    try {
+      var raw = localStorage.getItem(VOLUME_KEY);
+      if (raw !== null && raw !== '') v = parseFloat(raw);
+      m = localStorage.getItem(MUTED_KEY) === '1';
+    } catch (e) {}
+    volumeLevel = isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
+    muted = m;
+    syncVolumeUI();
+  }
+
+  function openVolumePop(open) {
+    if (!volumePop) return;
+    volumePop.hidden = !open;
+    if (volumeBtn) volumeBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  // 不能用 JS 調音量的裝置（iOS）沒有滑桿可用，把彈出面板整個拿掉，
+  // 音量鍵直接當成靜音鍵，避免顯示一個按了沒反應的滑桿。
+  if (!volumeAdjustable && volumePop && volumePop.parentNode) {
+    volumePop.parentNode.removeChild(volumePop);
+    volumePop = null;
+    volumeRange = null;
+  }
+
+  if (volumeBtn) {
+    volumeBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (!volumeAdjustable) { toggleMute(); return; }
+      openVolumePop(volumePop.hidden);
+    });
+  }
+
+  if (volumeRange) {
+    volumeRange.addEventListener('input', function () {
+      setVolume(parseInt(volumeRange.value, 10) / 100, true);
+    });
+  }
+
+  document.addEventListener('pointerdown', function (e) {
+    if (!volumePop || volumePop.hidden) return;
+    if (e.target.closest && (e.target.closest('#ipodVolumePop') || e.target.closest('#ipodVolumeBtn'))) return;
+    openVolumePop(false);
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && volumePop && !volumePop.hidden) openVolumePop(false);
+  });
 
   function TP() { return window.TalkPlayer || null; }
   function matched() { var tp = TP(); return (tp && tp.matched && tp.matched()) || []; }
@@ -289,6 +416,7 @@
     var a = audio();
     if (!a || a.getAttribute('data-ipod-bound') === '1') return;
     a.setAttribute('data-ipod-bound', '1');
+    applyVolumeToAudio();
     ['play', 'playing', 'pause', 'ended'].forEach(function (t) {
       a.addEventListener(t, syncPlayIcon);
     });
@@ -515,6 +643,7 @@
 
   restoreSkin();
   restoreRepeat();
+  restoreVolume();
   setView('menu');
   syncPlayIcon();
 })();

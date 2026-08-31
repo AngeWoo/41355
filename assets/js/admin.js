@@ -159,7 +159,8 @@
         { k: 'icon', label: '圖示', type: 'text' },
         { k: 'desc', label: '說明', type: 'textarea' },
         { k: 'link', label: '網址', type: 'url', req: true },
-        { k: 'order', label: '排序', type: 'number' }
+        { k: 'order', label: '排序', type: 'number' },
+        { k: 'volumeAdjust', label: '音量倍率 %（留空或100＝不調整；這則明顯比別則大聲時才調低，例如80。只能調低，填超過100沒有效果，因為使用者的音量本來就有可能已經開到最大）', type: 'number' }
       ],
       title: function (r) { return r.title; },
       sub: function (r) { return [r.icon, r.desc, r.link].filter(Boolean).join(' · '); }

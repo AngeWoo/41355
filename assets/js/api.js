@@ -370,7 +370,11 @@
     ,
     memberRequestRegisterCode: function (record) { return post({ action: 'memberRequestRegisterCode', record: record }); },
     memberRegister: function (record, code) { return post({ action: 'memberRegister', record: record, code: code }); },
-    memberLogin: function (mobile) { return post({ action: 'memberLogin', mobile: mobile }); },
+    memberLogin: function (mobile) {
+      var ua = '';
+      try { ua = navigator.userAgent || ''; } catch (e) {}
+      return post({ action: 'memberLogin', mobile: mobile, userAgent: ua });
+    },
     validateMemberToken: function (token) { return post({ action: 'validateMemberToken', token: token }); },
     memberContent: function (token) { return postRead({ action: 'memberContent', token: token }); },
     memberDirectory: function (token) { return post({ action: 'memberDirectory', token: token }); },
