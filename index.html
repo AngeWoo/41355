@@ -9,7 +9,7 @@
   <meta name="color-scheme" content="dark" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <link rel="stylesheet" href="assets/css/style.css?v=144" />
-  <link rel="stylesheet" href="assets/css/ipod.css?v=29" />
+  <link rel="stylesheet" href="assets/css/ipod.css?v=36" />
   <script src="assets/js/theme.js?v=3"></script>
   <script src="assets/js/scroll-top.js?v=1"></script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%23d4af68' stroke-width='7' stroke-linecap='round' stroke-dasharray='220 40'/%3E%3C/svg%3E" />
@@ -137,7 +137,18 @@
             <span class="ipod-repeat-badge ipod-mode-ic" id="ipodRepeatBadge" data-mode="normal" role="img" aria-label="播放模式：正常" title="播放模式：正常"><svg class="ic-mode-normal" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h11"/><path d="M11 7l5 5-5 5"/><path d="M20 5v14"/></svg><svg class="ic-mode-all" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 2.5l4 4-4 4"/><path d="M3 11.5v-1a4 4 0 0 1 4-4h13"/><path d="M8 21.5l-4-4 4-4"/><path d="M21 12.5v1a4 4 0 0 1-4 4H4"/></svg><svg class="ic-mode-one" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 2.5l4 4-4 4"/><path d="M3 11.5v-1a4 4 0 0 1 4-4h13"/><path d="M8 21.5l-4-4 4-4"/><path d="M21 12.5v1a4 4 0 0 1-4 4H4"/><text class="ic-mode-num" x="12" y="15.6" text-anchor="middle">1</text></svg></span>
             <b id="talkDialogTitle">Shinnyo iPod 真如音檔</b>
             <span class="ipod-status-right">
-              <span class="ipod-share-slot" id="talkShareSlot"></span>
+              <span class="ipod-volume-wrap">
+                <button type="button" class="ipod-volume-btn" id="ipodVolumeBtn" aria-haspopup="true" aria-expanded="false" aria-label="靜音">
+                  <svg class="ic-vol-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 5V4L8 9H4z"/><path d="M16.2 8.8a5 5 0 0 1 0 6.4"/><path d="M18.6 6.2a9 9 0 0 1 0 11.6"/></svg>
+                  <svg class="ic-vol-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 5V4L8 9H4z"/><path d="M15.6 9.4l5.4 5.4M21 9.4l-5.4 5.4"/></svg>
+                </button>
+                <div class="ipod-volume-pop" id="ipodVolumePop" hidden>
+                  <div class="ipod-volume-row">
+                    <input type="range" class="ipod-volume-range" id="ipodVolumeRange" min="0" max="100" step="1" value="100" aria-label="音量" />
+                    <span class="ipod-volume-pct" id="ipodVolumePct">100%</span>
+                  </div>
+                </div>
+              </span>
               <span class="ipod-battery" aria-hidden="true"></span>
             </span>
           </div>
@@ -148,6 +159,7 @@
                 <label class="sr-only" for="talkFilter">篩選真如音檔</label>
                 <input type="search" id="talkFilter" placeholder="輸入關鍵字篩選…" autocomplete="off" />
                 <span class="talk-picker-count" id="talkPickerCount"></span>
+                <span class="ipod-share-slot" id="talkShareSlot"></span>
               </div>
               <ul class="talk-picker-list" id="talkPickerList" role="listbox" aria-label="真如音檔清單"></ul>
             </div>
@@ -477,6 +489,6 @@
   <script src="assets/js/config.js?v=6"></script>
   <script src="assets/js/api.js?v=41"></script>
   <script src="assets/js/app.js?v=170"></script>
-  <script src="assets/js/ipod.js?v=14"></script>
+  <script src="assets/js/ipod.js?v=18"></script>
 </body>
 </html>
