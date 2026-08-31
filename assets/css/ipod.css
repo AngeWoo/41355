@@ -271,6 +271,87 @@
 
 .talk-popover.ipod-mode .ipod-share-line:active { filter: brightness(.94); }
 
+/* 音量鍵：可調音量的裝置點下彈出滑桿；iOS 等無法用 JS 調音量的裝置直接當靜音鍵 */
+.talk-popover.ipod-mode .ipod-volume-wrap { position: relative; display: inline-flex; }
+
+.talk-popover.ipod-mode .ipod-volume-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--lcd-ink);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.talk-popover.ipod-mode .ipod-volume-btn svg { width: 1.05em; height: 1.05em; }
+.talk-popover.ipod-mode .ipod-volume-btn .ic-vol-off { display: none; }
+.talk-popover.ipod-mode .ipod-volume-btn.is-muted .ic-vol-on { display: none; }
+.talk-popover.ipod-mode .ipod-volume-btn.is-muted .ic-vol-off { display: block; }
+
+.talk-popover.ipod-mode .ipod-volume-btn:focus-visible {
+  outline: .1em solid var(--lcd-ink);
+  outline-offset: .1em;
+}
+
+.talk-popover.ipod-mode .ipod-volume-pop {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 5;
+  margin-top: .35em;
+  padding: .5em .6em;
+  border: .07em solid rgba(44, 45, 40, .42);
+  border-radius: .3em;
+  background: var(--lcd-bg);
+  box-shadow: 0 .15em .4em rgba(40, 44, 40, .35);
+}
+
+.talk-popover.ipod-mode .ipod-volume-row {
+  display: flex;
+  align-items: center;
+  gap: .45em;
+}
+
+.talk-popover.ipod-mode .ipod-volume-pct {
+  flex: 0 0 auto;
+  min-width: 2.4em;
+  text-align: right;
+  color: var(--lcd-dim);
+  font: 700 .66em/1 var(--lcd-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.talk-popover.ipod-mode .ipod-volume-range {
+  width: 7em;
+  -webkit-appearance: none;
+  appearance: none;
+  height: .3em;
+  border-radius: .15em;
+  background: rgba(44, 45, 40, .28);
+}
+
+.talk-popover.ipod-mode .ipod-volume-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: .85em;
+  height: .85em;
+  border-radius: 50%;
+  background: var(--lcd-ink);
+  cursor: pointer;
+}
+
+.talk-popover.ipod-mode .ipod-volume-range::-moz-range-thumb {
+  width: .85em;
+  height: .85em;
+  border: 0;
+  border-radius: 50%;
+  background: var(--lcd-ink);
+  cursor: pointer;
+}
+
 /* 電池圖示 */
 .talk-popover.ipod-mode .ipod-battery {
   position: relative;
@@ -1027,6 +1108,7 @@ html[data-theme="light"] .talk-popover.ipod-mode .talk-picker-head input {
   .talk-popover.ipod-mode .talk-panel.ipod { --pad-bottom: 3.4em; }
   .talk-popover.ipod-mode .ipod-close { width: 1.7em; height: 1.7em; }
   .talk-popover.ipod-mode .ipod-repeat-badge { width: 1.7em; height: 1.7em; }
+  .talk-popover.ipod-mode .ipod-volume-btn { width: 1.9em; height: 1.9em; }
   .talk-popover.ipod-mode .talk-page-btn { height: 1.9em; padding: 0 .45em; font-size: .95em; }
   .talk-popover.ipod-mode .talk-page-info { font-size: .95em; }
 
