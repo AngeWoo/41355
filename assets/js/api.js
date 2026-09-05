@@ -378,6 +378,8 @@
     validateMemberToken: function (token) { return post({ action: 'validateMemberToken', token: token }); },
     memberContent: function (token) { return postRead({ action: 'memberContent', token: token }); },
     memberDirectory: function (token) { return post({ action: 'memberDirectory', token: token }); },
+    memberBarcode: function (token) { return postRead({ action: 'memberBarcode', token: token }); },
+    memberSaveBarcode: function (file, remove, token) { return post({ action: 'memberSaveBarcode', file: file, remove: !!remove, token: token }, READ_TIMEOUT_MS); },
     memberProfile: function (token) { return post({ action: 'memberProfile', token: token }); },
     memberUpdateProfile: function (record, token) { return post({ action: 'memberUpdateProfile', record: record, token: token }); },
     memberContactAdmin: function (message, token) { return post({ action: 'memberContactAdmin', message: message, token: token }); },

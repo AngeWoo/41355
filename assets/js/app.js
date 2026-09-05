@@ -1,4 +1,4 @@
-﻿/* Frontend interactions, data rendering, pagination, search, and modal controls. */
+/* Frontend interactions, data rendering, pagination, search, and modal controls. */
 (function () {
   var CFG = window.SITE_CONFIG || {};
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -2134,10 +2134,7 @@
     var noteModalDismissed = '';
     var memberLogout = document.getElementById('memberLogout');
     var memberStatus = document.getElementById('memberStatus');
-    var memberDirectory = document.getElementById('memberDirectory');
-    var memberDirectoryTitle = document.getElementById('memberDirectoryTitle');
-    var memberDirectoryCount = document.getElementById('memberDirectoryCount');
-    var memberDirectoryList = document.getElementById('memberDirectoryList');
+    var memberBarcodePane = document.getElementById('memberBarcodePane');
     var memberTabs = document.querySelector('.member-tabs:not(.member-settings-tabs)');
     var memberLoginForm = document.getElementById('memberLoginForm');
     var memberRegisterForm = document.getElementById('memberRegisterForm');
@@ -2149,6 +2146,11 @@
     var memberProfileForm = document.getElementById('memberProfileForm');
     var memberContactForm = document.getElementById('memberContactForm');
     var memberProfileLoaded = false;
+    var memberBarcode = window.MemberBarcode ? window.MemberBarcode.init({
+      getSession: function () { return isMemberLoggedIn() ? currentMember() : null; },
+      onAuthError: function () { clearMember(); },
+      openProfile: function () { openMemberPopover('profile'); }
+    }) : null;
     var memberReturnFocus = null;
     var pendingMemberTarget = '';
     var protectedHashes = {
@@ -2226,7 +2228,7 @@
       localStorage.removeItem(LEGACY_MEMBER_KEY);
       memberAuthChecking = false;
       memberAuthReady = true;
-      clearMemberDirectory();
+      if (memberBarcodePane) memberBarcodePane.hidden = true;
       clearProtectedContent();
       syncMemberUi();
       setMemberStatus('已登出，請重新登入。', '');
@@ -2315,47 +2317,6 @@
         }
       }
     }
-    function clearMemberDirectory() {
-      if (memberDirectory) memberDirectory.hidden = true;
-      if (memberDirectoryList) memberDirectoryList.innerHTML = '';
-      if (memberDirectoryCount) memberDirectoryCount.textContent = '';
-    }
-    function renderMemberDirectory(res) {
-      if (!memberDirectory || !memberDirectoryList) return;
-      var rows = Array.isArray(res && res.data) ? res.data : [];
-      var all = res && res.scope === 'all';
-      memberDirectory.hidden = false;
-      if (memberDirectoryTitle) memberDirectoryTitle.textContent = all ? '全部會員' : '我的會員資料';
-      if (memberDirectoryCount) memberDirectoryCount.textContent = all ? rows.length + ' 位' : '';
-      memberDirectoryList.innerHTML = rows.length
-        ? rows.map(function (row) {
-          return '<article class="member-directory-card"><b>' + esc(row.name || '未命名會員') + '</b>' +
-            (row.dharmaName ? '<span>' + esc(row.dharmaName) + '</span>' : '') + '</article>';
-        }).join('')
-        : '<div class="member-directory-empty">目前沒有可顯示的會員資料。</div>';
-    }
-    function loadMemberDirectory() {
-      var member = currentMember();
-      if (!isMemberLoggedIn() || !member || !member.token || !API.memberDirectory) { clearMemberDirectory(); return; }
-      var activeToken = member.token;
-      if (memberDirectory) memberDirectory.hidden = false;
-      if (memberDirectoryTitle) memberDirectoryTitle.textContent = '會員資料';
-      if (memberDirectoryCount) memberDirectoryCount.textContent = '讀取中…';
-      if (memberDirectoryList) memberDirectoryList.innerHTML = '<div class="member-directory-empty">讀取會員資料中…</div>';
-      API.memberDirectory(activeToken).then(function (res) {
-        var active = currentMember();
-        if (!active || active.token !== activeToken) return;
-        if (res && res.ok) renderMemberDirectory(res);
-        else {
-          if (isAuthExpired(res)) clearMember();
-          if (memberDirectoryCount) memberDirectoryCount.textContent = '';
-          if (memberDirectoryList) memberDirectoryList.innerHTML = '<div class="member-directory-empty">' + esc((res && res.error) || '會員資料讀取失敗。') + '</div>';
-        }
-      }).catch(function () {
-        if (memberDirectoryCount) memberDirectoryCount.textContent = '';
-        if (memberDirectoryList) memberDirectoryList.innerHTML = '<div class="member-directory-empty">會員資料讀取失敗，請稍後再試。</div>';
-      });
-    }
     function selectMemberTab(tab) {
       document.querySelectorAll('[data-member-tab]').forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-member-tab') === tab);
@@ -2398,11 +2359,14 @@
       memberSettingsTabs.querySelectorAll('[data-member-view]').forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-member-view') === view);
       });
-      if (memberDirectory) memberDirectory.hidden = view !== 'directory';
+      if (memberBarcodePane) memberBarcodePane.hidden = view !== 'barcode';
       if (memberProfileForm) memberProfileForm.classList.toggle('active', view === 'profile');
       if (memberContactForm) memberContactForm.classList.toggle('active', view === 'contact');
-      if (view === 'directory') loadMemberDirectory();
-      if (view === 'profile') loadMemberProfile();
+      if (view === 'barcode' && memberBarcode) memberBarcode.openInline();
+      if (view === 'profile') {
+        loadMemberProfile();
+        if (memberBarcode) memberBarcode.load(false);
+      }
       if (view === 'contact') {
         var ta = document.getElementById('contactMessage');
         if (ta) setTimeout(function () { ta.focus(); }, 80);
@@ -2421,7 +2385,8 @@
         if (memberLoginForm) memberLoginForm.classList.remove('active');
         if (memberRegisterForm) memberRegisterForm.classList.remove('active');
       } else {
-        clearMemberDirectory();
+        if (memberBarcodePane) memberBarcodePane.hidden = true;
+        if (memberBarcode) memberBarcode.reset();
         if (memberTabs) memberTabs.hidden = false;
         if (memberProfileForm) memberProfileForm.classList.remove('active');
         if (memberContactForm) memberContactForm.classList.remove('active');
@@ -2441,10 +2406,12 @@
       var m = currentMember();
       var loggedIn = isMemberLoggedIn();
       memberPopover.hidden = false;
+      document.getElementById('memberDialogTitle').textContent = loggedIn ? '個人會員資料' : '會員登入';
+      if (memberClose) memberClose.focus();
       syncMemberUi();
       if (!loggedIn && tab === 'register') selectMemberTab('register');
       setMemberStatus(loggedIn ? '您已登入會員：' + m.name : (msg || '請先註冊或登入會員後觀看內容。'), loggedIn ? 'ok' : '');
-      if (loggedIn) selectMemberView(tab === 'profile' || tab === 'contact' ? tab : 'directory');
+      if (loggedIn) selectMemberView(tab === 'profile' || tab === 'contact' ? tab : 'barcode');
       if (!loggedIn) {
         var focusTarget = tab === 'register' ? document.getElementById('memberName') : memberLoginMobile;
         if (focusTarget) setTimeout(function () { focusTarget.focus(); }, 80);
