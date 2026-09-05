@@ -17,6 +17,7 @@
 .barcode-scan-surface:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 .barcode-scan-surface img { display: block; width: 100%; height: auto; max-height: 60dvh; object-fit: contain; image-rendering: pixelated; filter: none !important; }
 .barcode-scan-hint, #barcodeScanStatus { color: #444; font-size: 14px; overflow-wrap: anywhere; }
+#barcodePaneStatus, #barcodeScanStatus { display: block; width: 100%; box-sizing: border-box; text-align: center; line-height: 1.6; margin: 1.6em 0; overflow-wrap: anywhere; }
 .barcode-dialog .btn { background: #f3f3f3; color: #222; border: 1px solid #ccc; min-height: 44px; }
 @media (max-width: 480px) {
   .barcode-dialog { padding: 18px 12px; }
@@ -28,5 +29,5 @@
   .barcode-dialog h2 { font-size: 18px; margin-bottom: 4px; }
   .barcode-scan-surface { padding: 8px 20px; }
   .barcode-scan-surface img { max-height: 42dvh; }
-  .barcode-scan-hint, #barcodeScanStatus { margin: 6px 0; }
+  .barcode-scan-hint { margin: 6px 0; }
 }
