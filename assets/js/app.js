@@ -2222,6 +2222,8 @@
       memberAuthReady = !!session;
       memberProfileLoaded = false;
       syncMemberUi();
+      // 登入驗證成功便預先讀取，使用者打開會員選單時可直接出示。
+      if (session && memberBarcode) memberBarcode.load(false);
     }
     function clearMember() {
       localStorage.removeItem(MEMBER_KEY);

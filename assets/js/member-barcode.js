@@ -7,12 +7,15 @@
       var scan = el('barcodeScanImage'), status = el('barcodeStatus'), scanStatus = el('barcodeScanStatus');
       var paneImage = el('barcodePaneImage'), paneStatus = el('barcodePaneStatus');
       var saved = '', pending = '', busy = false, loaded = false, generation = 0;
+      // 圖片只暫存在此頁記憶體；不寫入瀏覽器持久儲存。
+      var cacheToken = '', loadedAt = 0, readPromise = null, CACHE_MS = 5 * 60 * 1000;
       var returnFocus = null;
       function session() { return options.getSession(); }
       function current(token, version) { var s = session(); return !!s && s.token === token && generation === version; }
       function picture(img, url) {
         img.hidden = !url;
-        if (url) img.src = url; else img.removeAttribute('src');
+        if (url) { if (img.getAttribute('src') !== url) img.src = url; }
+        else img.removeAttribute('src');
       }
       function paint() {
         picker.disabled = busy;
@@ -23,6 +26,7 @@
         el('barcodeRemove').disabled = busy || !saved;
         el('barcodeShow').disabled = busy || !saved || !!pending;
         el('barcodePaneShow').disabled = busy || !loaded || !saved;
+        el('barcodeRetry').disabled = el('barcodePaneRetry').disabled = busy;
         picture(paneImage, loaded ? saved : '');
         picture(preview, pending || saved);
       }
@@ -38,42 +42,54 @@
       }
       function reset() {
         generation++;
+        cacheToken = ''; loadedAt = 0; readPromise = null;
         saved = pending = ''; busy = loaded = false; picker.value = '';
         picture(scan, ''); paint();
+        retryVisible(false);
         if (dialog.open) dialog.close();
         message('尚未讀取條碼圖片。');
       }
       function load(force) {
         var s = session();
-        if (!s || busy) return Promise.resolve();
-        if (loaded && !force) return Promise.resolve();
+        if (!s) return Promise.resolve();
+        if (cacheToken && cacheToken !== s.token) reset();
+        cacheToken = s.token;
+        if (readPromise) return readPromise;
+        if (busy) return Promise.resolve();
+        if (loaded && !force && Date.now() - loadedAt < CACHE_MS) {
+          if (dialog.open) picture(scan, saved);
+          return Promise.resolve();
+        }
         var token = s.token, version = generation;
         busy = true; loaded = false; paint(); message('讀取條碼圖片中…');
         picture(scan, ''); retryVisible(false);
-        return API.memberBarcode(token).then(function (res) {
+        readPromise = API.memberBarcode(token).then(function (res) {
           if (!current(token, version)) return;
           checkResponse(res);
           var url = res.data && res.data.dataUrl || '';
           if (url && !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(url)) throw new Error('圖片格式不正確。');
-          saved = url; loaded = true;
+          saved = url; loaded = true; loadedAt = Date.now();
           if (dialog.open) picture(scan, saved);
+          retryVisible(true);
           message(saved ? '已讀取雲端條碼圖片。' : '尚未新增條碼圖片，請至「修改資料」上傳。');
         }).catch(function (err) {
           if (!current(token, version)) return;
           message(err.message || '圖片讀取失敗。'); retryVisible(true);
         }).finally(function () {
-          if (current(token, version)) { busy = false; paint(); }
+          if (current(token, version)) { readPromise = null; busy = false; paint(); }
         });
+        return readPromise;
       }
       function show() {
         if (!session()) return;
+        // 快取命中時直接出示，不必再次等待雲端下載。
+        load(false);
         if (!dialog.open) {
           returnFocus = document.activeElement;
           dialog.showModal();
           el('barcodeScanSurface').focus({ preventScroll: true });
         }
-        picture(scan, '');
-        load(true);
+        picture(scan, loaded ? saved : '');
       }
       picker.addEventListener('change', function () {
         var file = picker.files[0], s = session();
@@ -111,11 +127,15 @@
         API.memberSaveBarcode(file, remove, token).then(function (res) {
           if (!current(token, version)) return;
           checkResponse(res);
-          saved = remove ? '' : selected; pending = ''; loaded = true; picker.value = '';
+          saved = remove ? '' : selected; pending = ''; loaded = true; loadedAt = Date.now(); cacheToken = token; picker.value = '';
+          retryVisible(true);
           if (dialog.open) picture(scan, saved);
           message(remove ? '條碼圖片已移除。' : '條碼圖片已儲存，可在其他裝置登入後出示。');
         }).catch(function (err) {
-          if (current(token, version)) message((err.message || '儲存失敗。') + ' 若連線中斷，請重新讀取確認雲端結果。');
+          if (current(token, version)) {
+            loaded = false; loadedAt = 0; retryVisible(true);
+            message((err.message || '儲存失敗。') + ' 若連線中斷，請重新讀取確認雲端結果。');
+          }
         }).finally(function () {
           if (current(token, version)) { busy = false; paint(); }
         });
@@ -152,7 +172,7 @@
         load: load,
         openInline: function () {
           el('barcodePaneSurface').focus({ preventScroll: true });
-          return load(true);
+          return load(false);
         }
       };
     }
