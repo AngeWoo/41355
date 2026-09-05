@@ -1,0 +1,32 @@
+.barcode-editor { border-top: 1px solid var(--line, #777); margin-top: 12px; padding-top: 18px; min-width: 0; }
+.barcode-editor h3 { margin: 0 0 10px; }
+.member-barcode-pane { margin: 16px 0; min-width: 0; }
+.member-barcode-pane[hidden], .member-barcode-pane [hidden] { display: none !important; }
+.member-barcode-pane .barcode-scan-surface { min-height: 110px; border-radius: 10px; }
+.member-barcode-pane .barcode-scan-surface img { max-height: 220px; }
+.barcode-editor input[type="file"] { width: 100%; min-width: 0; box-sizing: border-box; font-size: 14px; }
+.barcode-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.barcode-actions .btn { min-height: 44px; }
+.barcode-preview { display: block; max-width: 100%; max-height: 180px; object-fit: contain; background: white; padding: 12px; box-sizing: border-box; margin: 12px auto; }
+.barcode-preview[hidden], .barcode-dialog [hidden], .barcode-editor [hidden] { display: none !important; }
+.barcode-dialog { box-sizing: border-box; width: min(960px, calc(100vw - 24px)); max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); margin: auto; padding: 24px; border: 0; border-radius: 16px; background: #fff; color: #111; overflow-y: auto; color-scheme: light; }
+.barcode-dialog::backdrop { background: rgba(0, 0, 0, .8); }
+.barcode-dialog h2 { margin: 0 48px 12px 0; font-size: 22px; color: #111; }
+.barcode-dialog .barcode-close { position: absolute; top: 10px; right: 10px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: #fff0f0; color: #b91c1c; font-size: 32px; cursor: pointer; }
+.barcode-scan-surface { display: flex; align-items: center; justify-content: center; background: #fff; padding: 20px; }
+.barcode-scan-surface:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.barcode-scan-surface img { display: block; width: 100%; height: auto; max-height: 60dvh; object-fit: contain; image-rendering: pixelated; filter: none !important; }
+.barcode-scan-hint, #barcodeScanStatus { color: #444; font-size: 14px; overflow-wrap: anywhere; }
+.barcode-dialog .btn { background: #f3f3f3; color: #222; border: 1px solid #ccc; min-height: 44px; }
+@media (max-width: 480px) {
+  .barcode-dialog { padding: 18px 12px; }
+  .barcode-scan-surface { padding: 16px; }
+  .barcode-dialog h2 { font-size: 20px; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .barcode-dialog { padding: 12px 18px; }
+  .barcode-dialog h2 { font-size: 18px; margin-bottom: 4px; }
+  .barcode-scan-surface { padding: 8px 20px; }
+  .barcode-scan-surface img { max-height: 42dvh; }
+  .barcode-scan-hint, #barcodeScanStatus { margin: 6px 0; }
+}
