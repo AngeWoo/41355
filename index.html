@@ -8,7 +8,8 @@
   <meta name="theme-color" content="#0d1728" />
   <meta name="color-scheme" content="dark" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <link rel="stylesheet" href="assets/css/style.css?v=144" />
+  <link rel="stylesheet" href="assets/css/style.css?v=145" />
+  <link rel="stylesheet" href="assets/css/member-barcode.css?v=4" />
   <link rel="stylesheet" href="assets/css/ipod.css?v=36" />
   <script src="assets/js/theme.js?v=3"></script>
   <script src="assets/js/scroll-top.js?v=1"></script>
@@ -212,17 +213,25 @@
       <h2 id="memberDialogTitle">會員登入</h2>
       <div class="member-current" id="memberCurrent" hidden>
         <span id="memberCurrentName"></span>
+        <button type="button" id="memberBarcodeOpen">出示條碼</button>
         <button type="button" id="memberLogout">登出</button>
       </div>
       <div class="member-note" id="memberNote" hidden></div>
       <div class="member-tabs member-settings-tabs" id="memberSettingsTabs" hidden>
-        <button type="button" class="active" data-member-view="directory">會員資料</button>
+        <button type="button" class="active" data-member-view="barcode">顯示條碼</button>
         <button type="button" data-member-view="profile">修改資料</button>
         <button type="button" data-member-view="contact">聯絡管理員</button>
       </div>
-      <section class="member-directory" id="memberDirectory" hidden aria-live="polite">
-        <div class="member-directory-head"><b id="memberDirectoryTitle">會員資料</b><span id="memberDirectoryCount"></span></div>
-        <div class="member-directory-list" id="memberDirectoryList"></div>
+      <section class="member-barcode-pane" id="memberBarcodePane" hidden aria-label="顯示條碼">
+        <div id="barcodePaneSurface" class="barcode-scan-surface" role="group" aria-label="我的條碼出示區" tabindex="0">
+          <img id="barcodePaneImage" alt="我的個人條碼" hidden />
+        </div>
+        <p id="barcodePaneStatus" class="member-hint" role="status" aria-live="polite">讀取條碼圖片中…</p>
+        <div class="barcode-actions">
+          <button type="button" class="btn btn-gold" id="barcodePaneShow" disabled>放大出示</button>
+          <button type="button" class="btn" id="barcodePaneManage">新增或更換條碼</button>
+          <button type="button" class="btn" id="barcodePaneRetry" hidden>重新讀取</button>
+        </div>
       </section>
       <form class="member-form" id="memberProfileForm">
         <label>姓名<input type="text" id="profileName" autocomplete="name" maxlength="50" required /></label>
@@ -231,6 +240,19 @@
         <label>手機<input type="tel" id="profileMobile" autocomplete="tel" inputmode="tel" maxlength="10" pattern="09[0-9]{8}" readonly required /></label>
         <div class="member-hint">Email 或手機如需變更，請使用「聯絡管理員」，避免略過身分驗證。</div>
         <button type="submit" class="btn btn-gold member-submit">儲存修改</button>
+        <section class="barcode-editor" aria-labelledby="barcodeEditorTitle">
+          <h3 id="barcodeEditorTitle">個人條碼</h3>
+          <p class="member-hint">上傳您現有的長條形條碼圖片（如發票條碼），儲存後可在其他裝置登入出示。支援 PNG、JPG、WebP，最大 5 MB；請保留完整條碼與左右留白。</p>
+          <img id="barcodePreview" class="barcode-preview" alt="個人條碼預覽" hidden />
+          <label>新增或更換圖片<input type="file" id="barcodeFile" accept="image/png,image/jpeg,image/webp" aria-describedby="barcodeStatus" /></label>
+          <div class="barcode-actions">
+            <button type="button" class="btn btn-gold" id="barcodeSave" disabled>儲存條碼圖片</button>
+            <button type="button" class="btn" id="barcodeCancel" hidden>取消選取</button>
+            <button type="button" class="btn" id="barcodeShow" disabled>放大出示</button>
+            <button type="button" class="btn" id="barcodeRemove" disabled>移除圖片</button>
+          </div>
+          <p id="barcodeStatus" class="member-hint" role="status" aria-live="polite">尚未讀取條碼圖片。</p>
+        </section>
       </form>
       <form class="member-form" id="memberContactForm">
         <label>給管理員的訊息<textarea id="contactMessage" rows="5" maxlength="2000" placeholder="請輸入您想告訴管理員的內容" required></textarea></label>
@@ -487,8 +509,18 @@
   </footer>
 
   <script src="assets/js/config.js?v=6"></script>
-  <script src="assets/js/api.js?v=42"></script>
-  <script src="assets/js/app.js?v=170"></script>
+  <dialog id="barcodeDialog" class="barcode-dialog" aria-labelledby="barcodeDialogTitle">
+    <button type="button" id="barcodeClose" class="barcode-close" aria-label="關閉條碼圖片">×</button>
+    <h2 id="barcodeDialogTitle">我的條碼</h2>
+    <p id="barcodeScanStatus" role="status" aria-live="polite"></p>
+    <div id="barcodeScanSurface" class="barcode-scan-surface" role="group" aria-label="個人條碼出示區" tabindex="0" autofocus><img id="barcodeScanImage" alt="供條碼機掃描的個人條碼" hidden /></div>
+    <p class="barcode-scan-hint">請提高螢幕亮度，將完整條碼對準掃描器。長條碼可將手機轉為橫向，放大後掃描。</p>
+    <button type="button" id="barcodeRetry" class="btn" hidden>重新讀取</button>
+    <button type="button" id="barcodeManage" class="btn">新增或更換圖片</button>
+  </dialog>
+  <script src="assets/js/api.js?v=43"></script>
+  <script src="assets/js/member-barcode.js?v=4"></script>
+  <script src="assets/js/app.js?v=173"></script>
   <script src="assets/js/ipod.js?v=18"></script>
 </body>
 </html>
