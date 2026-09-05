@@ -63,6 +63,16 @@
 
 ## 三、前台部署（nginx）
 
+### GAS 存取效能優化（2026-09-05）
+
+- 後台初始化以一次 `adminAll` 讀取 10 類內容，會員仍由獨立管理員 API 讀取；單一類型修改後仍只更新該類清單。
+- API 合併同一 token 的相同進行中讀取，完成即移除；修改資料或重新登入時切斷舊請求共用，避免新讀取接到修改前的資料。
+- `listRecords()` 一次讀取標頭及資料，不再在查詢中重複補欄位、設定手機欄格式或遷移分頁；必要的結構更新保留在 setup 與寫入流程。
+- 內容快取批次寫入，大型中文 JSON 先 gzip/Base64 壓縮，超過單筆快取容量時直接讀來源；快取寫入失敗不阻斷資料回傳。
+- 修改、新增、刪除或排序只清除相關類型快取；會員註冊與修改不再清空所有內容。排序沒有變更時不重寫整欄。
+- 此架構仍使用 Google Sheet、GAS 和 Drive；首次雲端讀取與冷啟動仍受 Google 服務影響。後端修改須更新原 GAS 部署版本，保留既有網址。
+- 設計依據：[Google Apps Script 最佳實務](https://developers.google.com/apps-script/guides/support/best-practices)、[CacheService 單筆容量及批次介面](https://developers.google.com/apps-script/reference/cache/cache)。
+
 本專案已放在 nginx 的 `html/41355/` 下，為純靜態檔案，直接以網址存取 `index.html` 即可，無需額外建置。
 
 ---
