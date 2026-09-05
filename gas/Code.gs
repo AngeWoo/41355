@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 真如苑資料網站 (非官方) — Google Apps Script 後端 API
  * ----------------------------------------------------------------
  * 部署方式：
@@ -86,7 +86,7 @@ var SCHEMA = {
   },
   members: {
     sheet: '會員',
-    headers: ['id', 'name', 'dharmaName', 'email', 'mobile', 'note', 'order', 'createdAt', 'updatedAt']
+    headers: ['id', 'name', 'dharmaName', 'email', 'mobile', 'note', 'order', 'createdAt', 'updatedAt', 'barcodeFileId']
   }
 };
 
@@ -407,6 +407,9 @@ function doPost(e) {
         return json({ ok: false, error: '圖片讀取請求過多，請稍後再試。' });
       }
       return json(handleNewsImage(body));
+    }
+    if (action === 'memberBarcode' || action === 'memberSaveBarcode') {
+      return handleMemberBarcode(body);
     }
     if (action === 'memberProfile') {
       return handleMemberProfile(body);
@@ -3987,4 +3990,121 @@ function whichDatabase() {
   Logger.log('網址：' + url);
   Logger.log('筆數：' + counts);
   return url + '  |  ' + counts;
+}
+
+// ====================== 個人會員條碼 ======================
+// 個人條碼原圖：私有 Drive 儲存，試算表只保留檔案 ID。
+var MEMBER_BARCODE_MAX_BYTES = 5 * 1024 * 1024;
+
+function memberBarcodeFolder(create) {
+  var id = PROP.getProperty('MEMBER_BARCODE_FOLDER_ID');
+  var folder;
+  if (id) {
+    folder = DriveApp.getFolderById(id);
+    if (folder.isTrashed()) throw new Error('條碼資料夾已移至垃圾桶。');
+  } else {
+    if (!create) throw new Error('條碼資料夾尚未建立。');
+    folder = DriveApp.createFolder('真如苑資料網站 — 私人會員條碼');
+    PROP.setProperty('MEMBER_BARCODE_FOLDER_ID', folder.getId());
+  }
+  if (folder.getSharingAccess() !== DriveApp.Access.PRIVATE ||
+      folder.getEditors().length || folder.getViewers().length) {
+    throw new Error('條碼資料夾必須保持私人且不與他人共用。');
+  }
+  return folder;
+}
+
+function memberBarcodeFile(id, memberId, folder) {
+  var file = DriveApp.getFileById(id);
+  if (file.isTrashed() || !newsImageBelongsToFolder(file, folder) ||
+      file.getDescription() !== 'member-barcode:' + memberId) {
+    throw new Error('找不到此會員的條碼圖片。');
+  }
+  if (file.getSharingAccess() !== DriveApp.Access.PRIVATE ||
+      file.getEditors().length || file.getViewers().length) {
+    throw new Error('條碼圖片必須保持私人且不與他人共用。');
+  }
+  return file;
+}
+
+function parseMemberBarcode(input) {
+  input = input || {};
+  var mime = String(input.mimeType || '').toLowerCase();
+  if (!NEWS_IMAGE_ALLOWED_MIME[mime]) throw new Error('僅支援 PNG、JPG 或 WebP 圖片。');
+  var base64 = String(input.base64 || '');
+  if (!base64 || base64.length > Math.ceil(MEMBER_BARCODE_MAX_BYTES / 3) * 4 ||
+      !/^[A-Za-z0-9+/]+={0,2}$/.test(base64) || base64.length % 4) {
+    throw new Error('圖片無效或超過 5 MB。');
+  }
+  var bytes = Utilities.base64Decode(base64);
+  if (bytes.length > MEMBER_BARCODE_MAX_BYTES || !validNewsImageBytes(bytes, mime)) {
+    throw new Error('圖片內容與格式不符，或超過 5 MB。');
+  }
+  return { bytes: bytes, mime: mime };
+}
+
+function handleMemberBarcode(body) {
+  var auth = resolveMemberToken(body.token);
+  if (!auth.member) return memberAuthErrorJson(auth);
+  var member = auth.member;
+  var saving = body.action === 'memberSaveBarcode';
+  if (!consumeRateLimit('member_barcode_' + (saving ? 'write_' : 'read_') + member.id, saving ? 20 : 80, 600)) {
+    return json({ ok: false, error: '條碼操作過於頻繁，請稍後再試。' });
+  }
+  try {
+    if (!saving) {
+      if (!member.barcodeFileId) return json({ ok: true, data: null });
+      var file = memberBarcodeFile(String(member.barcodeFileId), member.id, memberBarcodeFolder(false));
+      if (file.getSize() > MEMBER_BARCODE_MAX_BYTES) throw new Error('條碼圖片超過 5 MB。');
+      var blob = file.getBlob();
+      var mime = blob.getContentType();
+      var bytes = blob.getBytes();
+      if (!NEWS_IMAGE_ALLOWED_MIME[mime] || !validNewsImageBytes(bytes, mime)) throw new Error('條碼圖片格式無效。');
+      return json({ ok: true, data: { dataUrl: 'data:' + mime + ';base64,' + Utilities.base64Encode(bytes) } });
+    }
+    if (body.remove !== true && !body.file) throw new Error('請先選擇圖片。');
+    if (body.remove === true && body.file) throw new Error('請擇一上傳或移除圖片。');
+    var parsed = body.remove === true ? null : parseMemberBarcode(body.file);
+    return withWriteLock(function () {
+      // 在鎖內重讀，避免同時更換圖片時遺留舊檔或覆蓋其他會員。
+      var current = findMemberById(member.id);
+      if (!current) return memberAuthErrorJson({ code: 'auth_invalid' });
+      var folder = parsed || current.barcodeFileId ? memberBarcodeFolder(!!parsed) : null;
+      var created = null;
+      if (parsed) {
+        var ext = parsed.mime === 'image/png' ? '.png' : (parsed.mime === 'image/webp' ? '.webp' : '.jpg');
+        created = folder.createFile(Utilities.newBlob(parsed.bytes, parsed.mime, 'barcode-' + Utilities.getUuid() + ext));
+        try {
+          created.setDescription('member-barcode:' + current.id);
+          memberBarcodeFile(created.getId(), current.id, folder);
+        } catch (err) {
+          created.setTrashed(true);
+          throw err;
+        }
+      }
+      try {
+        updateRecord('members', { id: current.id, barcodeFileId: created ? created.getId() : '' });
+        SpreadsheetApp.flush();
+      } catch (err) {
+        // 寫入或 flush 逾時時可能已提交；只有確認試算表未引用新圖才清理。
+        if (created) {
+          try {
+            var recorded = findMemberById(current.id);
+            if (recorded && String(recorded.barcodeFileId || '') !== created.getId()) created.setTrashed(true);
+          } catch (cleanupErr) { console.warn('Staged barcode cleanup deferred'); }
+        }
+        throw err;
+      }
+      // 主資料已儲存；快取或舊檔清理失敗不可誤報為儲存失敗。
+      try { CacheService.getScriptCache().remove(dataCacheKey('members')); } catch (err) { console.warn('Barcode cache cleanup failed'); }
+      if (current.barcodeFileId) {
+        try { memberBarcodeFile(String(current.barcodeFileId), current.id, folder).setTrashed(true); }
+        catch (err) { console.warn('Previous barcode cleanup failed'); }
+      }
+      return json({ ok: true, data: { hasBarcode: !!created } });
+    });
+  } catch (err) {
+    console.error('Member barcode failed: ' + err);
+    return json({ ok: false, error: '條碼操作失敗：' + (err.message || '請稍後再試。') });
+  }
 }
