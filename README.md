@@ -104,6 +104,7 @@
 - 圖片存入執行 GAS 帳號的私有 Google Drive 資料夾「真如苑資料網站 — 私人會員條碼」，首次上傳自動建立，ID 存於 Script Properties 的 `MEMBER_BARCODE_FOLDER_ID`。會員試算表自動新增 `barcodeFileId` 欄位；不把圖片 Base64 放進儲存格。
 - `memberBarcode` / `memberSaveBarcode` 僅接受會員 token，以 token 決定本人，不接受指定其他會員或檔案 ID。資料夾與圖片必須保持私人；若改成共用則拒絕讀寫。更換或移除後，舊圖移至 Drive 垃圾桶。
 - 圖片只在當前頁面記憶體顯示，登出後清除；不寫入 localStorage、公開內容快取、會員名錄或公開圖片網址。其他裝置登入後由 GAS 重新讀取。
+- 登入驗證成功後預先讀取條碼；同一登入狀態五分鐘內重複開啟或放大直接使用記憶體圖片，進行中的讀取共用同一請求。到期後再次開啟會更新，也可按「重新讀取」立即取得其他裝置的修改。儲存或移除成功即更新快取，登出或切換帳號即清除。
 - **既有站台升級**：完整更新 `Code.gs`（已包含條碼處理函式），從「部署 → 管理部署作業 → 編輯 → 新版本 → 部署」更新原本 `/exec`；不需重跑 `setup()` 或更換資料庫。沿用現有 manifest 的 Drive / Sheets 權限。只更新靜態網站不會更新 GAS。若出現「服務暫時無法處理請求」，請確認部署版本內有 `function handleMemberBarcode(body)` 定義，而非只有函式呼叫。
 - 驗證指令：`node tools/verify-member-barcode.cjs`。瀏覽器測試使用虛構會員與模擬 API；正式部署後仍需用實際會員上傳、重新整理讀回，並以現場支援螢幕一維條碼的掃描器測試。
 
