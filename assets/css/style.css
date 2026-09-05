@@ -2364,17 +2364,13 @@ html.talk-open body {
   .hero::before {
     top: 43%;
     width: min(760px, 88vw);
-    opacity: .30;
-    background: radial-gradient(ellipse at center, rgba(243,217,143,.48) 0 20%, rgba(108,142,194,.18) 48%, transparent 74%);
-    mix-blend-mode: screen;
+    /* 沿用桌面人物底圖與透明度，不以漸層光暈取代。 */
   }
   .hero::after {
     top: 43%;
     width: min(760px, 88vw);
     transform: translate(calc(-50% + 6px), calc(-50% + 8px));
-    opacity: .14;
-    background: radial-gradient(ellipse at center, rgba(255,255,255,.34), transparent 68%);
-    mix-blend-mode: screen;
+    /* 沿用桌面的深色人物陰影，位移依手機尺寸縮小。 */
   }
   .hero-search { width: min(320px, calc(100% - 24px)); margin-top: 24px; }
   .hero-search input { height: 42px; padding-left: 12px; }
@@ -2531,13 +2527,11 @@ html.talk-open body {
   .hero::before {
     top: 43%;
     width: 88vw;
-    opacity: .28;
   }
   .hero::after {
     top: 43%;
     width: 88vw;
     transform: translate(calc(-50% + 5px), calc(-50% + 7px));
-    opacity: .12;
   }
   .stats {
     width: calc(100vw - 24px);
@@ -3183,7 +3177,7 @@ html[data-theme="light"] .foot-links a { background: rgba(255, 255, 255, .60); }
     color: #1f5c3c;
     background: rgba(46, 124, 80, .18);
   }
-  /* 手機版原本把底圖換成漸層光暈（深色底才需要），日間模式改回真正的圖，才不會糊成一團 */
+  /* 日間人物底圖保留獨立的亮度、位置與尺寸。 */
   html[data-theme="light"] .hero::before {
     top: 40%;
     width: min(760px, 94vw);
