@@ -1081,7 +1081,20 @@
   }
 
   // ---------- 載入與渲染 ----------
-  function loadAll() { COLLECTIONS.forEach(function (c) { loadType(c.type); }); }
+  function loadAll() {
+    // 內容一次取得；會員仍走獨立的管理員 API。
+    var activeToken = token;
+    loadType('members');
+    API.adminAll(activeToken).then(function (res) {
+      if (token !== activeToken) return;
+      if (!res || !res.ok || !res.data) { toast(res && res.error || '讀取失敗', true); return; }
+      COLLECTIONS.forEach(function (c) {
+        if (c.type !== 'members') acceptTypeData(c.type, res.data[c.type] || []);
+      });
+    }).catch(function () {
+      if (token === activeToken) toast('內容讀取失敗，請檢查連線。', true);
+    });
+  }
   function seedFallbackRows(type) {
     return ((window.SEED_DATA && window.SEED_DATA[type]) || []).map(function (r) {
       var copy = Object.assign({}, r);
@@ -1115,10 +1128,12 @@
     });
   }
   function loadType(type) {
+    var activeToken = token;
     var request = type === 'members' && API.adminMemberList
       ? API.adminMemberList(token)
       : API.adminList(type, token);
     request.then(function (res) {
+      if (token !== activeToken) return;
       if (!res.ok) {
         if ((type === 'tools' || type === 'talks') && window.SEED_DATA && window.SEED_DATA[type]) {
           cache[type] = seedFallbackRows(type);
@@ -1128,7 +1143,13 @@
         }
         toast(res.error || '讀取失敗', true); return;
       }
-      cache[type] = res.data || [];
+      acceptTypeData(type, res.data || []);
+    }).catch(function () {
+      if (token === activeToken) toast(byType(type).label + '讀取失敗，請檢查連線。', true);
+    });
+  }
+  function acceptTypeData(type, rows) {
+      cache[type] = rows;
       if (type === 'tools' && !cache[type].length && !API.isReadOnly()) {
         seedDefaultTools().then(function (ok) {
           if (ok) loadType(type);
@@ -1142,9 +1163,6 @@
       if ((type === 'tools' || type === 'talks') && !cache[type].length) cache[type] = seedFallbackRows(type);
       renderList(type);
       if (type === 'members') { renderBulkMailRecipients(); loadGlobalNote(); }
-    }).catch(function () {
-      toast(byType(type).label + '讀取失敗，請檢查連線。', true);
-    });
   }
   function renderList(type) {
     var c = byType(type), list = cache[type] || [], el = $('#list-' + type);
