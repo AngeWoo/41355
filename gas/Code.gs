@@ -119,13 +119,13 @@ function setup() {
 function warmDataCache() {
   var cache = CacheService.getScriptCache();
   var ss = getSpreadsheet();
+  var entries = {};
   Object.keys(SCHEMA).forEach(function (type) {
     var rows = listRecords(type, ss);
-    var payload = JSON.stringify(rows);
-    if (payload.length < 95000) {
-      cache.put(dataCacheKey(type), payload, DATA_CACHE_SECONDS);
-    }
+    var payload = encodeDataCache(rows);
+    if (payload) entries[dataCacheKey(type)] = payload;
   });
+  putDataCache(cache, entries);
 }
 
 // 安裝／重設「每 CACHE_WARM_INTERVAL_HOURS 小時預熱快取」的時間驅動觸發器。
@@ -481,7 +481,7 @@ function doPost(e) {
           record = normalizeRecordOrder(body.type, record.id, record.order) || record;
           return record;
         });
-        return jsonWithFreshCache({ ok: true, data: created, memberNotify: safeNotifyMembersForRecord(body.type, created, body.notifyMembers) });
+        return jsonWithFreshCache({ ok: true, data: created, memberNotify: safeNotifyMembersForRecord(body.type, created, body.notifyMembers) }, body.type);
       }
       case 'update': {
         var updated = withWriteLock(function () {
@@ -489,10 +489,10 @@ function doPost(e) {
           record = normalizeRecordOrder(body.type, record.id, record.order) || record;
           return record;
         });
-        return jsonWithFreshCache({ ok: true, data: updated, memberNotify: safeNotifyMembersForRecord(body.type, updated, body.notifyMembers) });
+        return jsonWithFreshCache({ ok: true, data: updated, memberNotify: safeNotifyMembersForRecord(body.type, updated, body.notifyMembers) }, body.type);
       }
-      case 'delete':         return withWriteLock(function () { return jsonWithFreshCache({ ok: true, data: deleteRecord(body.type, body.id) }); });
-      case 'reorder':        return withWriteLock(function () { return jsonWithFreshCache({ ok: true, data: reorder(body.type, body.ids) }); });
+      case 'delete':         return withWriteLock(function () { return jsonWithFreshCache({ ok: true, data: deleteRecord(body.type, body.id) }, body.type); });
+      case 'reorder':        return withWriteLock(function () { return jsonWithFreshCache({ ok: true, data: reorder(body.type, body.ids) }, body.type); });
       case 'changePassword': return withWriteLock(function () { return handleChangePassword(body); });
       case 'recalculateStats': return json({ ok: true, stats: recalculateStats() });
       case 'recalculateLatest': return json({ ok: true, latest: recalculateLatest() });
@@ -660,13 +660,36 @@ function json(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function jsonWithFreshCache(obj) {
-  clearDataCache();
+function jsonWithFreshCache(obj, type) {
+  clearDataCache(type);
   return json(obj);
 }
 
 function dataCacheKey(type) {
   return 'list_' + String(type || '');
+}
+
+// CacheService 每筆上限 100 KB；中文以 UTF-8 位元組計算，大資料先壓縮。
+function encodeDataCache(rows) {
+  var payload = JSON.stringify(rows);
+  if (payload.length < 30000) return payload;
+  var blob = Utilities.newBlob(payload, 'application/json');
+  if (blob.getBytes().length < 95000) return payload;
+  var compressed = 'gzip:' + Utilities.base64Encode(Utilities.gzip(blob).getBytes());
+  return compressed.length < 95000 ? compressed : null;
+}
+
+function decodeDataCache(payload) {
+  if (payload.indexOf('gzip:') === 0) {
+    payload = Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(payload.slice(5)))).getDataAsString();
+  }
+  return JSON.parse(payload);
+}
+
+function putDataCache(cache, entries) {
+  if (!Object.keys(entries).length) return;
+  try { cache.putAll(entries, DATA_CACHE_SECONDS); }
+  catch (err) { console.warn('Content cache write skipped: ' + err); }
 }
 
 function cachedListRecords(type) {
@@ -675,18 +698,18 @@ function cachedListRecords(type) {
   var key = dataCacheKey(type);
   var cached = cache.get(key);
   if (cached) {
-    try { return JSON.parse(cached); } catch (e) { }
+    try { return decodeDataCache(cached); } catch (e) { }
   }
   var rows = listRecords(type);
-  var payload = JSON.stringify(rows);
-  if (payload.length < 95000) {
-    cache.put(key, payload, DATA_CACHE_SECONDS);
-  }
+  var payload = encodeDataCache(rows);
+  var entries = {};
+  if (payload) entries[key] = payload;
+  putDataCache(cache, entries);
   return rows;
 }
 
-function clearDataCache() {
-  var keys = Object.keys(SCHEMA).map(dataCacheKey);
+function clearDataCache(type) {
+  var keys = type && SCHEMA[type] ? [dataCacheKey(type)] : Object.keys(SCHEMA).map(dataCacheKey);
   CacheService.getScriptCache().removeAll(keys);
 }
 
@@ -1487,7 +1510,7 @@ function handleMemberRegister(body) {
     warning = '會員已完成註冊，但通知信暫時無法寄送。';
   }
   try {
-    clearDataCache();
+    clearDataCache('members');
   } catch (cacheErr) {
     console.error('member registration cache refresh failed: ' + cacheErr);
     warning = warning || '會員已完成註冊，但資料快取更新延遲。';
@@ -1608,7 +1631,7 @@ function handleMemberUpdateProfile(body) {
   });
   if (result.error) return json({ ok: false, error: result.error });
   notifyMemberProfileUpdated(member, result.data);
-  return jsonWithFreshCache({ ok: true, data: memberSessionData(result.data), profile: memberProfileData(result.data) });
+  return jsonWithFreshCache({ ok: true, data: memberSessionData(result.data), profile: memberProfileData(result.data) }, 'members');
 }
 
 function handleMemberContactAdmin(body) {
@@ -1670,7 +1693,7 @@ function contentData(publishedOnly) {
     var raw = cached[dataCacheKey(type)];
     if (raw) {
       try {
-        out[type] = JSON.parse(raw);
+        out[type] = decodeDataCache(raw);
         return;
       } catch (e) { }
     }
@@ -1680,12 +1703,14 @@ function contentData(publishedOnly) {
   // 快取失效時，所有分頁共用一次 Spreadsheet 開啟作業，避免逐類型重複開啟造成等待。
   if (missing.length) {
     var ss = getSpreadsheet();
+    var entries = {};
     missing.forEach(function (type) {
       var rows = listRecords(type, ss);
       out[type] = rows;
-      var payload = JSON.stringify(rows);
-      if (payload.length < 95000) cache.put(dataCacheKey(type), payload, DATA_CACHE_SECONDS);
+      var payload = encodeDataCache(rows);
+      if (payload) entries[dataCacheKey(type)] = payload;
     });
+    putDataCache(cache, entries);
   }
 
   types.forEach(function (type) {
@@ -1956,11 +1981,20 @@ function readHeaders(sh) {
 }
 
 function listRecords(type, ss) {
-  var sh = sheetFor(type, ss);
-  var headers = readHeaders(sh);
+  var def = SCHEMA[type];
+  if (!def) throw new Error('未知的資料類型: ' + type);
+  var spreadsheet = ss || getSpreadsheet();
+  var sh = spreadsheet.getSheetByName(def.sheet);
+  // 一般讀取不做欄位遷移、格式設定或寫入；舊分頁仍可直接讀取。
+  if (!sh && type === 'calendar') sh = spreadsheet.getSheetByName('行事曆');
+  if (!sh && type === 'talks') sh = spreadsheet.getSheetByName('真如開講');
+  if (!sh) return [];
   var lastRow = sh.getLastRow();
   if (lastRow < 2) return [];
-  var values = sh.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  var lastCol = sh.getLastColumn();
+  if (!lastCol) return [];
+  var values = sh.getRange(1, 1, lastRow, lastCol).getValues();
+  var headers = values.shift().map(function (h) { return String(h || '').trim(); });
   var rows = values.map(function (row) {
     var obj = {};
     headers.forEach(function (h, i) { obj[h] = row[i]; });
@@ -2067,13 +2101,17 @@ function normalizeRecordOrder(type, activeId, desiredOrder) {
     return a.originalIndex - b.originalIndex;
   });
   others.splice(target - 1, 0, active);
+  var orderChanged = false;
   others.forEach(function (item, idx) {
+    if (Number(item.row[orderIdx]) !== idx + 1) orderChanged = true;
     item.row[orderIdx] = idx + 1;
   });
 
-  sh.getRange(2, orderIdx + 1, values.length, 1).setValues(values.map(function (row) {
-    return [row[orderIdx]];
-  }));
+  if (orderChanged) {
+    sh.getRange(2, orderIdx + 1, values.length, 1).setValues(values.map(function (row) {
+      return [row[orderIdx]];
+    }));
+  }
 
   var normalizedActive = null;
   active.row[orderIdx] = target;
