@@ -1727,13 +1727,27 @@ function handleMemberContent(body) {
   if (!auth.member) return memberAuthErrorJson(auth);
   var member = auth.member;
   // 一併回傳會員資料，前台開站時就不必再多打一次 validateMemberToken（省下一次 GAS 往返）。
-  return json({
+  var data = contentData(true);
+  var version = contentVersion(data);
+  var out = {
     ok: true,
-    data: contentData(true),
     member: memberSessionData(member),
     ttl: MEMBER_TOKEN_TTL_SECONDS,
-    mode: 'member'
-  });
+    mode: 'member',
+    version: version
+  };
+  // 前台帶來的版本與目前內容相同時，只回「未變更」，省下整包內容的傳輸與前台重畫。
+  if (body.since && String(body.since) === version) {
+    out.notModified = true;
+  } else {
+    out.data = data;
+  }
+  return json(out);
+}
+
+function contentVersion(data) {
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, JSON.stringify(data), Utilities.Charset.UTF_8);
+  return digest.map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join('');
 }
 
 function handleMemberDirectory(body) {
