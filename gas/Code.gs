@@ -773,7 +773,8 @@ function resolveCoverInfo(url) {
   if (!isAllowedCoverUrl(url)) throw new Error('不允許解析此網址。');
 
   var cache = CacheService.getScriptCache();
-  var key = 'cover_' + Utilities.base64EncodeWebSafe(
+  // cover2_：只快取成功結果（舊版 cover_ 連失敗也快取 6 小時，網址修好後仍會拿到舊的失敗結果）
+  var key = 'cover2_' + Utilities.base64EncodeWebSafe(
     Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, url)
   ).slice(0, 40);
   var cached = cache.get(key);
@@ -784,6 +785,7 @@ function resolveCoverInfo(url) {
   var finalUrl = url;
   var text = '';
   var contentType = '';
+  var status = 0;
   for (var i = 0; i < 6; i++) {
     var res = UrlFetchApp.fetch(finalUrl, {
       muteHttpExceptions: true,
@@ -791,6 +793,7 @@ function resolveCoverInfo(url) {
       headers: { 'User-Agent': 'Mozilla/5.0' }
     });
     var code = res.getResponseCode();
+    status = code;
     var headers = res.getAllHeaders();
     var location = headers.Location || headers.location || '';
     if (code >= 300 && code < 400 && location) {
@@ -817,8 +820,10 @@ function resolveCoverInfo(url) {
     cover = finalUrl;
   }
 
-  var out = { source: url, finalUrl: finalUrl, fileId: fileId || '', cover: cover };
-  cache.put(key, JSON.stringify(out), 60 * 60 * 6);
+  var titleMatch = text.match(/<title[^>]*>([^<]*)<\/title>/i);
+  var pageTitle = titleMatch ? titleMatch[1].replace(/\s+-\s+Google\s*(雲端硬碟|Drive)\s*$/i, '').trim() : '';
+  var out = { source: url, finalUrl: finalUrl, fileId: fileId || '', cover: cover, status: status, pageTitle: pageTitle.slice(0, 120) };
+  if (cover) cache.put(key, JSON.stringify(out), 60 * 60 * 6);
   return out;
 }
 
