@@ -853,7 +853,7 @@ function extractDriveFileId(value) {
 }
 
 function driveThumbnailUrl(fileId) {
-  return fileId ? 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(fileId) + '=w480' : '';
+  return fileId ? 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(fileId) + '=w480-rj-l80' : '';
 }
 
 var DOCUMENT_COVER_TYPES = { newsletter: true, dharma: true, iya: true };
