@@ -1,0 +1,95 @@
+html, body {
+  min-height: 100%;
+  margin: 0;
+}
+
+.ipod-gate {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 20px;
+  background: radial-gradient(ellipse at 50% 20%, #213357, #0b1324 73%);
+  color: #f8fafc;
+  color-scheme: dark;
+}
+
+.ipod-gate[hidden] {
+  display: none;
+}
+
+.ipod-gate-card {
+  width: min(100%, 360px);
+  padding: 28px;
+  border: 1px solid #9c7e47;
+  border-radius: 22px;
+  background: #182541;
+  box-shadow: 0 24px 56px #0306119c;
+}
+
+.ipod-gate-card img {
+  display: block;
+  margin: 0 auto 12px;
+  object-fit: contain;
+}
+
+.ipod-gate-card h1 {
+  margin: 0 0 24px;
+  text-align: center;
+  font-size: 1.75rem;
+  line-height: 1.25;
+}
+
+.ipod-gate-card form {
+  display: grid;
+  gap: 10px;
+}
+
+.ipod-gate-card label {
+  font-weight: 600;
+}
+
+.ipod-gate-card input,
+.ipod-gate-card button {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.ipod-gate-card input {
+  padding: 0 12px;
+  border: 1px solid #ad9364;
+  background: #0d172b;
+  color: #fff;
+}
+
+.ipod-gate-card button {
+  margin-top: 4px;
+  border: 0;
+  background: #e8c783;
+  color: #172039;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ipod-gate-card button:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+
+.ipod-gate-card :is(input, button):focus-visible {
+  outline: 2px solid #f3d58b;
+  outline-offset: 3px;
+}
+
+#ipodGateMessage {
+  min-height: 1.5em;
+  margin: 0;
+  color: #ffd1d1;
+  font-size: .9rem;
+}
+
+#talkPopover .talk-backdrop {
+  background: radial-gradient(ellipse at 50% 20%, #213357, #0b1324 73%);
+}

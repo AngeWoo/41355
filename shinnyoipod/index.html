@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>真如音檔｜Shinnyo iPod</title>
+  <link rel="icon" href="../assets/img/slogo.png">
+  <link rel="stylesheet" href="../assets/css/style.css?v=4849b367">
+  <link rel="stylesheet" href="../assets/css/ipod.css?v=1bab6c4c">
+  <link rel="stylesheet" href="entry.css">
+  <script src="../assets/js/theme.js?v=66407f46"></script>
+  <script src="entry.js" defer></script>
+  <script src="../assets/js/ipod.js?v=81d2d99d" defer></script>
+</head>
+<body>
+  <section id="ipodGate" class="ipod-gate" aria-labelledby="ipodGateTitle">
+    <div class="ipod-gate-card">
+      <img src="../assets/img/slogo.png" width="56" height="56" alt="">
+      <h1 id="ipodGateTitle">真如音檔</h1>
+      <form id="ipodGateForm" method="post">
+        <label for="ipodGateInput">通行密碼</label>
+        <input type="password" id="ipodGateInput" inputmode="numeric" autocomplete="current-password" required>
+        <button type="submit" id="ipodGateBtn">進入收聽</button>
+        <p id="ipodGateMessage" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+  <div class="talk-popover ipod-mode" id="talkPopover" hidden>
+    <div class="talk-backdrop" aria-hidden="true"></div>
+    <main class="talk-panel ipod" id="ipod" aria-labelledby="talkDialogTitle">
+      <div class="ipod-screen-frame">
+        <div class="ipod-screen">
+          <div class="talk-head ipod-statusbar">
+            <span class="ipod-repeat-badge ipod-mode-ic" id="ipodRepeatBadge" data-mode="normal" role="img" aria-label="播放模式：正常" title="播放模式：正常"><svg class="ic-mode-normal" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h11"/><path d="M11 7l5 5-5 5"/><path d="M20 5v14"/></svg><svg class="ic-mode-all" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 2.5l4 4-4 4"/><path d="M3 11.5v-1a4 4 0 0 1 4-4h13"/><path d="M8 21.5l-4-4 4-4"/><path d="M21 12.5v1a4 4 0 0 1-4 4H4"/></svg><svg class="ic-mode-one" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 2.5l4 4-4 4"/><path d="M3 11.5v-1a4 4 0 0 1 4-4h13"/><path d="M8 21.5l-4-4 4-4"/><path d="M21 12.5v1a4 4 0 0 1-4 4H4"/><text class="ic-mode-num" x="12" y="15.6" text-anchor="middle">1</text></svg></span>
+            <b id="talkDialogTitle">Shinnyo iPod 真如音檔</b>
+            <span class="ipod-status-right">
+              <span class="ipod-volume-wrap">
+                <button type="button" class="ipod-volume-btn" id="ipodVolumeBtn" aria-haspopup="true" aria-expanded="false" aria-label="靜音">
+                  <svg class="ic-vol-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 5V4L8 9H4z"/><path d="M16.2 8.8a5 5 0 0 1 0 6.4"/><path d="M18.6 6.2a9 9 0 0 1 0 11.6"/></svg>
+                  <svg class="ic-vol-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 5V4L8 9H4z"/><path d="M15.6 9.4l5.4 5.4M21 9.4l-5.4 5.4"/></svg>
+                </button>
+                <div class="ipod-volume-pop" id="ipodVolumePop" hidden>
+                  <div class="ipod-volume-row">
+                    <input type="range" class="ipod-volume-range" id="ipodVolumeRange" min="0" max="100" step="1" value="100" aria-label="音量" />
+                    <span class="ipod-volume-pct" id="ipodVolumePct">100%</span>
+                  </div>
+                </div>
+              </span>
+              <span class="ipod-battery" aria-hidden="true"></span>
+            </span>
+          </div>
+
+          <div class="ipod-screen-body">
+            <div class="talk-picker" id="talkPicker" hidden>
+              <div class="talk-picker-head">
+                <label class="sr-only" for="talkFilter">篩選真如音檔</label>
+                <input type="search" id="talkFilter" placeholder="輸入關鍵字篩選…" autocomplete="off" />
+                <span class="talk-picker-count" id="talkPickerCount"></span>
+                <span class="ipod-share-slot" id="talkShareSlot"></span>
+              </div>
+              <ul class="talk-picker-list" id="talkPickerList" role="listbox" aria-label="真如音檔清單"></ul>
+            </div>
+            <div class="talk-pager" id="talkPager"></div>
+
+            <div class="ipod-now">
+              <div class="ipod-nowmeta" id="ipodNowMeta"></div>
+              <div class="talk-list" id="talkList"></div>
+              <div class="ipod-progress" id="ipodProgress">
+                <span class="ipod-time" id="ipodTimeNow">0:00</span>
+                <div class="ipod-bar" id="ipodBar" role="slider" tabindex="0"
+                     aria-label="播放進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                  <i id="ipodBarFill"></i>
+                </div>
+                <span class="ipod-time" id="ipodTimeLeft">-0:00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ipod-wheel" id="ipodWheel">
+        <button type="button" class="ipod-key ipod-key-menu" data-ipod="menu"><span>menu</span></button>
+        <button type="button" class="ipod-key ipod-key-prev" data-ipod="prev" aria-label="上一則">
+          <span aria-hidden="true"><svg viewBox="0 0 24 14" fill="currentColor"><path d="M11.2 1.1 2.6 7l8.6 5.9zM21.6 1.1 13 7l8.6 5.9z"/></svg></span>
+        </button>
+        <button type="button" class="ipod-key ipod-key-next" data-ipod="next" aria-label="下一則">
+          <span aria-hidden="true"><svg viewBox="0 0 24 14" fill="currentColor"><path d="M12.8 1.1 21.4 7l-8.6 5.9zM2.4 1.1 11 7l-8.6 5.9z"/></svg></span>
+        </button>
+        <button type="button" class="ipod-key ipod-key-play ipod-key-repeat" id="ipodRepeatKey" data-ipod="repeat" aria-label="播放模式：正常，按下切換">
+          <span class="ipod-mode-ic" data-mode="normal" aria-hidden="true"><svg class="ic-mode-normal" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h11"/><path d="M11 7l5 5-5 5"/><path d="M20 5v14"/></svg><svg class="ic-mode-all" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 2.5l4 4-4 4"/><path d="M3 11.5v-1a4 4 0 0 1 4-4h13"/><path d="M8 21.5l-4-4 4-4"/><path d="M21 12.5v1a4 4 0 0 1-4 4H4"/></svg><svg class="ic-mode-one" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 2.5l4 4-4 4"/><path d="M3 11.5v-1a4 4 0 0 1 4-4h13"/><path d="M8 21.5l-4-4 4-4"/><path d="M21 12.5v1a4 4 0 0 1-4 4H4"/><text class="ic-mode-num" x="12" y="15.6" text-anchor="middle">1</text></svg></span>
+        </button>
+        <div class="ipod-scroll" id="ipodScroll" aria-hidden="true"></div>
+        <button type="button" class="ipod-select" id="ipodSelect" data-ipod="select" aria-label="播放">
+          <span class="ipod-select-icon" aria-hidden="true">
+            <svg class="ic-play" viewBox="0 0 14 16" fill="currentColor"><path d="M2.4 1 12.6 8 2.4 15z"/></svg>
+            <svg class="ic-pause" viewBox="0 0 14 16" fill="currentColor"><rect x="2" y="1" width="3.8" height="14" rx=".8"/><rect x="8.2" y="1" width="3.8" height="14" rx=".8"/></svg>
+          </span>
+        </button>
+      </div>
+
+      <span class="ipod-wordmark" aria-hidden="true">Shinnyo iPod</span>
+    </main>
+  </div>
+
+</body>
+</html>
